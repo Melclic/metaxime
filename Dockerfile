@@ -15,6 +15,6 @@ RUN apt-get --quiet update && \
     xz-utils && \
     pip install --upgrade pip && \ 
     conda update -n base -c defaults conda && \
-    conda install -y -c SBMLTeam python-libsbml && \
+    conda install -y -c SBMLTeam python-libsbml
 
-COPY rpSBML.py
+COPY rpSBML.py /home/
