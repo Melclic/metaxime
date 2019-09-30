@@ -10,8 +10,6 @@ RUN apt-get --quiet update && \
     cmake \
     git \
     wget \
-    libxext6 \
-    libxrender-dev \
     xz-utils && \
     pip install --upgrade pip && \ 
     conda update -n base -c defaults conda && \
