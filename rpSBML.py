@@ -169,13 +169,25 @@ class rpSBML:
 
 
     #####################################################################
-    ########################## READ/WRITE ###############################
+    ########################## READ #####################################
     #####################################################################
 
-    
+    # TODO:
+    '''
+    def readRPpathwayReactionMIRIAMAnnotation(self, pathId='rp_pathway'):
+        groups = self.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathId)
+        self._checklibSBML(rp_pathway, 'retreiving groups rp_pathway')
+        readIBISBAAnnotation()
+
+    #TODO:
+    def readRPpathwayReactionIBISBAAnnotations(self, pathId='rp_pathway'):
+    ''' 
+
+
     ## Return the reaction ID's and the pathway annotation
     #
-    #
+    # TODO: replace the name of this function with readRPpathwayIDs
     def readRPpathway(self, pathId='rp_pathway'):
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathId)
@@ -237,22 +249,25 @@ class rpSBML:
     #
     #
     def readMIRIAMAnnotation(self, annot):
-        toRet = {}
-        bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
-        for i in range(bag.getNumChildren()):
-            str_annot = bag.getChild(i).getAttrValue(0)
-            if str_annot=='':
-                self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
-                continue
-            dbid = str_annot.split('/')[-2].split('.')[0]
-            if len(str_annot.split('/')[-1].split(':'))==2:
-                cid = str_annot.split('/')[-1].split(':')[1]
-            else:
-                cid = str_annot.split('/')[-1]
-            if not dbid in toRet: 
-                toRet[dbid] = []
-            toRet[dbid].append(cid)
-        return toRet
+        try:
+            toRet = {}
+            bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
+            for i in range(bag.getNumChildren()):
+                str_annot = bag.getChild(i).getAttrValue(0)
+                if str_annot=='':
+                    self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
+                    continue
+                dbid = str_annot.split('/')[-2].split('.')[0]
+                if len(str_annot.split('/')[-1].split(':'))==2:
+                    cid = str_annot.split('/')[-1].split(':')[1]
+                else:
+                    cid = str_annot.split('/')[-1]
+                if not dbid in toRet: 
+                    toRet[dbid] = []
+                toRet[dbid].append(cid)
+            return toRet
+        except AttributeError:
+            return {}
 
 
     ## Takes for input a libSBML annotatio object and returns a dictionnary of the annotations
@@ -1266,6 +1281,7 @@ class rpSBML:
             inchi=None,
             inchiKey=None,
             smiles=None,
+            isMain=False,
             metaID=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1342,6 +1358,7 @@ class rpSBML:
         <ibisba:smiles>'''+str(smiles or '')+'''</ibisba:smiles>
         <ibisba:inchi>'''+str(inchi or '')+'''</ibisba:inchi>
         <ibisba:inchikey>'''+str(inchiKey or '')+'''</ibisba:inchikey>
+        <ibisba:isMain>'''+str(isMain or '')+'''</ibisba:inchikey>
       </ibisba:ibisba>
     </rdf:Ibisba>'''
         annotation += '''
@@ -1515,9 +1532,6 @@ if __name__ == "__main__":
     #pass the different models to the SBML solvers and write the results to file
     #TODO
     #designed to write using TAR.XZ with all the SBML pathways
-    with tarfile.open('testFBAout.tar.xz', 'w:xz') as tf:
-        for rpsbml_name in rpsbml_paths:
-            data = libsbml.writeSBMLToString(rpsbml_paths[rpsbml_name].document).encode('utf-8')
             fiOut = BytesIO(data)
             info = tarfile.TarInfo(rpsbml_name)
             info.size = len(data)
