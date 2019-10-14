@@ -757,7 +757,7 @@ class rpSBML:
             #self._checklibSBML(target_species, 'Getting target species')
             #target_annotation = target_species.getAnnotation()
             target_annotation = target_model.getSpecies(y).getAnnotation()
-            if not target_annotation:    
+            if not target_annotation:
                 self.logger.warning('Cannot find annotations for species: '+str(target_model.getSpecies(y).getId()))
                 continue
             self._checklibSBML(target_annotation, 'Getting target annotation')
