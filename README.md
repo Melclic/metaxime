@@ -15,7 +15,7 @@ TODO
 Build the docker image:
 
 ```
-docker build -t ibisba/rpreader .
+docker build -t brsynth/rpbase .
 ```
 
 ## Running the tests

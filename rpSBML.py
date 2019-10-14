@@ -238,21 +238,24 @@ class rpSBML:
     #
     def readMIRIAMAnnotation(self, annot):
         toRet = {}
-        bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
-        for i in range(bag.getNumChildren()):
-            str_annot = bag.getChild(i).getAttrValue(0)
-            if str_annot=='':
-                self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
-                continue
-            dbid = str_annot.split('/')[-2].split('.')[0]
-            if len(str_annot.split('/')[-1].split(':'))==2:
-                cid = str_annot.split('/')[-1].split(':')[1]
-            else:
-                cid = str_annot.split('/')[-1]
-            if not dbid in toRet: 
-                toRet[dbid] = []
-            toRet[dbid].append(cid)
-        return toRet
+        try:
+            bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
+            for i in range(bag.getNumChildren()):
+                str_annot = bag.getChild(i).getAttrValue(0)
+                if str_annot=='':
+                    self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
+                    continue
+                dbid = str_annot.split('/')[-2].split('.')[0]
+                if len(str_annot.split('/')[-1].split(':'))==2:
+                    cid = str_annot.split('/')[-1].split(':')[1]
+                else:
+                    cid = str_annot.split('/')[-1]
+                if not dbid in toRet: 
+                    toRet[dbid] = []
+                toRet[dbid].append(cid)
+            return toRet
+        except AttributeError:
+            return {}
 
 
     ## Takes for input a libSBML annotatio object and returns a dictionnary of the annotations
