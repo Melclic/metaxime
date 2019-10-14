@@ -752,10 +752,12 @@ class rpSBML:
         #### compare
         # first make the target model dictionnary of the species for the target model
         targetModel_speciesAnnot = {}
+        targetModel_speciesId = []
         for y in range(target_model.getNumSpecies()):
             #target_species = target_model.getSpecies(y)
             #self._checklibSBML(target_species, 'Getting target species')
             #target_annotation = target_species.getAnnotation()
+            targetModel_speciesId.append(target_model.getSpecies(y).getId())
             target_annotation = target_model.getSpecies(y).getAnnotation()
             if not target_annotation:
                 self.logger.warning('Cannot find annotations for species: '+str(target_model.getSpecies(y).getId()))
@@ -785,7 +787,7 @@ class rpSBML:
                 #    continue
             for y in targetModel_speciesAnnot:
                 #if self.compareMIRIAMAnnotations(source_annotation, targetModel_speciesAnnot[y]):
-                if self.compareAnnotations_annot_dict(source_annotation, targetModel_speciesAnnot[y]):
+                if self.compareAnnotations_annot_dict(source_annotation, targetModel_speciesAnnot[y]) or source_species.getId() in targetModel_speciesId:
                     #save the speciesID as being the same
                     #sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.species[y].getId()
                     sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.getSpecies(y).getId()
