@@ -359,8 +359,8 @@ class rpSBML:
     ## Function to find out if the model already contains a species according to its name
     #
     #
-    def speciesExists(self, speciesName):
-        if speciesName in [i.getName() for i in self.model.getListOfSpecies()]:
+    def speciesExists(self, speciesName, compartment_id='MNXC3'):
+        if speciesName in [i.getName() for i in self.model.getListOfSpecies()] or speciesName+'__64__'+compartment_id in [i.getId() for i in self.model.getListOfSpecies()]:
             return True
         return False
 
@@ -1360,7 +1360,7 @@ class rpSBML:
         <ibisba:smiles>'''+str(smiles or '')+'''</ibisba:smiles>
         <ibisba:inchi>'''+str(inchi or '')+'''</ibisba:inchi>
         <ibisba:inchikey>'''+str(inchiKey or '')+'''</ibisba:inchikey>
-        <ibisba:isMain>'''+str(isMain or '')+'''</ibisba:inchikey>
+        <ibisba:isMain>'''+str(isMain or '')+'''</ibisba:isMain>
       </ibisba:ibisba>
     </rdf:Ibisba>'''
         annotation += '''
@@ -1534,8 +1534,8 @@ if __name__ == "__main__":
     #pass the different models to the SBML solvers and write the results to file
     #TODO
     #designed to write using TAR.XZ with all the SBML pathways
-            fiOut = BytesIO(data)
-            info = tarfile.TarInfo(rpsbml_name)
-            info.size = len(data)
-            tf.addfile(tarinfo=info, fileobj=fiOut)
+    fiOut = BytesIO(data)
+    info = tarfile.TarInfo(rpsbml_name)
+    info.size = len(data)
+    tf.addfile(tarinfo=info, fileobj=fiOut)
 
