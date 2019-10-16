@@ -137,14 +137,14 @@ class rpSBML:
         self.model = model
         #enabling the extra packages if they do not exists when reading a model
         if not self.model.isPackageEnabled('groups'):
-            self._checklibSBML(target_model.enablePackage(
+            self._checklibSBML(self.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/groups/version1',
                 'groups',
                 True),
                     'Enabling the GROUPS package')
         self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
-        if not target_model.isPackageEnabled('fbc'):
-            self._checklibSBML(target_model.enablePackage(
+        if not self.model.isPackageEnabled('fbc'):
+            self._checklibSBML(self.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/fbc/version2',
                 'fbc',
                 True),
