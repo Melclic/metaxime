@@ -119,7 +119,7 @@ class rpSBML:
         if not os.path.isfile(inFile):
             self.logger.error('Invalid input file')
             raise FileNotFoundError
-        document = libsbml.readSBML(inFile)
+        document = libsbml.readSBMLFromFile(inFile)
         self._checklibSBML(document, 'reading input file')
         errors = document.getNumErrors()
         #display the errors in the log accordning to the severity
@@ -135,6 +135,20 @@ class rpSBML:
             raise FileNotFoundError
         self.document = document
         self.model = model
+        #enabling the extra packages if they do not exists when reading a model
+        if not self.model.isPackageEnabled('groups'):
+            self._checklibSBML(target_model.enablePackage(
+                'http://www.sbml.org/sbml/level3/version1/groups/version1',
+                'groups',
+                True),
+                    'Enabling the GROUPS package')
+        self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
+        if not target_model.isPackageEnabled('fbc'):
+            self._checklibSBML(target_model.enablePackage(
+                'http://www.sbml.org/sbml/level3/version1/fbc/version2',
+                'fbc',
+                True),
+                    'Enabling the FBC package')
 
 
     ## Export a libSBML model to file
