@@ -1,6 +1,6 @@
 # rpBase
 
-Docker base image used by rpReader, rpCofactors, rpThermo, rpExtractSink
+Docker base image used by rpReader, rpCofactors, rpThermo and rpExtractSink
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ TODO
 Build the docker image:
 
 ```
-docker build -t ibisba/rpreader .
+docker build -t brsynth/rpbase .
 ```
 
 ## Running the tests
