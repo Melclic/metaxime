@@ -375,7 +375,7 @@ class rpSBML:
         #reactants
         for i in range(reaction.getNumReactants()):
             reactant_ref = reaction.getReactant(i)
-            toRet['left'][product_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
+            toRet['left'][reactant_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
             #reactant = self.model.getSpecies(reactant_ref.getSpecies())
             #if isID:
             #    toRet['left'][reactant.getId()] = int(reactant_ref.getStoichiometry())
