@@ -119,7 +119,7 @@ class rpSBML:
         if not os.path.isfile(inFile):
             self.logger.error('Invalid input file')
             raise FileNotFoundError
-        document = libsbml.readSBML(inFile)
+        document = libsbml.readSBMLFromFile(inFile)
         self._checklibSBML(document, 'reading input file')
         errors = document.getNumErrors()
         #display the errors in the log accordning to the severity
@@ -135,6 +135,20 @@ class rpSBML:
             raise FileNotFoundError
         self.document = document
         self.model = model
+        #enabling the extra packages if they do not exists when reading a model
+        if not self.model.isPackageEnabled('groups'):
+            self._checklibSBML(target_model.enablePackage(
+                'http://www.sbml.org/sbml/level3/version1/groups/version1',
+                'groups',
+                True),
+                    'Enabling the GROUPS package')
+        self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
+        if not target_model.isPackageEnabled('fbc'):
+            self._checklibSBML(target_model.enablePackage(
+                'http://www.sbml.org/sbml/level3/version1/fbc/version2',
+                'fbc',
+                True),
+                    'Enabling the FBC package')
 
 
     ## Export a libSBML model to file
@@ -169,13 +183,25 @@ class rpSBML:
 
 
     #####################################################################
-    ########################## READ/WRITE ###############################
+    ########################## READ #####################################
     #####################################################################
 
-    
+    # TODO:
+    '''
+    def readRPpathwayReactionMIRIAMAnnotation(self, pathId='rp_pathway'):
+        groups = self.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathId)
+        self._checklibSBML(rp_pathway, 'retreiving groups rp_pathway')
+        readIBISBAAnnotation()
+
+    #TODO:
+    def readRPpathwayReactionIBISBAAnnotations(self, pathId='rp_pathway'):
+    ''' 
+
+
     ## Return the reaction ID's and the pathway annotation
     #
-    #
+    # TODO: replace the name of this function with readRPpathwayIDs
     def readRPpathway(self, pathId='rp_pathway'):
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathId)
@@ -237,8 +263,8 @@ class rpSBML:
     #
     #
     def readMIRIAMAnnotation(self, annot):
-        toRet = {}
         try:
+            toRet = {}
             bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             for i in range(bag.getNumChildren()):
                 str_annot = bag.getChild(i).getAttrValue(0)
@@ -315,7 +341,7 @@ class rpSBML:
     ## Function to return the products and the species associated with a reaction
     #
     # @return Dictionnary with right==product and left==reactants
-    def readReactionSpecies(self, reaction, isID=False):
+    def readReactionSpecies_old(self, reaction, isID=False):
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
         # it exists in the rpsbml model
         toRet = {'left': {}, 'right': {}}
@@ -339,6 +365,35 @@ class rpSBML:
         return toRet
 
 
+    ## Function to return the products and the species associated with a reaction
+    #
+    # @return Dictionnary with right==product and left==reactants
+    def readReactionSpecies(self, reaction, isID=False):
+        #TODO: check that reaction is either an sbml species; if not check that its a string and that
+        # it exists in the rpsbml model
+        toRet = {'left': {}, 'right': {}}
+        #reactants
+        for i in range(reaction.getNumReactants()):
+            reactant_ref = reaction.getReactant(i)
+            toRet['left'][product_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
+            #reactant = self.model.getSpecies(reactant_ref.getSpecies())
+            #if isID:
+            #    toRet['left'][reactant.getId()] = int(reactant_ref.getStoichiometry())
+            #else:
+            #    toRet['left'][reactant.getName()] = int(reactant_ref.getStoichiometry())
+        #products
+        for i in range(reaction.getNumProducts()):
+            product_ref = reaction.getProduct(i)
+            toRet['right'][product_ref.getSpecies()] = int(product_ref.getStoichiometry())
+            #product = self.model.getSpecies(product_ref.getSpecies())
+            #if isID:
+            #    toRet['right'][product.getId()] = int(product_ref.getStoichiometry())
+            #else:
+            #    toRet['right'][product.getName()] = int(product_ref.getStoichiometry())
+            #toRet['reversible'] = reaction.getReversible()
+        return toRet
+
+
     #####################################################################
     ######################### INQUIRE ###################################
     #####################################################################
@@ -347,8 +402,8 @@ class rpSBML:
     ## Function to find out if the model already contains a species according to its name
     #
     #
-    def speciesExists(self, speciesName):
-        if speciesName in [i.getName() for i in self.model.getListOfSpecies()]:
+    def speciesExists(self, speciesName, compartment_id='MNXC3'):
+        if speciesName in [i.getName() for i in self.model.getListOfSpecies()] or speciesName+'__64__'+compartment_id in [i.getId() for i in self.model.getListOfSpecies()]:
             return True
         return False
 
@@ -740,12 +795,14 @@ class rpSBML:
         #### compare
         # first make the target model dictionnary of the species for the target model
         targetModel_speciesAnnot = {}
+        targetModel_speciesId = []
         for y in range(target_model.getNumSpecies()):
             #target_species = target_model.getSpecies(y)
             #self._checklibSBML(target_species, 'Getting target species')
             #target_annotation = target_species.getAnnotation()
+            targetModel_speciesId.append(target_model.getSpecies(y).getId())
             target_annotation = target_model.getSpecies(y).getAnnotation()
-            if not target_annotation:    
+            if not target_annotation:
                 self.logger.warning('Cannot find annotations for species: '+str(target_model.getSpecies(y).getId()))
                 continue
             self._checklibSBML(target_annotation, 'Getting target annotation')
@@ -773,7 +830,7 @@ class rpSBML:
                 #    continue
             for y in targetModel_speciesAnnot:
                 #if self.compareMIRIAMAnnotations(source_annotation, targetModel_speciesAnnot[y]):
-                if self.compareAnnotations_annot_dict(source_annotation, targetModel_speciesAnnot[y]):
+                if self.compareAnnotations_annot_dict(source_annotation, targetModel_speciesAnnot[y]) or source_species.getId() in targetModel_speciesId:
                     #save the speciesID as being the same
                     #sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.species[y].getId()
                     sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.getSpecies(y).getId()
@@ -1269,6 +1326,7 @@ class rpSBML:
             inchi=None,
             inchiKey=None,
             smiles=None,
+            isMain=False,
             metaID=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1345,6 +1403,7 @@ class rpSBML:
         <ibisba:smiles>'''+str(smiles or '')+'''</ibisba:smiles>
         <ibisba:inchi>'''+str(inchi or '')+'''</ibisba:inchi>
         <ibisba:inchikey>'''+str(inchiKey or '')+'''</ibisba:inchikey>
+        <ibisba:isMain>'''+str(isMain or '')+'''</ibisba:isMain>
       </ibisba:ibisba>
     </rdf:Ibisba>'''
         annotation += '''
@@ -1518,11 +1577,8 @@ if __name__ == "__main__":
     #pass the different models to the SBML solvers and write the results to file
     #TODO
     #designed to write using TAR.XZ with all the SBML pathways
-    with tarfile.open('testFBAout.tar.xz', 'w:xz') as tf:
-        for rpsbml_name in rpsbml_paths:
-            data = libsbml.writeSBMLToString(rpsbml_paths[rpsbml_name].document).encode('utf-8')
-            fiOut = BytesIO(data)
-            info = tarfile.TarInfo(rpsbml_name)
-            info.size = len(data)
-            tf.addfile(tarinfo=info, fileobj=fiOut)
+    fiOut = BytesIO(data)
+    info = tarfile.TarInfo(rpsbml_name)
+    info.size = len(data)
+    tf.addfile(tarinfo=info, fileobj=fiOut)
 

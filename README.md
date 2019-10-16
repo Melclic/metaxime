@@ -1,6 +1,6 @@
 # rpBase
 
-Docker base image used by rpReader, rpCofactors, rpThermo, rpExtractSink
+Docker base image used by rpReader, rpCofactors, rpThermo and rpExtractSink
 
 ## Getting Started
 
