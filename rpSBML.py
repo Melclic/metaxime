@@ -327,7 +327,7 @@ class rpSBML:
     ## Function to return the products and the species associated with a reaction
     #
     # @return Dictionnary with right==product and left==reactants
-    def readReactionSpecies(self, reaction, isID=False):
+    def readReactionSpecies_old(self, reaction, isID=False):
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
         # it exists in the rpsbml model
         toRet = {'left': {}, 'right': {}}
@@ -348,6 +348,35 @@ class rpSBML:
             else:
                 toRet['right'][product.getName()] = int(product_ref.getStoichiometry())
             toRet['reversible'] = reaction.getReversible()
+        return toRet
+
+
+    ## Function to return the products and the species associated with a reaction
+    #
+    # @return Dictionnary with right==product and left==reactants
+    def readReactionSpecies(self, reaction, isID=False):
+        #TODO: check that reaction is either an sbml species; if not check that its a string and that
+        # it exists in the rpsbml model
+        toRet = {'left': {}, 'right': {}}
+        #reactants
+        for i in range(reaction.getNumReactants()):
+            reactant_ref = reaction.getReactant(i)
+            toRet['left'][product_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
+            #reactant = self.model.getSpecies(reactant_ref.getSpecies())
+            #if isID:
+            #    toRet['left'][reactant.getId()] = int(reactant_ref.getStoichiometry())
+            #else:
+            #    toRet['left'][reactant.getName()] = int(reactant_ref.getStoichiometry())
+        #products
+        for i in range(reaction.getNumProducts()):
+            product_ref = reaction.getProduct(i)
+            toRet['right'][product_ref.getSpecies()] = int(product_ref.getStoichiometry())
+            #product = self.model.getSpecies(product_ref.getSpecies())
+            #if isID:
+            #    toRet['right'][product.getId()] = int(product_ref.getStoichiometry())
+            #else:
+            #    toRet['right'][product.getName()] = int(product_ref.getStoichiometry())
+            #toRet['reversible'] = reaction.getReversible()
         return toRet
 
 
