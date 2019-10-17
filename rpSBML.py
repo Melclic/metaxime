@@ -142,13 +142,14 @@ class rpSBML:
                 'groups',
                 True),
                     'Enabling the GROUPS package')
-        self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
+            self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
         if not self.model.isPackageEnabled('fbc'):
             self._checklibSBML(self.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/fbc/version2',
                 'fbc',
                 True),
                     'Enabling the FBC package')
+            self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package') 
 
 
     ## Export a libSBML model to file
@@ -609,12 +610,15 @@ class rpSBML:
     ## Merge two models species and reactions using the annotations to recognise the same species and reactions
     #
     # The source mode has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
-    #called rp_pathway.
+    #called rp_pathway. If not use the readSBML() function to create a model
     # We add the reactions and species from the rpsbml to the target_model
+    # 
+    # @param target_model input libsbml model object where we will add the reactions and species from self.model
+    # @param path_id String default is rp_pathway, name of the pathway id of the groups object
+    # @param addOrphanSpecies Boolean Default False
+    # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
-    # @param bilevel_obj: Defines if the different objectves are to be added to the model (False if (0.0, 0.0) and what are the coefficients to add it)
-    #
-    def mergeModels(self, target_model, pathId='rp_pathway', bilevel_obj=(0.0, 0.0)):
+    def mergeModels(self, target_model, pathId='rp_pathway', createOrphanSpecies=False, bilevel_obj=(0.0, 0.0)):
         #target_model = target_document.getModel()
         #Find the ID's of the similar target_model species
         ################ UNITDEFINITIONS ######
@@ -786,7 +790,7 @@ class rpSBML:
                 self._checklibSBML(bilevel_fluxObjective_target.setReaction(targetFluxObjectives[0].getReaction()),
                     'setting target flux objective reaction')
             else:
-                self.logger.warning('Either the target or source model has one of the oobjectives with multiple flux values')
+                self.logger.warning('Either the target or source model has one of the objectives with multiple flux values')
         else:
             self.logger.warning('There are more than one, or zero objective in the target and the source')
         ################ SPECIES ####################
@@ -1017,6 +1021,18 @@ class rpSBML:
         ###### TITLES #####
         target_model.setId(target_model.getId()+'_'+self.model.getId())
         target_model.setName(target_model.getName()+' merged with '+self.model.getId())
+        ##### ADD SOURCE FROM ORPHAN #####
+        #if the added reaction contains species that are not connected anywhere and addOrphanSpecies is set tu True 
+        # then add the another reaction that transports the reactions that creates the species in the extracellular
+        # matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
+        #PROGRESS
+        if createOrphanSpecies:
+            for reaction_id in self.readRPpathway():
+                reaction = self.model.getReaction(reaction_id)
+                if reaction.getNumProducts()==0
+            for species in self.readUniqueRPspecies():
+                species.
+
 
 
     #########################################################################
