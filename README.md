@@ -8,7 +8,7 @@ The docker needs to be built locally where the other dockers are to be built
 
 ### Prerequisites
 
-TODO
+[libsbml](http://sbml.org/Software/libSBML)
 
 ### Installing
 
