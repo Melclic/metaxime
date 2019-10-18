@@ -197,7 +197,7 @@ class rpSBML:
 
     #TODO:
     def readRPpathwayReactionIBISBAAnnotations(self, pathId='rp_pathway'):
-    ''' 
+    '''
 
 
     ## Return the reaction ID's and the pathway annotation
@@ -211,7 +211,7 @@ class rpSBML:
         for member in rp_pathway.getListOfMembers():
             toRet.append(member.getIdRef())
         return toRet
- 
+
 
     ## Read the reaction rules from the IBISBA annotation
     #
@@ -277,7 +277,7 @@ class rpSBML:
                     cid = str_annot.split('/')[-1].split(':')[1]
                 else:
                     cid = str_annot.split('/')[-1]
-                if not dbid in toRet: 
+                if not dbid in toRet:
                     toRet[dbid] = []
                 toRet[dbid].append(cid)
             return toRet
@@ -312,7 +312,7 @@ class rpSBML:
             #if not ann.getName() in toRet:
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_':
                 toRet[ann.getName()] = {
-                        'units': ann.getAttrValue('units'), 
+                        'units': ann.getAttrValue('units'),
                         'value': float(ann.getAttrValue('value'))}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
@@ -408,7 +408,7 @@ class rpSBML:
             return True
         return False
 
-    
+
     ## Function to determine if a species CAN be a product of any reaction.
     #
     # Note that this is only determines if a species can possibly be produced, but does not
@@ -444,14 +444,14 @@ class rpSBML:
                 else:
                     #if the reaction is not reversible then product are the only way to create it
                     if species_id in [i.getSpecies() for i in reaction.getListOfProducts()]:
-                        return True 
-        return False 
+                        return True
+        return False
 
 
     #########################################################################
     ################### CONVERT BETWEEEN FORMATS ############################
     #########################################################################
-    
+
 
     ## Really used to complete the monocomponent reactions   
     #{'rule_id': 'RR-01-503dbb54cf91-49-F', 'right': {'TARGET_0000000001': 1}, 'left': {'MNXM2': 1, 'MNXM376': 1}, 'path_id': 1, 'step': 1, 'sub_step': 1, 'transformation_id': 'TRS_0_0_17'}
@@ -465,7 +465,7 @@ class rpSBML:
                 ibisbaAnnot = self.readIBISBAAnnotation(reaction.getAnnotation())
                 speciesReac = self.readReactionSpecies(reaction)
                 step = {'reaction_id': member,
-                        'reaction_rule': ibisbaAnnot['smiles'], 
+                        'reaction_rule': ibisbaAnnot['smiles'],
                         'rule_score': ibisbaAnnot['rule_score'],
                         'rule_id': ibisbaAnnot['rule_id'],
                         'rule_mnxr': ibisbaAnnot['rule_mnxr'],
@@ -532,7 +532,7 @@ class rpSBML:
                 return True
         return False
 
-    
+
     ## Compare two dictionnaries sutructured as dict
     #
     #
@@ -670,23 +670,23 @@ class rpSBML:
                 target_unitDef = target_model.createUnitDefinition()
                 self._checklibSBML(target_unitDef, 'fetching target unit definition')
                 #copy unitDef info to the target
-                self._checklibSBML(target_unitDef.setId(source_unitDef.getId()), 
+                self._checklibSBML(target_unitDef.setId(source_unitDef.getId()),
                     'setting target unit definition ID')
                 #self._checklibSBML(target_unitDef.setMetaId(source_unitDef.getMetaId()), 
                 #    'setting target unit definition MetaId')
-                self._checklibSBML(target_unitDef.setAnnotation(source_unitDef.getAnnotation()), 
+                self._checklibSBML(target_unitDef.setAnnotation(source_unitDef.getAnnotation()),
                     'setting target unit definition Annotation')
                 for source_unit in source_unitDef.getListOfUnits():
                     #copy unit info to the target unitDef
                     target_unit = target_unitDef.createUnit()
                     self._checklibSBML(target_unit, 'creating target unit')
-                    self._checklibSBML(target_unit.setKind(source_unit.getKind()), 
+                    self._checklibSBML(target_unit.setKind(source_unit.getKind()),
                         'setting target unit kind')
-                    self._checklibSBML(target_unit.setExponent(source_unit.getExponent()), 
+                    self._checklibSBML(target_unit.setExponent(source_unit.getExponent()),
                         'setting target unit exponent')
-                    self._checklibSBML(target_unit.setScale(source_unit.getScale()), 
+                    self._checklibSBML(target_unit.setScale(source_unit.getScale()),
                         'setting target unit scale')
-                    self._checklibSBML(target_unit.setMultiplier(source_unit.getMultiplier()), 
+                    self._checklibSBML(target_unit.setMultiplier(source_unit.getMultiplier()),
                         'setting target unit multiplier')
                 target_unitDefID.append(source_unitDef.getId()) #add to the list to make sure its not added twice
         ################ COMPARTMENTS ###############
@@ -711,7 +711,7 @@ class rpSBML:
                     self.logger.warning('No annotation for the target of compartment: '+str(target_compartment.getId()))
                     continue
                 if self.compareMIRIAMAnnotations(source_annotation, target_annotation):
-                    sourceCompartmentID_targetCompartmentID[source_compartment.getId()] = target_compartment.getId() 
+                    sourceCompartmentID_targetCompartmentID[source_compartment.getId()] = target_compartment.getId()
                     found = True
                     break
             if not found:
@@ -741,12 +741,12 @@ class rpSBML:
                 target_parameter = target_model.createParameter()
                 self._checklibSBML(target_parameter, 'creating target parameter')
                 self._checklibSBML(target_parameter.setId(source_parameter.getId()), 'setting target parameter ID')
-                self._checklibSBML(target_parameter.setSBOTerm(source_parameter.getSBOTerm()), 
+                self._checklibSBML(target_parameter.setSBOTerm(source_parameter.getSBOTerm()),
                     'setting target parameter SBO')
                 self._checklibSBML(target_parameter.setUnits(source_parameter.getUnits()),
                     'setting target parameter Units')
                 self._checklibSBML(target_parameter.setValue(source_parameter.getValue()),
-                    'setting target parameter Value') 
+                    'setting target parameter Value')
                 self._checklibSBML(target_parameter.setConstant(source_parameter.getConstant()),
                     'setting target parameter ID')
         ################ MODEL FBC ########################
@@ -766,11 +766,11 @@ class rpSBML:
             if not source_geneProduct.getId() in targetGenProductID:
                 target_geneProduct = target_fbc.createGeneProduct()
                 self._checklibSBML(target_geneProduct, 'creating target gene product')
-                self._checklibSBML(target_geneProduct.setId(source_geneProduct.getId()), 
+                self._checklibSBML(target_geneProduct.setId(source_geneProduct.getId()),
                     'setting target gene product id')
-                self._checklibSBML(target_geneProduct.setLabel(source_geneProduct.getLabel()), 
+                self._checklibSBML(target_geneProduct.setLabel(source_geneProduct.getLabel()),
                     'setting target gene product label')
-                self._checklibSBML(target_geneProduct.setName(source_geneProduct.getName()), 
+                self._checklibSBML(target_geneProduct.setName(source_geneProduct.getName()),
                     'setting target gene product name')
                 self._checklibSBML(target_geneProduct.setMetaId(source_geneProduct.getMetaId()),
                     'setting target gene product metaID')
@@ -784,7 +784,7 @@ class rpSBML:
                 self._checklibSBML(target_objective, 'creating target objective')
                 self._checklibSBML(target_objective.setId(source_objective.getId()), 'setting target objective')
                 self._checklibSBML(target_objective.setName(source_objective.getName()), 'setting target objective')
-                self._checklibSBML(target_objective.setType(source_objective.getType()), 
+                self._checklibSBML(target_objective.setType(source_objective.getType()),
                         'setting target objective type')
                 for source_fluxObjective in source_objective.getListOfFluxObjectives():
                     target_fluxObjective = target_objective.createFluxObjective()
@@ -932,10 +932,10 @@ class rpSBML:
             #target_annotation = target_reaction.getAnnotation()
             #self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
             target_annotation = target_model.getReaction(y).getAnnotation()
-            if not target_annotation:    
+            if not target_annotation:
                 self.logger.warning('No annotation for the target of reaction: '+str(target_model.getReaction(y).getId()))
                 continue
-            self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
+            self._checklibSBML(target_annotation, 'fetching target reaction annotation')
             targetModel_reactionsAnnot[y] = self.readMIRIAMAnnotation(target_annotation)
         #### WANRING: important to list the heterologous pathways in the original model and if
         # comparing the annotations returns true to not add them
@@ -984,23 +984,23 @@ class rpSBML:
             self._checklibSBML(source_fbc, 'fetching source FBC package')
             source_upperFluxBound = source_fbc.getUpperFluxBound()
             self._checklibSBML(source_upperFluxBound, 'fetching upper flux bound')
-            self._checklibSBML(target_fbc.setUpperFluxBound(source_upperFluxBound), 
+            self._checklibSBML(target_fbc.setUpperFluxBound(source_upperFluxBound),
                     'setting upper flux bound')
             source_lowerFluxBound = source_fbc.getLowerFluxBound()
             self._checklibSBML(source_lowerFluxBound, 'fetching lower flux bound')
-            self._checklibSBML(target_fbc.setLowerFluxBound(source_lowerFluxBound), 
+            self._checklibSBML(target_fbc.setLowerFluxBound(source_lowerFluxBound),
                     'setting lower flux bound')
             self._checklibSBML(target_reaction.setId(source_reaction.getId()), 'set reaction id')
             self._checklibSBML(target_reaction.setName(source_reaction.getName()), 'set name')
-            self._checklibSBML(target_reaction.setSBOTerm(source_reaction.getSBOTerm()), 
+            self._checklibSBML(target_reaction.setSBOTerm(source_reaction.getSBOTerm()),
                     'setting the reaction system biology ontology (SBO)') #set as process
             #TODO: consider having the two parameters as input to the function
-            self._checklibSBML(target_reaction.setReversible(source_reaction.getReversible()), 
+            self._checklibSBML(target_reaction.setReversible(source_reaction.getReversible()),
                     'set reaction reversibility flag')
-            self._checklibSBML(target_reaction.setFast(source_reaction.getFast()), 
+            self._checklibSBML(target_reaction.setFast(source_reaction.getFast()),
                     'set reaction "fast" attribute')
             self._checklibSBML(target_reaction.setMetaId(source_reaction.getMetaId()), 'setting species metaID')
-            self._checklibSBML(target_reaction.setAnnotation(source_reaction.getAnnotation()), 
+            self._checklibSBML(target_reaction.setAnnotation(source_reaction.getAnnotation()),
                     'setting annotation for source reaction')
             #reactants_dict
             for y in range(source_reaction.getNumReactants()):
@@ -1017,7 +1017,7 @@ class rpSBML:
                     reactantID = source_reactant.species
                 self._checklibSBML(target_reactant.setSpecies(reactantID), 'assign reactant species')
                 #TODO: check to see the consequences of heterologous parameters not being constant
-                self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()), 
+                self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()),
                         'set "constant" on species '+str(source_reactant.getConstant()))
                 self._checklibSBML(target_reactant.setStoichiometry(source_reactant.getStoichiometry()),
                         'set stoichiometry ('+str(source_reactant.getStoichiometry)+')')
@@ -1036,7 +1036,7 @@ class rpSBML:
                     productID = source_product.species
                 self._checklibSBML(target_product.setSpecies(productID), 'assign reactant species')
                 #TODO: check to see the consequences of heterologous parameters not being constant
-                self._checklibSBML(target_product.setConstant(source_product.getConstant()), 
+                self._checklibSBML(target_product.setConstant(source_product.getConstant()),
                         'set "constant" on species '+str(source_product.getConstant()))
                 self._checklibSBML(target_product.setStoichiometry(source_product.getStoichiometry()),
                         'set stoichiometry ('+str(source_product.getStoichiometry)+')')
@@ -1072,6 +1072,7 @@ class rpSBML:
                     if not self.isSpeciesProduct(species.getSpecies(), [reaction_id]):
                         #the species is not produced by anything... 
                         #add a reaction that produces it in the cytoplasm
+                        #TODO: check that the parameter does not exist
                         #create lowerFluxBound of -10
                         newParam = target_model.createParameter()
                         self._checklibSBML(newParam, 'Creating a new parameter object')
@@ -1092,28 +1093,11 @@ class rpSBML:
                                       'transformation_id': None,
                                       'rule_score': None,
                                       'mnxr': None}
-                        
                         createReaction('create_'+reaction_id,
                                        'B_999999',
                                        'B__10',
                                        createStep,
                                        compartment_id)
-
-
-
-            for species in target_model.getReaction[reaction_id].getListOfReactants():
-            for species in target_model.getReaction[reaction_id].getListOfProducts():
-                if not self.isSpeciesProduct(species.getSpecies()):
-            
-
-
-            for reaction_id in self.readRPpathway():
-                reaction = self.model.getReaction(reaction_id)
-                if reaction.getNumProducts()==0:
-                    pass
-            for species in self.readUniqueRPspecies():
-                #species.
-                pass
 
 
 
@@ -1139,7 +1123,7 @@ class rpSBML:
         self.document = libsbml.SBMLDocument(self.sbmlns)
         self._checklibSBML(self.document, 'generating model doc')
         #!!!! must be set to false for no apparent reason
-        self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package') 
+        self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package')
         #!!!! must be set to false for no apparent reason
         self._checklibSBML(self.document.setPackageRequired('groups', False), 'enabling groups package')
         ## sbml model
@@ -1182,9 +1166,9 @@ class rpSBML:
         self._checklibSBML(comp.setMetaId(metaID), 'set the metaID for the compartment')
         #self.compartmentNames.append(compartmentName) #this assumes there is only one compartmentName
         annotation = '''<annotation>
-  <rdf:RDF 
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" 
+  <rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
   xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
         # if the name of the species is MNX then we annotate it using MIRIAM compliance
         #TODO: need to add all known xref from different databases (not just MetaNetX)
@@ -1205,7 +1189,7 @@ class rpSBML:
         annotation += '''
         </rdf:Bag>
       </bqbiol:is>
-    </rdf:Description> 
+    </rdf:Description>
   </rdf:RDF>
 </annotation>'''
         self._checklibSBML(comp.setAnnotation(annotation), 'setting annotation for reaction '+str(compName))
@@ -1416,7 +1400,7 @@ class rpSBML:
     # @param chemForm Optional chemical formulae of the substrate (not SMILES or InChI)
     # @param dG Optinal Thermodynamics constant for this species
     # @param dG_uncert Optional Uncertainty associated with the thermodynamics of the reaction 
-    def createSpecies(self, 
+    def createSpecies(self,
             chemId,
             compartmentId,
             metaName=None,
@@ -1462,12 +1446,11 @@ class rpSBML:
             self.logger.warning('There are no inputs for the name')
         #this is setting MNX id as the name
         #this is setting the name as the input name
-        
         ###### annotation ###
         annotation = '''<annotation>
-  <rdf:RDF 
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" 
+  <rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
   xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
         # if the name of the species is MNX then we annotate it using MIRIAM compliance
         #TODO: need to add all known xref from different databases (not just MetaNetX)
@@ -1480,20 +1463,20 @@ class rpSBML:
             for cid in chemXref[dbId]:
                 try:
                     if dbId == 'kegg' and cid[0] == 'C':
-                        annotation += '''        
+                        annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_c']+str(cid)+'''"/>'''
                     elif dbId == 'kegg' and cid[0] == 'D':
-                        annotation += '''        
+                        annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_d']+str(cid)+'''"/>'''
                     else:
-                        annotation += '''        
+                        annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
                 except KeyError:
                     continue
         annotation += '''
         </rdf:Bag>
       </bqbiol:is>
-    </rdf:Description>'''   
+    </rdf:Description>'''
         ###### IBISBA additional information ########
         annotation += '''
     <rdf:Ibisba rdf:about="#'''+str(metaID or '')+'''">
@@ -1509,7 +1492,7 @@ class rpSBML:
 </annotation>'''
         self._checklibSBML(spe.setAnnotation(annotation), 'setting the annotation for new species')
 
-    
+
     ## Create libSBML pathway
     #
     # Create the collection of reactions that constitute the pathway using the Groups package and create the custom IBIBSA annotations
@@ -1531,7 +1514,7 @@ class rpSBML:
         self.hetero_group.setMetaId(metaID)
         self.hetero_group.setKind(libsbml.GROUP_KIND_COLLECTION)
         annotation = '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Ibisba rdf:about="#'''+str(metaID or '')+'''">
       <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
@@ -1564,7 +1547,7 @@ class rpSBML:
         gp.setAssociatedSpecies('RP'+str(step_id))
         ##### NOTE: The parameters here require the input from Pablo to determine what he needs
         annotation = '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
         xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Ibisba rdf:about="#'''+str(metaID or '')+'''">
       <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
@@ -1574,7 +1557,7 @@ class rpSBML:
   </rdf:RDF>
 </annotation>'''
         gp.setAnnotation(annotation)
-    
+
 
     ## Create libSBML flux objective 
     #
