@@ -408,6 +408,45 @@ class rpSBML:
             return True
         return False
 
+    
+    ## Function to determine if a species CAN be a product of any reaction.
+    #
+    # Note that this is only determines if a species can possibly be produced, but does not
+    # guarantee it
+    #
+    # @param species_id String ID of the species
+    # @param ignoreReactions List Default is empty, ignore specific reactions
+    def isSpeciesProduct(self, species_id, ignoreReactions=[]):
+        #return all the parameters values
+        param_dict = {i.getId(): i.getValue() for i in self.model.parameters}
+        for reaction in self.model.getListOfReactions():
+            if reaction.getId() not in ignoreReactions:
+                #check that the function is reversible by reversibility and FBC bounds
+                if reaction.reversible:
+                    reaction_fbc = reaction.getPlugin('fbc')
+                    #strict left to right
+                    if param_dict[reaction_fbc.getLowerFluxBound()]>=0 and param_dict[reaction_fbc.getUpperFluxBound()]>0:
+                        if species_id in [i.getSpecies() for i in reaction.getListOfProducts()]:
+                            return True
+                    #can go both ways
+                    elif param_dict[reaction_fbc.getLowerFluxBound()]<0 and param_dict[reaction_fbc.getUpperFluxBound()]>0:
+                        if species_id in [i.getSpecies() for i in reaction.getListOfProducts()]:
+                            return True
+                        elif species_id in [i.getSpecies() for i in reaction.getListOfReactants()]:
+                            return True
+                    #strict right to left
+                    elif param_dict[reaction_fbc.getLowerFluxBound()]<0 and param_dict[reaction_fbc.getUpperFluxBound()]<=0 and param_dict[reaction_fbc.getLowerFluxBound()]<param_dict[reaction_fbc.getUpperFluxBound()]:
+                        elif species_id in [i.getSpecies() for i in reaction.getListOfReactants()]:
+                            return True
+                    else:
+                        self.logger.warning('isSpeciesProduct does not find the directionailty of the reaction for reaction: '+str(species_id))
+                        return True
+                else:
+                    #if the reaction is not reversible then product are the only way to create it
+                    if species_id in [i.getSpecies() for i in reaction.getListOfProducts()]:
+                        return True 
+        return False 
+
 
     #########################################################################
     ################### CONVERT BETWEEEN FORMATS ############################
@@ -618,7 +657,7 @@ class rpSBML:
     # @param addOrphanSpecies Boolean Default False
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
-    def mergeModels(self, target_model, pathId='rp_pathway', createOrphanSpecies=False, bilevel_obj=(0.0, 0.0)):
+    def mergeModels(self, target_model, pathId='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', bilevel_obj=(0.0, 0.0)):
         #target_model = target_document.getModel()
         #Find the ID's of the similar target_model species
         ################ UNITDEFINITIONS ######
@@ -1026,12 +1065,55 @@ class rpSBML:
         # then add the another reaction that transports the reactions that creates the species in the extracellular
         # matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
         #PROGRESS
-        if createOrphanSpecies:
+        if fillOrphanSpecies:
+            #only for rp species
+            for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
+                for species_id in set([i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfProducts()]):
+                    if not self.isSpeciesProduct(species.getSpecies(), [reaction_id]):
+                        #the species is not produced by anything... 
+                        #add a reaction that produces it in the cytoplasm
+                        #create lowerFluxBound of -10
+                        newParam = target_model.createParameter()
+                        self._checklibSBML(newParam, 'Creating a new parameter object')
+                        self._checklibSBML(newParam.setConstant(True), 'setting as constant')
+                        self._checklibSBML(newParam.setId('B__10'), 'setting ID')
+                        self._checklibSBML(newParam.setValue(-10), 'setting value')
+                        self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
+                        self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
+                        metaID = self._genMetaID(parameter_id)
+                        self._checklibSBML(newParam.setMetaId(metaID), 'setting meta ID')
+                        #create the step
+                        createStep = {'rule_id': None,
+                                      'left': {species_id: 1},
+                                      'right': [],
+                                      'step': None,
+                                      'sub_step': None,
+                                      'path_id': None,
+                                      'transformation_id': None,
+                                      'rule_score': None,
+                                      'mnxr': None}
+                        
+                        createReaction('create_'+reaction_id,
+                                       'B_999999',
+                                       'B__10',
+                                       createStep,
+                                       compartment_id)
+
+
+
+            for species in target_model.getReaction[reaction_id].getListOfReactants():
+            for species in target_model.getReaction[reaction_id].getListOfProducts():
+                if not self.isSpeciesProduct(species.getSpecies()):
+            
+
+
             for reaction_id in self.readRPpathway():
                 reaction = self.model.getReaction(reaction_id)
-                if reaction.getNumProducts()==0
+                if reaction.getNumProducts()==0:
+                    pass
             for species in self.readUniqueRPspecies():
-                species.
+                #species.
+                pass
 
 
 
