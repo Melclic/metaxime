@@ -436,7 +436,7 @@ class rpSBML:
                             return True
                     #strict right to left
                     elif param_dict[reaction_fbc.getLowerFluxBound()]<0 and param_dict[reaction_fbc.getUpperFluxBound()]<=0 and param_dict[reaction_fbc.getLowerFluxBound()]<param_dict[reaction_fbc.getUpperFluxBound()]:
-                        elif species_id in [i.getSpecies() for i in reaction.getListOfReactants()]:
+                        if species_id in [i.getSpecies() for i in reaction.getListOfReactants()]:
                             return True
                     else:
                         self.logger.warning('isSpeciesProduct does not find the directionailty of the reaction for reaction: '+str(species_id))
@@ -657,17 +657,63 @@ class rpSBML:
     # @param addOrphanSpecies Boolean Default False
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
-    def mergeModels(self, target_model, pathId='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', bilevel_obj=(0.0, 0.0)):
-        #target_model = target_document.getModel()
-        #Find the ID's of the similar target_model species
+    def mergeModels(self, target_rpsbml, pathId='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', bilevel_obj=(0.0, 0.0)):
+        ##### ADD SOURCE FROM ORPHAN #####
+        #if the heterologous pathway from the self.model contains a sink molecule that is not included in the 
+        # original model (we call orhpan species) then add another reaction that creates it
+        #TODO: that transports the reactions that creates the species in the
+        # extracellular matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
+        #PROGRESS
+        if fillOrphanSpecies:
+            self.logger.info('Adding the orphan species to the GEM model')
+            #only for rp species
+            groups = self.model.getPlugin('groups')
+            rp_pathway = groups.getGroup(pathId)
+            reaction_id = sorted([(int(''.join(x for x in i.id_ref if x.isdigit())), i.id_ref) for i in rp_pathway.getListOfMembers()], key=lambda tup: tup[0], reverse=True)[0][1]
+            #for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
+            for species_id in set([i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfProducts()]):
+                if not self.isSpeciesProduct(species_id, [reaction_id]):
+                    #the species is not produced by anything... 
+                    #add a reaction that produces it in the cytoplasm
+                    #create lowerFluxBound of -10
+                    ######################################
+                    #add the new parameter to the rpSBML model as well
+                    if not 'B__10' in [i.getId() for i in self.model.getListOfParameters()]:
+                        newParam = self.model.createParameter()
+                        self._checklibSBML(newParam, 'Creating a new parameter object')
+                        self._checklibSBML(newParam.setConstant(True), 'setting as constant')
+                        self._checklibSBML(newParam.setId('B__10'), 'setting ID')
+                        self._checklibSBML(newParam.setValue(-10), 'setting value')
+                        self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
+                        self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
+                        metaID = self._genMetaID('B__10')
+                        self._checklibSBML(newParam.setMetaId(metaID), 'setting meta ID')
+                    #create the step
+                    createStep = {'rule_id': None,
+                                  'left': {species_id.split('__')[0]: 1},
+                                  'right': {},
+                                  'step': None,
+                                  'sub_step': None,
+                                  'path_id': None,
+                                  'transformation_id': None,
+                                  'rule_score': None,
+                                  'mnxr': None}
+                    #create the model in the 
+                    self.createReaction('create_'+species_id,
+                                        'B_999999',
+                                        'B__10',
+                                        createStep,
+                                        compartment_id)
+        #target_rpsbml.model = target_document.getModel()
+        #Find the ID's of the similar target_rpsbml.model species
         ################ UNITDEFINITIONS ######
         #return the list of unit definitions id's for the target to avoid overwritting
         #WARNING: this means that the original unit definitions will be prefered over the new one
-        target_unitDefID = [i.getId() for i in target_model.getListOfUnitDefinitions()]
+        target_unitDefID = [i.getId() for i in target_rpsbml.model.getListOfUnitDefinitions()]
         for source_unitDef in self.model.getListOfUnitDefinitions():
             if not source_unitDef.getId() in target_unitDefID: #have to compare by ID since no annotation
                 #create a new unitDef in the target
-                target_unitDef = target_model.createUnitDefinition()
+                target_unitDef = target_rpsbml.model.createUnitDefinition()
                 self._checklibSBML(target_unitDef, 'fetching target unit definition')
                 #copy unitDef info to the target
                 self._checklibSBML(target_unitDef.setId(source_unitDef.getId()),
@@ -702,8 +748,8 @@ class rpSBML:
             if not source_annotation:
                 self.logger.warning('No annotation for the source of compartment '+str(source_compartment.getId()))
                 continue
-            for y in range(target_model.getNumCompartments()):
-                target_compartment = target_model.getCompartment(y)
+            for y in range(target_rpsbml.model.getNumCompartments()):
+                target_compartment = target_rpsbml.model.getCompartment(y)
                 self._checklibSBML(target_compartment, 'Getting target compartment')
                 target_annotation = target_compartment.getAnnotation()
                 #self._checklibSBML(target_annotation, 'Getting target annotation')
@@ -719,7 +765,7 @@ class rpSBML:
         for i in toAddNum:
             source_compartment = self.model.getCompartment(i)
             self._checklibSBML(source_compartment, 'Getting target compartment')
-            target_compartment = target_model.createCompartment()
+            target_compartment = target_rpsbml.model.createCompartment()
             self._checklibSBML(target_compartment, 'Creating target compartment')
             self._checklibSBML(target_compartment.setMetaId(source_compartment.getMetaId()),
                     'setting target metaId')
@@ -735,10 +781,10 @@ class rpSBML:
                     'setting target annotation')
         ################ PARAMETERS ###########
         #WARNING: here we compare by ID
-        targetParametersID = [i.getId() for i in target_model.getListOfParameters()]
+        targetParametersID = [i.getId() for i in target_rpsbml.model.getListOfParameters()]
         for source_parameter in self.model.getListOfParameters():
             if not source_parameter.getId() in targetParametersID:
-                target_parameter = target_model.createParameter()
+                target_parameter = target_rpsbml.model.createParameter()
                 self._checklibSBML(target_parameter, 'creating target parameter')
                 self._checklibSBML(target_parameter.setId(source_parameter.getId()), 'setting target parameter ID')
                 self._checklibSBML(target_parameter.setSBOTerm(source_parameter.getSBOTerm()),
@@ -750,13 +796,13 @@ class rpSBML:
                 self._checklibSBML(target_parameter.setConstant(source_parameter.getConstant()),
                     'setting target parameter ID')
         ################ MODEL FBC ########################
-        if not target_model.isPackageEnabled('fbc'):
-            self._checklibSBML(target_model.enablePackage(
+        if not target_rpsbml.model.isPackageEnabled('fbc'):
+            self._checklibSBML(target_rpsbml.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/fbc/version2',
                 'fbc',
                 True),
                     'Enabling the FBC package')
-        target_fbc = target_model.getPlugin('fbc')
+        target_fbc = target_rpsbml.model.getPlugin('fbc')
         source_fbc = self.model.getPlugin('fbc')
         ################ FBC GENE PRODUCTS ########################
         #make a list of all the gene product
@@ -839,14 +885,14 @@ class rpSBML:
         # first make the target model dictionnary of the species for the target model
         targetModel_speciesAnnot = {}
         targetModel_speciesId = []
-        for y in range(target_model.getNumSpecies()):
-            #target_species = target_model.getSpecies(y)
+        for y in range(target_rpsbml.model.getNumSpecies()):
+            #target_species = target_rpsbml.model.getSpecies(y)
             #self._checklibSBML(target_species, 'Getting target species')
             #target_annotation = target_species.getAnnotation()
-            targetModel_speciesId.append(target_model.getSpecies(y).getId())
-            target_annotation = target_model.getSpecies(y).getAnnotation()
+            targetModel_speciesId.append(target_rpsbml.model.getSpecies(y).getId())
+            target_annotation = target_rpsbml.model.getSpecies(y).getAnnotation()
             if not target_annotation:
-                self.logger.warning('Cannot find annotations for species: '+str(target_model.getSpecies(y).getId()))
+                self.logger.warning('Cannot find annotations for species: '+str(target_rpsbml.model.getSpecies(y).getId()))
                 continue
             self._checklibSBML(target_annotation, 'Getting target annotation')
             targetModel_speciesAnnot[y] = self.readMIRIAMAnnotation(target_annotation)
@@ -863,8 +909,8 @@ class rpSBML:
                 #we assume that if there are no annotations then we add it
                 toAddNum.append(i)
                 continue
-            #for y in range(target_model.getNumSpecies()):
-                #target_species = target_model.getSpecies(y)
+            #for y in range(target_rpsbml.model.getNumSpecies()):
+                #target_species = target_rpsbml.model.getSpecies(y)
                 #self._checklibSBML(target_species, 'Getting target species')
                 #target_annotation = target_species.getAnnotation()
                 #self._checklibSBML(target_annotation, 'Getting target annotation')
@@ -875,48 +921,49 @@ class rpSBML:
                 #if self.compareMIRIAMAnnotations(source_annotation, targetModel_speciesAnnot[y]):
                 if self.compareAnnotations_annot_dict(source_annotation, targetModel_speciesAnnot[y]) or source_species.getId() in targetModel_speciesId:
                     #save the speciesID as being the same
-                    #sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.species[y].getId()
-                    sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_model.getSpecies(y).getId()
+                    #sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_rpsbml.model.species[y].getId()
+                    sourceSpeciesID_targetSpeciesID[self.model.species[i].getId()] = target_rpsbml.model.getSpecies(y).getId()
                     found = True
                     break
-            #if it has not been found then add it to the target_model
+            #if it has not been found then add it to the target_rpsbml.model
             if not found:
                 toAddNum.append(i)
         for i in toAddNum:
             source_species = self.model.getSpecies(i)
-            self._checklibSBML(source_species, 'fetching source species')
-            target_species = target_model.createSpecies()
-            self._checklibSBML(target_species, 'creating species')
-            self._checklibSBML(target_species.setMetaId(source_species.getMetaId()),
-                    'setting target metaId')
-            self._checklibSBML(target_species.setId(source_species.getId()),
-                    'setting target id')
-            self._checklibSBML(target_species.setCompartment(source_species.getCompartment()),
-                    'setting target compartment')
-            self._checklibSBML(target_species.setInitialConcentration(
-                source_species.getInitialConcentration()),
-                    'setting target initial concentration')
-            self._checklibSBML(target_species.setBoundaryCondition(
-                source_species.getBoundaryCondition()),
-                    'setting target boundary concentration')
-            self._checklibSBML(target_species.setHasOnlySubstanceUnits(
-                source_species.getHasOnlySubstanceUnits()),
-                    'setting target has only substance units')
-            self._checklibSBML(target_species.setBoundaryCondition(
-                source_species.getBoundaryCondition()),
-                    'setting target boundary condition')
-            self._checklibSBML(target_species.setConstant(source_species.getConstant()),
-                'setting target constant')
-            self._checklibSBML(target_species.setAnnotation(source_species.getAnnotation()),
-                'setting target annotation')
+            if not target_rpsbml.speciesExists(source_species.getId().split('__')[0]):
+                self._checklibSBML(source_species, 'fetching source species')
+                target_species = target_rpsbml.model.createSpecies()
+                self._checklibSBML(target_species, 'creating species')
+                self._checklibSBML(target_species.setMetaId(source_species.getMetaId()),
+                        'setting target metaId')
+                self._checklibSBML(target_species.setId(source_species.getId()),
+                        'setting target id')
+                self._checklibSBML(target_species.setCompartment(source_species.getCompartment()),
+                        'setting target compartment')
+                self._checklibSBML(target_species.setInitialConcentration(
+                    source_species.getInitialConcentration()),
+                        'setting target initial concentration')
+                self._checklibSBML(target_species.setBoundaryCondition(
+                    source_species.getBoundaryCondition()),
+                        'setting target boundary concentration')
+                self._checklibSBML(target_species.setHasOnlySubstanceUnits(
+                    source_species.getHasOnlySubstanceUnits()),
+                        'setting target has only substance units')
+                self._checklibSBML(target_species.setBoundaryCondition(
+                    source_species.getBoundaryCondition()),
+                        'setting target boundary condition')
+                self._checklibSBML(target_species.setConstant(source_species.getConstant()),
+                    'setting target constant')
+                self._checklibSBML(target_species.setAnnotation(source_species.getAnnotation()),
+                    'setting target annotation')
         ################ REACTIONS ###################
-        #Find the ID's of the similar target_model reactions
+        #Find the ID's of the similar target_rpsbml.model reactions
         #need to create a new instance of reactions to add to the model
         #test to see if the target model has the FBC package and if not add it
         sourceReactionsID_targetReactionsID = {}
         toAddNum = []
-        if not target_model.isPackageEnabled('fbc'):
-            self._checklibSBML(target_model.enablePackage(
+        if not target_rpsbml.model.isPackageEnabled('fbc'):
+            self._checklibSBML(target_rpsbml.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/fbc/version2',
                 'fbc',
                 True),
@@ -926,14 +973,14 @@ class rpSBML:
         #### compare the annotations to find the co-factors
         #first make the target model dictionnary of the reactions
         targetModel_reactionsAnnot = {}
-        for y in range(target_model.getNumReactions()):
-            #target_reaction = target_model.getReaction(y)
+        for y in range(target_rpsbml.model.getNumReactions()):
+            #target_reaction = target_rpsbml.model.getReaction(y)
             #self._checklibSBML(target_reaction, 'fetching target reaction annotation') 
             #target_annotation = target_reaction.getAnnotation()
             #self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
-            target_annotation = target_model.getReaction(y).getAnnotation()
+            target_annotation = target_rpsbml.model.getReaction(y).getAnnotation()
             if not target_annotation:
-                self.logger.warning('No annotation for the target of reaction: '+str(target_model.getReaction(y).getId()))
+                #self.logger.warning('No annotation for the target of reaction: '+str(target_rpsbml.model.getReaction(y).getId()))
                 continue
             self._checklibSBML(target_annotation, 'fetching target reaction annotation')
             targetModel_reactionsAnnot[y] = self.readMIRIAMAnnotation(target_annotation)
@@ -955,8 +1002,8 @@ class rpSBML:
             if source_reaction.getId() in model_rpPathway:
                 toAddNum.append(i)
                 continue
-            #for y in range(target_model.getNumReactions()):
-                #target_reaction = target_model.getReaction(y)
+            #for y in range(target_rpsbml.model.getNumReactions()):
+                #target_reaction = target_rpsbml.model.getReaction(y)
                 #self._checklibSBML(target_reaction, 'fetching target reaction annotation') 
                 #target_annotation = target_reaction.getAnnotation()
                 #self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
@@ -967,16 +1014,17 @@ class rpSBML:
                 #if self.compareMIRIAMAnnotations(source_annotation, target_annotation):
                 #if self.compareMIRIAMAnnotations(source_annotation, targetModel_reactionsAnnot[y]):
                 if self.compareAnnotations_annot_dict(source_annotation, targetModel_reactionsAnnot[y]):
-                    #sourceReactionsID_targetReactionsID[self.model.reactions[i].getId()] = target_model.reactions[y].getId()
-                    sourceReactionsID_targetReactionsID[source_reaction.getId()] = target_model.getReaction(y).getId()
+                    #sourceReactionsID_targetReactionsID[self.model.reactions[i].getId()] = target_rpsbml.model.reactions[y].getId()
+                    sourceReactionsID_targetReactionsID[source_reaction.getId()] = target_rpsbml.model.getReaction(y).getId()
                     found = True
                     break
             if not found:
                 toAddNum.append(i)
         for i in toAddNum:
             source_reaction = self.model.getReaction(i)
+            #TODO: need to check if the reaction exists before trying to merge
             self._checklibSBML(source_reaction, 'fetching source reaction')
-            target_reaction = target_model.createReaction()
+            target_reaction = target_rpsbml.model.createReaction()
             self._checklibSBML(target_reaction, 'create reaction')
             target_fbc = target_reaction.getPlugin('fbc')
             self._checklibSBML(target_fbc, 'fetching target FBC package')
@@ -1041,8 +1089,8 @@ class rpSBML:
                 self._checklibSBML(target_product.setStoichiometry(source_product.getStoichiometry()),
                         'set stoichiometry ('+str(source_product.getStoichiometry)+')')
         #### GROUPS #####
-        if not target_model.isPackageEnabled('groups'):
-            self._checklibSBML(target_model.enablePackage(
+        if not target_rpsbml.model.isPackageEnabled('groups'):
+            self._checklibSBML(target_rpsbml.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/groups/version1',
                 'groups',
                 True),
@@ -1052,53 +1100,14 @@ class rpSBML:
         #self._checklibSBML(self.sbmlns.addPkgNamespace('groups',1), 'Add groups package')
         source_groups = self.model.getPlugin('groups')
         self._checklibSBML(source_groups, 'fetching the source model groups')
-        target_groups = target_model.getPlugin('groups')
+        target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
         self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathId)),
                 'copying the source groups "rp_pathway" to the target groups')
         #return the fluxObj for the original model to define the bilevel objective        
         ###### TITLES #####
-        target_model.setId(target_model.getId()+'_'+self.model.getId())
-        target_model.setName(target_model.getName()+' merged with '+self.model.getId())
-        ##### ADD SOURCE FROM ORPHAN #####
-        #if the added reaction contains species that are not connected anywhere and addOrphanSpecies is set tu True 
-        # then add the another reaction that transports the reactions that creates the species in the extracellular
-        # matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
-        #PROGRESS
-        if fillOrphanSpecies:
-            #only for rp species
-            for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
-                for species_id in set([i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfProducts()]):
-                    if not self.isSpeciesProduct(species.getSpecies(), [reaction_id]):
-                        #the species is not produced by anything... 
-                        #add a reaction that produces it in the cytoplasm
-                        #TODO: check that the parameter does not exist
-                        #create lowerFluxBound of -10
-                        newParam = target_model.createParameter()
-                        self._checklibSBML(newParam, 'Creating a new parameter object')
-                        self._checklibSBML(newParam.setConstant(True), 'setting as constant')
-                        self._checklibSBML(newParam.setId('B__10'), 'setting ID')
-                        self._checklibSBML(newParam.setValue(-10), 'setting value')
-                        self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
-                        self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
-                        metaID = self._genMetaID(parameter_id)
-                        self._checklibSBML(newParam.setMetaId(metaID), 'setting meta ID')
-                        #create the step
-                        createStep = {'rule_id': None,
-                                      'left': {species_id: 1},
-                                      'right': [],
-                                      'step': None,
-                                      'sub_step': None,
-                                      'path_id': None,
-                                      'transformation_id': None,
-                                      'rule_score': None,
-                                      'mnxr': None}
-                        createReaction('create_'+reaction_id,
-                                       'B_999999',
-                                       'B__10',
-                                       createStep,
-                                       compartment_id)
-
+        target_rpsbml.model.setId(target_rpsbml.model.getId()+'_'+self.model.getId())
+        target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
 
 
     #########################################################################
