@@ -1396,8 +1396,8 @@ class rpSBML:
             self._checklibSBML(newM, 'Creating a new groups member')
             self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
         '''
-        else:
-            self.logger.warning('This pathway is not added to a particular group')
+        #else:
+        #    self.logger.warning('This pathway is not added to a particular group')
 
 
     ## Create libSBML reaction
