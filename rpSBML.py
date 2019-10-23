@@ -1386,6 +1386,7 @@ class rpSBML:
 </annotation>'''
         self._checklibSBML(reac.setAnnotation(annotation), 'setting annotation for reaction '+str(reac_id))
         #### GROUPS #####
+        #TODO: check that it actually exists
         if not hetero_group==None:
             newM = hetero_group.createMember()
             self._checklibSBML(newM, 'Creating a new groups member')
@@ -1602,7 +1603,7 @@ class rpSBML:
         target_flux_obj.setCoefficient(coefficient)
         if meta_id==None:
             meta_id = self._genMetaID(str(fluxobj_id))
-        target_obj.setMetaId(meta_id)
+        target_flux_obj.setMetaId(meta_id)
         annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
@@ -1612,7 +1613,7 @@ class rpSBML:
     </rdf:Ibisba>
   </rdf:RDF>
 </annotation>'''
-        target_obj.setAnnotation(annotation)
+        target_flux_obj.setAnnotation(annotation)
 
 
     ## Generate a generic model 
