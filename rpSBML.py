@@ -8,8 +8,8 @@ import logging
 #
 # To exchange between the different workflow nodes, the SBML (XML) format is used. This
 # implies using the libSBML library to create the standard definitions of species, reactions, etc...
-# Here we also define our own annotations that are used internally in that we call IBISBA nodes.
-# The object holds an SBML object and a series of methods to write and access IBISBA related annotations
+# Here we also define our own annotations that are used internally in that we call BRSYNTH nodes.
+# The object holds an SBML object and a series of methods to write and access BRSYNTH related annotations
 
 
 ##################################################################
@@ -183,23 +183,23 @@ class rpSBML:
 
     # TODO:
     '''
-    def readRPpathwayReactionMIRIAMAnnotation(self, path_id='rp_pathway'):
+    def readRPpathwayReactionMIRIAMAnnotation(self, pathway_id='rp_pathway'):
         groups = self.model.getPlugin('groups')
-        rp_pathway = groups.getGroup(path_id)
+        rp_pathway = groups.getGroup(pathway_id)
         self._checklibSBML(rp_pathway, 'retreiving groups rp_pathway')
-        readIBISBAAnnotation()
+        readBRSYNTHAnnotation()
 
     #TODO:
-    def readRPpathwayReactionIBISBAAnnotations(self, path_id='rp_pathway'):
+    def readRPpathwayReactionBRSYNTHAnnotations(self, pathway_id='rp_pathway'):
     '''
 
 
     ## Return the reaction ID's and the pathway annotation
     #
     # TODO: replace the name of this function with readRPpathwayIDs
-    def readRPpathway(self, path_id='rp_pathway'):
+    def readRPpathwayIDs(self, pathway_id='rp_pathway'):
         groups = self.model.getPlugin('groups')
-        rp_pathway = groups.getGroup(path_id)
+        rp_pathway = groups.getGroup(pathway_id)
         self._checklibSBML(rp_pathway, 'retreiving groups rp_pathway')
         toRet = []
         for member in rp_pathway.getListOfMembers():
@@ -207,26 +207,26 @@ class rpSBML:
         return toRet
 
 
-    ## Read the reaction rules from the IBISBA annotation
+    ## Read the reaction rules from the BRSYNTH annotation
     #
-    #@param path_id default='rp_pathway' unique ID (per SBML) where the heterologous pathways are stored
+    #@param pathway_id default='rp_pathway' unique ID (per SBML) where the heterologous pathways are stored
     #@return toRet dictionnary with the reaction rule and rule_id as key
-    def readRPrules(self, path_id='rp_pathway'):
+    def readRPrules(self, pathway_id='rp_pathway'):
         toRet = {}
-        for reacId in self.readRPpathway(path_id):
+        for reacId in self.readRPpathwayIDs(pathway_id):
             reac = self.model.getReaction(reacId)
-            ibibsa_annot = self.readIBISBAAnnotation(reac.getAnnotation())
-            if not ibibsa_annot['rule_id']=='' and not ibibsa_annot['smiles']=='':
-                toRet[ibibsa_annot['rule_id']] = ibibsa_annot['smiles'].replace('&gt;', '>')
+            brsynth_annot = self.readBRSYNTHAnnotation(reac.getAnnotation())
+            if not brsynth_annot['rule_id']=='' and not brsynth_annot['smiles']=='':
+                toRet[brsynth_annot['rule_id']] = brsynth_annot['smiles'].replace('&gt;', '>')
         return toRet
 
 
     ## Return the species annitations 
     #
     #
-    def readRPspecies(self, path_id='rp_pathway'):
+    def readRPspecies(self, pathway_id='rp_pathway'):
         reacMembers = {}
-        for reacId in self.readRPpathway(path_id):
+        for reacId in self.readRPpathwayIDs(pathway_id):
             reacMembers[reacId] = {}
             reacMembers[reacId]['products'] = {}
             reacMembers[reacId]['reactants'] = {}
@@ -241,7 +241,7 @@ class rpSBML:
     ## Return the species
     #
     #
-    def readUniqueRPspecies(self, path_id='rp_pathway'):
+    def readUniqueRPspecies(self, pathway_id='rp_pathway'):
         rpSpecies = self.readRPspecies()
         toRet = []
         for i in rpSpecies:
@@ -250,7 +250,7 @@ class rpSBML:
                     if not z in toRet:
                         toRet.append(z)
         return toRet
-        #reacMembers = self.readRPspecies(path_id)
+        #reacMembers = self.readRPspecies(pathway_id)
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
 
 
@@ -281,7 +281,7 @@ class rpSBML:
 
     ## Takes for input a libSBML annotatio object and returns a dictionnary of the annotations
     #
-    def readIBISBAAnnotation(self, annot):
+    def readBRSYNTHAnnotation(self, annot):
         toRet = {'dfG_prime_m': {},
                  'dfG_uncert': {},
                  'dfG_prime_o': {},
@@ -297,7 +297,7 @@ class rpSBML:
                  'rule_score': None,
                  'global_score': None
                 }
-        bag = annot.getChild('RDF').getChild('Ibisba').getChild('ibisba')
+        bag = annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
         for i in range(bag.getNumChildren()):
             ann = bag.getChild(i)
             if ann=='':
@@ -448,27 +448,26 @@ class rpSBML:
 
 
     ## Really used to complete the monocomponent reactions   
-    #{'rule_id': 'RR-01-503dbb54cf91-49-F', 'right': {'TARGET_0000000001': 1}, 'left': {'MNXM2': 1, 'MNXM376': 1}, 'path_id': 1, 'step': 1, 'sub_step': 1, 'transformation_id': 'TRS_0_0_17'}
+    #{'rule_id': 'RR-01-503dbb54cf91-49-F', 'right': {'TARGET_0000000001': 1}, 'left': {'MNXM2': 1, 'MNXM376': 1}, 'pathway_id': 1, 'step': 1, 'sub_step': 1, 'transformation_id': 'TRS_0_0_17'}
     #
-    def outPathsDict(self, path_id='rp_pathway'):
+    def outPathsDict(self, pathway_id='rp_pathway'):
         pathway = {}
-        for member in self.readRPpathway(path_id):
+        for member in self.readRPpathwayIDs(pathway_id):
             #TODO: need to find a better way
-            if not member=='targetSink':
-                reaction = self.model.getReaction(member)
-                ibisbaAnnot = self.readIBISBAAnnotation(reaction.getAnnotation())
-                speciesReac = self.readReactionSpecies(reaction)
-                step = {'reaction_id': member,
-                        'reaction_rule': ibisbaAnnot['smiles'],
-                        'rule_score': ibisbaAnnot['rule_score'],
-                        'rule_id': ibisbaAnnot['rule_id'],
-                        'rule_mnxr': ibisbaAnnot['rule_mnxr'],
-                        'right': speciesReac['right'],
-                        'left': speciesReac['left'],
-                        'path_id': ibisbaAnnot['path_id'],
-                        'step': ibisbaAnnot['step_id'],
-                        'sub_step': ibisbaAnnot['sub_step_id']}
-                pathway[ibisbaAnnot['step_id']] = step
+            reaction = self.model.getReaction(member)
+            brsynthAnnot = self.readBRSYNTHAnnotation(reaction.getAnnotation())
+            speciesReac = self.readReactionSpecies(reaction)
+            step = {'reaction_id': member,
+                    'reaction_rule': brsynthAnnot['smiles'],
+                    'rule_score': brsynthAnnot['rule_score'],
+                    'rule_id': brsynthAnnot['rule_id'],
+                    'rule_mnxr': brsynthAnnot['rule_mnxr'],
+                    'right': speciesReac['right'],
+                    'left': speciesReac['left'],
+                    'path_id': brsynthAnnot['path_id'],
+                    'step': brsynthAnnot['step_id'],
+                    'sub_step': brsynthAnnot['sub_step_id']}
+            pathway[brsynthAnnot['step_id']] = step
         return pathway
 
 
@@ -484,9 +483,9 @@ class rpSBML:
     #
     # @param libSBML Annotation object for one of the 
     # @return Boolean to determine if they are the same
-    def compareIBISBAAnnotations(self, source_annot, target_annot):
-        source_dict = self.readIBISBAAnnotation(source_annot)
-        target_dict = self.readIBISBAAnnotation(target_annot)
+    def compareBRSYNTHAnnotations(self, source_annot, target_annot):
+        source_dict = self.readBRSYNTHAnnotation(source_annot)
+        target_dict = self.readBRSYNTHAnnotation(target_annot)
         #list the common keys between the two
         for same_key in list(set(list(source_dict.keys())).intersection(list(target_dict.keys()))):
             if source_dict[same_key]==target_dict[same_key]:
@@ -568,15 +567,11 @@ class rpSBML:
                     rp_rp_species[rp_step_id]['reactants'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
                 for spe_name in rp_rp_species[rp_step_id]['products']:
                     rp_rp_species[rp_step_id]['products'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
-            try:
-                del rp_rp_species['targetSink']
-            except KeyError:
-                self.logger.error('The generated RP pathway does not have a targetSink')
         except AttributeError:
             self.logger.error('TODO: debug, for some reason some are passed as None here')
             return False, {}
         #compare the number of steps in the pathway
-        if not len(meas_rp_species)==len(rp_rp_species): #add one for the targetSink
+        if not len(meas_rp_species)==len(rp_rp_species):
             self.logger.warning('The pathways are not of the same length')
             #self.logger.error(len(meas_rp_species))
             #self.logger.error(meas_rp_species.keys())
@@ -585,7 +580,7 @@ class rpSBML:
             #self.logger.error(found_meas_rp_species)
             return False, {}
         ############## compare using the reactions ###################
-        for meas_step_id in measured_sbml.readRPpathway():
+        for meas_step_id in measured_sbml.readRPpathwayIDs():
             for rp_step_id in rp_rp_species:
                 if self.compareMIRIAMAnnotations(rp_rp_species[rp_step_id]['annotation'], meas_rp_species[meas_step_id]['annotation']):
                     found_meas_rp_species[meas_step_id]['found'] = True
@@ -593,7 +588,7 @@ class rpSBML:
                     #print('FOUND USING REACTION')
                     break
         ############## compare using the species ###################
-        for meas_step_id in measured_sbml.readRPpathway():
+        for meas_step_id in measured_sbml.readRPpathwayIDs():
             #if not found_meas_rp_species[meas_step_id]['found']:
             for rp_step_id in rp_rp_species:
                 # We test to see if the meas reaction elements all exist in rp reaction and not the opposite
@@ -605,7 +600,7 @@ class rpSBML:
                             found_meas_rp_species[meas_step_id]['reactants'][meas_spe_id] = True
                             break
                         else:
-                            if self.compareIBISBAAnnotations(meas_rp_species[meas_step_id]['reactants'][meas_spe_id], rp_rp_species[rp_step_id]['reactants'][rp_spe_id]):
+                            if self.compareBRSYNTHAnnotations(meas_rp_species[meas_step_id]['reactants'][meas_spe_id], rp_rp_species[rp_step_id]['reactants'][rp_spe_id]):
                                 found_meas_rp_species[meas_step_id]['reactants'][meas_spe_id] = True
                                 break
                 ########### products ###########
@@ -615,7 +610,7 @@ class rpSBML:
                             found_meas_rp_species[meas_step_id]['products'][meas_spe_id] = True
                             break
                         else:
-                            if self.compareIBISBAAnnotations(meas_rp_species[meas_step_id]['products'][meas_spe_id], rp_rp_species[rp_step_id]['products'][rp_spe_id]):
+                            if self.compareBRSYNTHAnnotations(meas_rp_species[meas_step_id]['products'][meas_spe_id], rp_rp_species[rp_step_id]['products'][rp_spe_id]):
                                 found_meas_rp_species[meas_step_id]['products'][meas_spe_id] = True
                                 break
                 ######### test to see the difference
@@ -647,12 +642,12 @@ class rpSBML:
     # We add the reactions and species from the rpsbml to the target_model
     # 
     # @param target_model input libsbml model object where we will add the reactions and species from self.model
-    # @param path_id String default is rp_pathway, name of the pathway id of the groups object
+    # @param pathway_id String default is rp_pathway, name of the pathway id of the groups object
     # @param addOrphanSpecies Boolean Default False
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #TODO: rename target_rpsbml to gem_rpsbml and target_model to gem_model
-    def mergeModels(self, target_rpsbml, path_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', multi_obj=(0.0, 0.0)):
+    def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', multi_obj=(0.0, 0.0)):
         ##### ADD SOURCE FROM ORPHAN #####
         #if the heterologous pathway from the self.model contains a sink molecule that is not included in the 
         # original model (we call orhpan species) then add another reaction that creates it
@@ -663,7 +658,7 @@ class rpSBML:
             self.logger.info('Adding the orphan species to the GEM model')
             #only for rp species
             groups = self.model.getPlugin('groups')
-            rp_pathway = groups.getGroup(path_id)
+            rp_pathway = groups.getGroup(pathway_id)
             reaction_id = sorted([(int(''.join(x for x in i.id_ref if x.isdigit())), i.id_ref) for i in rp_pathway.getListOfMembers()], key=lambda tup: tup[0], reverse=True)[0][1]
             #for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
             for species_id in set([i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfProducts()]):
@@ -841,14 +836,14 @@ class rpSBML:
                 #add IBIBSA annotation to the target model FBC objective
                 target_obj = target_fbc.getObjective(source_objective.getId())
                 if meta_id==None:
-                    meta_id = self._genMetaID(path_id)
+                    meta_id = self._genMetaID(pathway_id)
                 annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
-      </ibisba:ibisba>
-    </rdf:Ibisba>
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+      </brsynth:brsynth>
+    </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
                 target_obj.setAnnotation(annotation)
@@ -999,7 +994,7 @@ class rpSBML:
         #### WANRING: important to list the heterologous pathways in the original model and if
         # comparing the annotations returns true to not add them
         # this is a fix to a bug caused by adding EC numbers to the reactions
-        model_rpPathway = self.readRPpathway()
+        model_rpPathwayIDs = self.readRPpathwayIDs()
         for i in range(self.model.getNumReactions()):
             found = False
             source_reaction = self.model.getReaction(i)
@@ -1011,7 +1006,7 @@ class rpSBML:
                 self.logger.warning('No annotation for the source of reaction: '+str(source_reaction.getId()))
                 toAddNum.append(i)
                 continue
-            if source_reaction.getId() in model_rpPathway:
+            if source_reaction.getId() in model_rpPathwayIDs:
                 toAddNum.append(i)
                 continue
             #for y in range(target_rpsbml.model.getNumReactions()):
@@ -1114,7 +1109,7 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
-        self._checklibSBML(target_groups.addGroup(source_groups.getGroup(path_id)),
+        self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
                 'copying the source groups "rp_pathway" to the target groups')
         #return the fluxObj for the original model to define the bilevel objective        
         ###### TITLES #####
@@ -1285,7 +1280,7 @@ class rpSBML:
     # @param fluxLowerBounds FBC id for the lower flux bound for this reaction
     # BILAL check the lower
     # @param step 2D dictionnary with the following structure {'left': {'name': stoichiometry, ...}, 'right': {}}
-    # @param reaction_smiles String smiles description of this reaction (added in IBISBA annotation)
+    # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
     # @param compartment_id String Optinal parameter compartment ID
     # @param isTarget Boolean Flag to suppress the warning that the passed step is missing information. Used in this case for the target compound
     # @param hetero_group Groups Optional parameter object that holds all the heterologous pathways
@@ -1300,7 +1295,7 @@ class rpSBML:
             reaction_smiles=None,
             ecs=[],
             reacXref={},
-            hetero_group=None,
+            pathway_id=None,
             meta_id=None):
         reac = self.model.createReaction()
         self._checklibSBML(reac, 'create reaction')
@@ -1364,41 +1359,47 @@ class rpSBML:
         for ec in ecs:
             annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/ec-code/'''+str(ec)+'''"/>'''
-        ############################## IBISBA #########################
+        ############################## BRSYNTH #########################
         #return the EC number associated with the original reaction 
         #print(step)
         annotation += '''
         </rdf:Bag>
       </bqbiol:is>
     </rdf:Description>
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
-        <ibisba:smiles>'''+str(reaction_smiles or '')+'''</ibisba:smiles>
-        <ibisba:rule_id>'''+str(step['rule_id'] or '')+'''</ibisba:rule_id>
-        <ibisba:rule_mnxr>'''+str(step['mnxr'] or '')+'''</ibisba:rule_mnxr>
-        <ibisba:rule_score value="'''+str(step['rule_score'] or '')+'''" />
-        <ibisba:path_id value="'''+str(step['path_id'])+'''"/>
-        <ibisba:step_id value="'''+str(step['step'])+'''"/>
-        <ibisba:sub_step_id value="'''+str(step['sub_step'])+'''"/>
-      </ibisba:ibisba>
-    </rdf:Ibisba>
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+        <brsynth:smiles>'''+str(reaction_smiles or '')+'''</brsynth:smiles>
+        <brsynth:rule_id>'''+str(step['rule_id'] or '')+'''</brsynth:rule_id>
+        <brsynth:rule_mnxr>'''+str(step['mnxr'] or '')+'''</brsynth:rule_mnxr>
+        <brsynth:rule_score value="'''+str(step['rule_score'] or '')+'''" />
+        <brsynth:path_id value="'''+str(step['path_id'])+'''"/>
+        <brsynth:step_id value="'''+str(step['step'])+'''"/>
+        <brsynth:sub_step_id value="'''+str(step['sub_step'])+'''"/>
+      </brsynth:brsynth>
+    </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
         self._checklibSBML(reac.setAnnotation(annotation), 'setting annotation for reaction '+str(reac_id))
         #### GROUPS #####
         #TODO: check that it actually exists
-        if not hetero_group==None:
-            newM = hetero_group.createMember()
-            self._checklibSBML(newM, 'Creating a new groups member')
-            self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
+        if not pathway_id==None:
+            groups_plugin = self.model.getPlugin('groups')
+            hetero_group = groups_plugin.getGroup(pathway_id)
+            if not hetero_group:
+                self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model')
+                #TODO: consider creating it if
+            else:
+                newM = hetero_group.createMember()
+                self._checklibSBML(newM, 'Creating a new groups member')
+                self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
+        else:
+            self.logger.warning('This pathway is not added to a particular group')
         '''
         elif not self.hetero_group==None:
             newM = self.hetero_group.createMember()
             self._checklibSBML(newM, 'Creating a new groups member')
             self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
         '''
-        #else:
-        #    self.logger.warning('This pathway is not added to a particular group')
 
 
     ## Create libSBML reaction
@@ -1423,7 +1424,7 @@ class rpSBML:
             inchi=None,
             inchiKey=None,
             smiles=None,
-            isMain=False,
+            mainSpecies_id=None,
             meta_id=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1492,20 +1493,33 @@ class rpSBML:
         </rdf:Bag>
       </bqbiol:is>
     </rdf:Description>'''
-        ###### IBISBA additional information ########
+        ###### BRSYNTH additional information ########
         annotation += '''
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu/qualifiers">
-        <ibisba:smiles>'''+str(smiles or '')+'''</ibisba:smiles>
-        <ibisba:inchi>'''+str(inchi or '')+'''</ibisba:inchi>
-        <ibisba:inchikey>'''+str(inchiKey or '')+'''</ibisba:inchikey>
-        <ibisba:isMain>'''+str(isMain or '')+'''</ibisba:isMain>
-      </ibisba:ibisba>
-    </rdf:Ibisba>'''
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu/qualifiers">
+        <brsynth:smiles>'''+str(smiles or '')+'''</brsynth:smiles>
+        <brsynth:inchi>'''+str(inchi or '')+'''</brsynth:inchi>
+        <brsynth:inchikey>'''+str(inchiKey or '')+'''</brsynth:inchikey>
+      </brsynth:brsynth>
+    </rdf:BRSynth>'''
         annotation += '''
   </rdf:RDF>
 </annotation>'''
         self._checklibSBML(spe.setAnnotation(annotation), 'setting the annotation for new species')
+        #### GROUPS #####
+        #TODO: check that it actually exists
+        if not mainSpecies_id==None:
+            groups_plugin = self.model.getPlugin('groups')
+            hetero_group = groups_plugin.getGroup(mainSpecies_id)
+            if not hetero_group:
+                self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model')
+                #TODO: consider creating it if
+            else:
+                newM = hetero_group.createMember()
+                self._checklibSBML(newM, 'Creating a new groups member')
+                self._checklibSBML(newM.setIdRef(chem_id), 'Setting name to the groups member')
+        else:
+            self.logger.warning('This pathway is not added to a particular group')
 
 
     ## Create libSBML pathway
@@ -1518,23 +1532,23 @@ class rpSBML:
     # @param fluxBounds list of size 2 that describe the FBC upper and lower bounds for this reactions flux
     # @param reactants list of species that are the reactants of this reaction
     # @param products list of species that are the products of this reaction
-    # @param reaction_smiles String smiles description of this reaction (added in IBISBA annotation)
+    # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
     # @return hetero_group The number libSBML groups object to pass to createReaction to categorise the new reactions
-    def createPathway(self, path_id, meta_id=None):
+    def createPathway(self, pathway_id, meta_id=None):
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
-        new_group.setId(path_id)
+        new_group.setId(pathway_id)
         if meta_id==None:
-            meta_id = self._genMetaID(path_id)
+            meta_id = self._genMetaID(pathway_id)
         new_group.setMetaId(meta_id)
         new_group.setKind(libsbml.GROUP_KIND_COLLECTION)
         annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
-      </ibisba:ibisba>
-    </rdf:Ibisba>
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+      </brsynth:brsynth>
+    </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
         new_group.setAnnotation(annotation)
@@ -1542,7 +1556,7 @@ class rpSBML:
 
     ## Create libSBML gene
     #
-    # Create the list of genes in the model including its custom IBISBA annotatons
+    # Create the list of genes in the model including its custom BRSYNTH annotatons
     #
     # @param model libSBML model to add the unit definition
     # @param reac libSBML reaction object
@@ -1564,11 +1578,11 @@ class rpSBML:
         annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
         xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
-        <ibisba:fasta value="" />
-      </ibisba:ibisba>
-    </rdf:Ibisba>
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+        <brsynth:fasta value="" />
+      </brsynth:brsynth>
+    </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
         gp.setAnnotation(annotation)
@@ -1607,10 +1621,10 @@ class rpSBML:
         annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-    <rdf:Ibisba rdf:about="#'''+str(meta_id or '')+'''">
-      <ibisba:ibisba xmlns:ibisba="http://ibisba.eu">
-      </ibisba:ibisba>
-    </rdf:Ibisba>
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+      </brsynth:brsynth>
+    </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
         target_flux_obj.setAnnotation(annotation)
@@ -1650,45 +1664,3 @@ class rpSBML:
             name = compartment_id+'_name'
         self.createCompartment(1, compartment_id, name, compXref)
 
-
-    ##################################################################################################
-    ########################################### TESTING ##############################################
-    ##################################################################################################
-
-
-    ## Test writing of an SBML model
-    #
-    # Private test function that will write a given pathway to file
-    #
-    # @param cofactors_rp_paths Dictionnary of the outputs from RP2paths
-    # @param path_id Integer The cofactors_rp_paths pathway to write to SBML
-    def _testWriter(self, cofactors_rp_paths=None, path_id=None):
-        #### Define the if global or local parameter is to be used
-        try:
-            if cofactors_rp_paths==None and self.cofactors_rp_paths==None:
-                raise TypeError
-            if cofactors_rp_paths==None and not self.cofactors_rp_paths==None:
-                cofactors_rp_paths = self.cofactors_rp_paths
-        except EmptyOutRPpaths:
-            self.logger.error('Both class and input cofactors_rp_paths are empty')
-        #### Check what is the best path to use
-        if path_id==None:
-            path_id = 1
-        return None
-
-'''
-if __name__ == "__main__":
-    #read the TAR.XZ with all the SBML pathways
-    rpsbml_paths = {}
-    tar = tarfile.open('tests/testFBAin.tar.xz') #TODO: create this
-    rpsbml_paths = {}
-    for member in tar.getmembers():
-        rpsbml_paths[member.name] = rpFBA.rpSBML(member.name,libsbml.readSBMLFromString(tar.extractfile(member).read().decode("utf-8")))
-    #pass the different models to the SBML solvers and write the results to file
-    #TODO
-    #designed to write using TAR.XZ with all the SBML pathways
-    fiOut = BytesIO(data)
-    info = tarfile.TarInfo(rpsbml_name)
-    info.size = len(data)
-    tf.addfile(tarinfo=info, fileobj=fiOut)
-'''
