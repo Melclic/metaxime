@@ -1417,9 +1417,9 @@ class rpSBML:
     # @param dG Optinal Thermodynamics constant for this species
     # @param dG_uncert Optional Uncertainty associated with the thermodynamics of the reaction 
     def createSpecies(self,
-            chem_id,
+            species_id,
             compartment_id,
-            metaName=None,
+            species_name=None,
             chemXref={},
             inchi=None,
             inchiKey=None,
@@ -1449,17 +1449,14 @@ class rpSBML:
         #useless for FBA (usefull for ODE) but makes Copasi stop complaining
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
-        self._checklibSBML(spe.setId(str(chem_id)+'__64__'+str(compartment_id)), 'set species id')
+        self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
         if meta_id==None:
-            meta_id = self._genMetaID(chem_id)
+            meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
-
-        if not metaName==None:
-            self._checklibSBML(spe.setName(chem_id), 'setting name for the namebolites')
-        elif not meta_id==None:
-            self._checklibSBML(spe.setName(meta_id), 'setting name for the namebolites')
+        if species_name==None:
+            self._checklibSBML(spe.setName(species_id), 'setting name for the metabolite '+str(species_id))
         else:
-            self.logger.warning('There are no inputs for the name')
+            self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_id))
         #this is setting MNX id as the name
         #this is setting the name as the input name
         ###### annotation ###
@@ -1478,10 +1475,10 @@ class rpSBML:
         for dbId in chemXref:
             for cid in chemXref[dbId]:
                 try:
-                    if dbId == 'kegg' and cid[0] == 'C':
+                    if dbId=='kegg' and cid[0]=='C':
                         annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_c']+str(cid)+'''"/>'''
-                    elif dbId == 'kegg' and cid[0] == 'D':
+                    elif dbId=='kegg' and cid[0]=='D':
                         annotation += '''
       <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_d']+str(cid)+'''"/>'''
                     else:
@@ -1517,7 +1514,7 @@ class rpSBML:
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
-                self._checklibSBML(newM.setIdRef(chem_id), 'Setting name to the groups member')
+                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
         else:
             self.logger.warning('This pathway is not added to a particular group')
 
