@@ -585,7 +585,6 @@ class rpSBML:
                 if self.compareMIRIAMAnnotations(rp_rp_species[rp_step_id]['annotation'], meas_rp_species[meas_step_id]['annotation']):
                     found_meas_rp_species[meas_step_id]['found'] = True
                     found_meas_rp_species[meas_step_id]['rp_step_id'] = rp_step_id
-                    #print('FOUND USING REACTION')
                     break
         ############## compare using the species ###################
         for meas_step_id in measured_sbml.readRPpathwayIDs():
@@ -647,7 +646,7 @@ class rpSBML:
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #TODO: rename target_rpsbml to gem_rpsbml and target_model to gem_model
-    def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3', multi_obj=(0.0, 0.0)):
+    def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):#, multi_obj=(0.0, 0.0)):
         ##### ADD SOURCE FROM ORPHAN #####
         #if the heterologous pathway from the self.model contains a sink molecule that is not included in the 
         # original model (we call orhpan species) then add another reaction that creates it
@@ -831,13 +830,15 @@ class rpSBML:
                         'setting target flux objective coefficient')
                     self._checklibSBML(target_fluxObjective.setReaction(source_fluxObjective.getReaction()),
                         'setting target flux objective reaction')
+                    self._checklibSBML(target_fluxObjective.setAnnotation(source_fluxObjective.getAnnotation()), 'setting target flux obj annotation from source flux obj')
                 self._checklibSBML(target_objective.setAnnotation(source_objective.getAnnotation()), 'setting target obj annotation from source obj')
-            else:
-                #add IBIBSA annotation to the target model FBC objective
-                target_obj = target_fbc.getObjective(source_objective.getId())
-                if meta_id==None:
-                    meta_id = self._genMetaID(pathway_id)
-                annotation = '''<annotation>
+        for target_objective in target_fbc.getListOfObjectives():
+            #test to see if the target does not contain the BRSynth
+            for target_fluxObjective in target_objective.getListOfFluxObjectives(): 
+                if target_fluxObjective.getAnnotation()==None:
+                    #add IBIBSA annotation to the target model FBC objective
+                    meta_id = self._genMetaID(target_fluxObjective.getId())
+                    annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
@@ -846,8 +847,9 @@ class rpSBML:
     </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
-                target_obj.setAnnotation(annotation)
-
+                    self._checklibSBML(target_fluxObjective.setAnnotation(annotation), 'making BRSynth objective for model objective flux')
+        #########################
+        """TODO: see if you will ever use this
         #### multi objective
         #add a multi fluxObjective. Under the assumption that the GEM model input only has a single objective and that that is the biomass one. 
         #NOTE: only if each model have only one objective with a single flux objective
@@ -885,6 +887,8 @@ class rpSBML:
                 self.logger.warning('Either the target or source model has one of the objectives with multiple flux values')
         else:
             self.logger.warning('There are more than one, or zero objective in the target and the source')
+        """
+        #########################
         ################ SPECIES ####################
         #TODO: modify the name to add rpPathway
         sourceSpeciesID_targetSpeciesID = {}
@@ -1361,7 +1365,6 @@ class rpSBML:
       <rdf:li rdf:resource="http://identifiers.org/ec-code/'''+str(ec)+'''"/>'''
         ############################## BRSYNTH #########################
         #return the EC number associated with the original reaction 
-        #print(step)
         annotation += '''
         </rdf:Bag>
       </bqbiol:is>
@@ -1392,8 +1395,8 @@ class rpSBML:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
-        else:
-            self.logger.warning('This pathway is not added to a particular group')
+        #else:
+        #    self.logger.warning('This pathway is not added to a particular group')
         '''
         elif not self.hetero_group==None:
             newM = self.hetero_group.createMember()
@@ -1456,7 +1459,7 @@ class rpSBML:
         if species_name==None:
             self._checklibSBML(spe.setName(species_id), 'setting name for the metabolite '+str(species_id))
         else:
-            self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_id))
+            self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_name))
         #this is setting MNX id as the name
         #this is setting the name as the input name
         ###### annotation ###
@@ -1515,8 +1518,8 @@ class rpSBML:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
-        else:
-            self.logger.warning('This pathway is not added to a particular group')
+        #else:
+        #    self.logger.warning('This pathway is not added to a particular group')
 
 
     ## Create libSBML pathway
