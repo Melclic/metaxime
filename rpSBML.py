@@ -1427,7 +1427,7 @@ class rpSBML:
             inchi=None,
             inchiKey=None,
             smiles=None,
-            mainSpecies_id=None,
+            species_group_id=None,
             meta_id=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1508,11 +1508,11 @@ class rpSBML:
         self._checklibSBML(spe.setAnnotation(annotation), 'setting the annotation for new species')
         #### GROUPS #####
         #TODO: check that it actually exists
-        if not mainSpecies_id==None:
+        if not species_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
-            hetero_group = groups_plugin.getGroup(mainSpecies_id)
+            hetero_group = groups_plugin.getGroup(species_group_id)
             if not hetero_group:
-                self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model')
+                self.logger.warning('The species_group_id '+str(species_group_id)+' does not exist in the model')
                 #TODO: consider creating it if
             else:
                 newM = hetero_group.createMember()
