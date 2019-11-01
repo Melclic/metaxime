@@ -1100,6 +1100,7 @@ class rpSBML:
                 self._checklibSBML(target_product.setStoichiometry(source_product.getStoichiometry()),
                         'set stoichiometry ('+str(source_product.getStoichiometry)+')')
         #### GROUPS #####
+        #TODO loop through the groups to add them
         if not target_rpsbml.model.isPackageEnabled('groups'):
             self._checklibSBML(target_rpsbml.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/groups/version1',
