@@ -634,6 +634,71 @@ class rpSBML:
     #########################################################################
 
 
+    
+    ##### ADD SOURCE FROM ORPHAN #####
+    #if the heterologous pathway from the self.model contains a sink molecule that is not included in the 
+    # original model (we call orhpan species) then add another reaction that creates it
+    #TODO: that transports the reactions that creates the species in the
+    # extracellular matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
+    #TODO: does not work
+    def fillOrphan(self, rpsbml=None, pathway_id='rp_pathway', compartment_id='MNXC3'):
+        if rpsbml==None:
+            model = self.model
+        else:
+            model = rpsbml.model
+        self.logger.info('Adding the orphan species to the GEM model')
+        #only for rp species
+        groups = model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        reaction_id = sorted([(int(''.join(x for x in i.id_ref if x.isdigit())), i.id_ref) for i in rp_pathway.getListOfMembers()], key=lambda tup: tup[0], reverse=True)[0][1]
+        #for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
+        for species_id in set([i.getSpecies() for i in model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in model.getReaction(reaction_id).getListOfProducts()]):
+            if rpsbml==None:
+                isSpePro = self.isSpeciesProduct(species_id, [reaction_id])
+            else:
+                isSpePro = rpsbml.isSpeciesProduct(species_id, [reaction_id])
+            if not isSpePro:
+                #the species is not produced by anything... 
+                #add a reaction that produces it in the cytoplasm
+                #create lowerFluxBound of -10
+                ######################################
+                #add the new parameter to the rpSBML model as well
+                if not 'B__10' in [i.getId() for i in model.getListOfParameters()]:
+                    newParam = model.createParameter()
+                    self._checklibSBML(newParam, 'Creating a new parameter object')
+                    self._checklibSBML(newParam.setConstant(True), 'setting as constant')
+                    self._checklibSBML(newParam.setId('B__10'), 'setting ID')
+                    self._checklibSBML(newParam.setValue(-10), 'setting value')
+                    self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
+                    self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
+                    meta_id = self._genMetaID('B__10')
+                    self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
+                #create the step
+                createStep = {'rule_id': None,
+                              'left': {species_id.split('__')[0]: 1},
+                              'right': {},
+                              'step': None,
+                              'sub_step': None,
+                              'path_id': None,
+                              'transformation_id': None,
+                              'rule_score': None,
+                              'mnxr': None}
+                #create the model in the 
+                if rpsbml==None:
+                    self.createReaction('create_'+species_id,
+                                        'B_999999',
+                                        'B__10',
+                                        createStep,
+                                        compartment_id)
+                else:
+                    rpsbml.createReaction('create_'+species_id,
+                                        'B_999999',
+                                        'B__10',
+                                        createStep,
+                                        compartment_id)
+
+
+
     ## Merge two models species and reactions using the annotations to recognise the same species and reactions
     #
     # The source mode has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
@@ -647,52 +712,6 @@ class rpSBML:
     #
     #TODO: rename target_rpsbml to gem_rpsbml and target_model to gem_model
     def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):#, multi_obj=(0.0, 0.0)):
-        ##### ADD SOURCE FROM ORPHAN #####
-        #if the heterologous pathway from the self.model contains a sink molecule that is not included in the 
-        # original model (we call orhpan species) then add another reaction that creates it
-        #TODO: that transports the reactions that creates the species in the
-        # extracellular matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
-        #PROGRESS
-        if fillOrphanSpecies:
-            self.logger.info('Adding the orphan species to the GEM model')
-            #only for rp species
-            groups = self.model.getPlugin('groups')
-            rp_pathway = groups.getGroup(pathway_id)
-            reaction_id = sorted([(int(''.join(x for x in i.id_ref if x.isdigit())), i.id_ref) for i in rp_pathway.getListOfMembers()], key=lambda tup: tup[0], reverse=True)[0][1]
-            #for reaction_id in [i.getId() for i in self.model.getListOfReactions()]:
-            for species_id in set([i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfReactants()]+[i.getSpecies() for i in self.model.getReaction(reaction_id).getListOfProducts()]):
-                if not self.isSpeciesProduct(species_id, [reaction_id]):
-                    #the species is not produced by anything... 
-                    #add a reaction that produces it in the cytoplasm
-                    #create lowerFluxBound of -10
-                    ######################################
-                    #add the new parameter to the rpSBML model as well
-                    if not 'B__10' in [i.getId() for i in self.model.getListOfParameters()]:
-                        newParam = self.model.createParameter()
-                        self._checklibSBML(newParam, 'Creating a new parameter object')
-                        self._checklibSBML(newParam.setConstant(True), 'setting as constant')
-                        self._checklibSBML(newParam.setId('B__10'), 'setting ID')
-                        self._checklibSBML(newParam.setValue(-10), 'setting value')
-                        self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
-                        self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
-                        meta_id = self._genMetaID('B__10')
-                        self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
-                    #create the step
-                    createStep = {'rule_id': None,
-                                  'left': {species_id.split('__')[0]: 1},
-                                  'right': {},
-                                  'step': None,
-                                  'sub_step': None,
-                                  'path_id': None,
-                                  'transformation_id': None,
-                                  'rule_score': None,
-                                  'mnxr': None}
-                    #create the model in the 
-                    self.createReaction('create_'+species_id,
-                                        'B_999999',
-                                        'B__10',
-                                        createStep,
-                                        compartment_id)
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ UNITDEFINITIONS ######
@@ -1118,9 +1137,10 @@ class rpSBML:
                 'copying the source groups "rp_pathway" to the target groups')
         #return the fluxObj for the original model to define the bilevel objective        
         ###### TITLES #####
-        target_rpsbml.model.setId(target_rpsbml.model.getId()+'_'+self.model.getId())
+        target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
-
+        if fillOrphanSpecies==True:
+            self.fillOrphan(target_rpsbml, pathway_id, compartment_id)
 
     #########################################################################
     ############################# MODEL CREATION FUNCTIONS ##################
@@ -1321,6 +1341,7 @@ class rpSBML:
         if meta_id==None:
             meta_id = self._genMetaID(reac_id)
         self._checklibSBML(reac.setMetaId(meta_id), 'setting species meta_id')
+        #TODO: check that the species exist
         #reactants_dict
         for reactant in step['left']:
             spe = reac.createReactant()
@@ -1331,6 +1352,7 @@ class rpSBML:
             self._checklibSBML(spe.setConstant(True), 'set "constant" on species '+str(reactant))
             self._checklibSBML(spe.setStoichiometry(float(step['left'][reactant])),
                 'set stoichiometry ('+str(float(step['left'][reactant]))+')')
+        #TODO: check that the species exist
         #products_dict
         for product in step['right']:
             pro = reac.createProduct()
@@ -1601,13 +1623,20 @@ class rpSBML:
     # @param meta_id Set the meta_id
     # @return Boolean exit code
     def createFluxObj(self, fluxobj_id, reactionName, coefficient, isMax=True, meta_id=None):
-        #TODO: define more complex objectives and test the simulation using a libSBML object
         fbc_plugin = self.model.getPlugin('fbc')
         target_obj = fbc_plugin.createObjective()
+        #TODO: need to define inpiut metaID
+        annotation = '''<annotation>
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+      </brsynth:brsynth>
+    </rdf:BRSynth>
+  </rdf:RDF>
+</annotation>'''
+        target_obj.setAnnotation(annotation)
         target_obj.setId(fluxobj_id)
-        #if meta_id==None:
-        #    meta_id = self._genMetaID(fluxobj_id)
-        #target_obj.setMetaId(meta_id)
         if isMax:
             target_obj.setType('maximize')
         else:
