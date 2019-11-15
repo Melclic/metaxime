@@ -291,6 +291,8 @@ class rpSBML:
                  'sub_step_id': None,
                  'rule_score': None,
                  'smiles': None,
+                 'inchi': None,
+                 'inchikey': None,
                  'selenzyme': None,
                  'rule_id': None,
                  'rule_mnxr': None,
