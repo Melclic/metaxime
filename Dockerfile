@@ -9,6 +9,3 @@ COPY rpCache.py /home/
 
 ENTRYPOINT ["python"]
 CMD ["/home/rpCache.py"]
-
-# Open server port
-EXPOSE 8997
