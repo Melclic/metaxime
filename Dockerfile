@@ -6,6 +6,3 @@ RUN apt-get install --quiet --yes --no-install-recommends \
 	 && conda install -y -c rdkit rdkit
 
 COPY rpCache.py /home/
-
-ENTRYPOINT ["python"]
-CMD ["/home/rpCache.py"]
