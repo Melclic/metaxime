@@ -4,6 +4,8 @@ import logging
 import os
 import pickle
 import gzip
+import urllib.request
+
 
 ## Error function for the convertion of structures
 #
@@ -74,28 +76,28 @@ class rpCache:
         ###################### Fetch the files if necessary ######################
         #chem_xref
         if not os.path.isfile(dirname+'/input_cache/chem_xref.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_xref.tsv', 
+            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_xref.tsv',
                     dirname+'/input_cache/chem_xref.tsv')
         #reac_xref
         if not os.path.isfile(dirname+'/input_cache/reac_xref.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/reac_xref.tsv', 
+            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/reac_xref.tsv',
                     dirname+'/input_cache/reac_xref.tsv')
         # rules_rall.tsv
         if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('TODO', 
+            urllib.request.urlretrieve('TODO',
                     dirname+'/input_cache/rules_rall.tsv')
             '''
             tf = tarfile.open(dirname+'/input_cache/retrorules_preparsed.tar.gz')
             tf.extractall(path=dirname+'/input_cache/')
             tf.close()
-            os.rename(dirname+'/retrorules_preparsed/retrorules-rr01_flat_all.csv', 
+            os.rename(dirname+'/retrorules_preparsed/retrorules-rr01_flat_all.csv',
                     dirname+'/input_cache/rules_rall.tsv')
             '''
         # rr_compounds.tsv
         #TODO: need to add this file to the git or another location
         if not os.path.isfile(dirname+'/input_cache/rr_compounds.tsv') or fetchInputFiles:
             urllib.request.urlretrieve(
-                    'TODO', 
+                    'TODO',
                     dirname+'/input_cache/rr_compounds.tsv')
             '''
             tf = tarfile.open(dirname+'/input_cache/retrorules_preparsed.tar.xz')
@@ -104,11 +106,11 @@ class rpCache:
             '''
         # chem_prop.tsv
         if not os.path.isfile(dirname+'/input_cache/chem_prop.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_prop.tsv', 
+            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_prop.tsv',
                     dirname+'/input_cache/chem_prop.tsv')
         # comp_xref
         if not os.path.isfile(dirname+'/input_cache/comp_xref.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/comp_xref.tsv', 
+            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/comp_xref.tsv',
                     dirname+'/input_cache/comp_xref.tsv')
         ###################### Populate the cache #################################
         if not os.path.isfile(dirname+'/cache/deprecatedMNXM_mnxm.pickle'):
@@ -135,11 +137,11 @@ class rpCache:
             pickle.dump(inchikey_mnxm, gzip.open(dirname+'/cache/inchikey_mnxm.pickle.gz','wb'))
         if not os.path.isfile(dirname+'/cache/rr_reactions.pickle'):
             pickle.dump(
-                    self.retro_reactions(dirname+'/input_cache/rules_rall.tsv'), 
+                    self.retro_reactions(dirname+'/input_cache/rules_rall.tsv'),
                     open(dirname+'/cache/rr_reactions.pickle', 'wb'))
         self.rr_reactions = pickle.load(open(dirname+'/cache/rr_reactions.pickle', 'rb'))
         if not os.path.isfile(dirname+'/cache/chemXref.pickle.gz'):
-            pickle.dump(self.mnx_chemXref(dirname+'/input_cache/chem_xref.tsv'), 
+            pickle.dump(self.mnx_chemXref(dirname+'/input_cache/chem_xref.tsv'),
                     gzip.open(dirname+'/cache/chemXref.pickle.gz','wb'))
         self.chemXref = pickle.load(gzip.open(dirname+'/cache/chemXref.pickle.gz', 'rb'))
         if not os.path.isfile(dirname+'/cache/compXref.pickle.gz') or not os.path.isfile(dirname+'/cache/nameCompXref.pickle.gz'):
