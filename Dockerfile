@@ -5,4 +5,4 @@ RUN apt-get install --quiet --yes --no-install-recommends \
     	libxrender-dev \
 	 && conda install -y -c rdkit rdkit
 
-COPY rpCache.py /home/
+COPY rpCache.py rpToolCache.p[y] /home/
