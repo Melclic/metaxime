@@ -129,17 +129,6 @@ class rpCache:
 
         return True
 
-
-
-    ## Private function to encapsulate the urlretrieve function to avoid code repetition
-    #
-    #  Encapsulate 'urlretrive' Python function to avoid code repetition
-    #
-    # @param The oject pointer
-    # @param The base URL where to find data files
-    # @param The filename to copy the data
-    def _loadCache(self, url, file):
-
     ## Convert chemical depiction to others type of depictions
     #
     # Usage example:
