@@ -75,17 +75,17 @@ class rpCache:
         if not os.path.isdir(dirname+'/cache'):
             os.mkdir(dirname+'/cache')
 
-        ###################### Fetch the files if necessary ######################
-        url = 'https://www.metanetx.org/cgi-bin/mnxget/mnxref/'
-
-        for file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv']:
-            if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
-                urllib.request.urlretrieve(url+file, dirname+'/input_cache/'+file)
-
-        #TODO: need to add this file to the git or another location
-        for file in ['rr_compounds.tsv', 'rules_rall.tsv', 'rxn_recipes.tsv']:
-            if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
-                urllib.request.urlretrieve('TOADD', dirname+'/input_cache/'+file)
+        # ###################### Fetch the files if necessary ######################
+        # url = 'https://www.metanetx.org/cgi-bin/mnxget/mnxref/'
+        #
+        # for file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv']:
+        #     if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
+        #         urllib.request.urlretrieve(url+file, dirname+'/input_cache/'+file)
+        #
+        # #TODO: need to add this file to the git or another location
+        # for file in ['rr_compounds.tsv', 'rules_rall.tsv', 'rxn_recipes.tsv']:
+        #     if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
+        #         urllib.request.urlretrieve('TOADD', dirname+'/input_cache/'+file)
 
 
         ###################### Populate the cache #################################
