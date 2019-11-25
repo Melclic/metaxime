@@ -42,12 +42,12 @@ class rpCache:
         self.logger = logging.getLogger(__name__)
         self.logger.info('Started instance of rpCache')
         self.convertMNXM = {'MNXM162231': 'MNXM6',
-                'MNXM84': 'MNXM15',
-                'MNXM96410': 'MNXM14',
-                'MNXM114062': 'MNXM3',
-                'MNXM145523': 'MNXM57',
-                'MNXM57425': 'MNXM9',
-                'MNXM137': 'MNXM588022'}
+                            'MNXM84': 'MNXM15',
+                            'MNXM96410': 'MNXM14',
+                            'MNXM114062': 'MNXM3',
+                            'MNXM145523': 'MNXM57',
+                            'MNXM57425': 'MNXM9',
+                            'MNXM137': 'MNXM588022'}
         self.deprecatedMNXM_mnxm = {}
         self.deprecatedMNXR_mnxr = {}
         self.mnxm_strc = None
@@ -64,7 +64,9 @@ class rpCache:
     # @param The oject pointer
     # @return Boolean detemining the success of the function or not
     def _loadCache(self, fetchInputFiles=False):
+
         dirname = os.path.dirname(os.path.abspath( __file__ ))
+
         #################### make the local folders ############################
         # input_cache
         if not os.path.isdir(dirname+'/input_cache'):
@@ -72,62 +74,71 @@ class rpCache:
         # cache
         if not os.path.isdir(dirname+'/cache'):
             os.mkdir(dirname+'/cache')
+
         ###################### Fetch the files if necessary ######################
-        #reac_xref
-        if not os.path.isfile(dirname+'/input_cache/reac_xref.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/reac_xref.tsv',
-                    dirname+'/input_cache/reac_xref.tsv')
-        #chem_xref
-        if not os.path.isfile(dirname+'/input_cache/chem_xref.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_xref.tsv',
-                    dirname+'/input_cache/chem_xref.tsv')
-        # rr_compounds.tsv
+        url = 'https://www.metanetx.org/cgi-bin/mnxget/mnxref/'
+
+        for file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv']:
+            if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
+                urllib.request.urlretrieve(url+file, dirname+'/input_cache/'+file)
+
         #TODO: need to add this file to the git or another location
-        if not os.path.isfile(dirname+'/input_cache/rr_compounds.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve(
-                    'TOADD',
-                    dirname+'/input_cache')
-            #tf = tarfile.open(dirname+'/input_cache/retrorules_preparsed.tar.xz')
-            #tf.extractall(path=dirname+'/input_cache/')
-            #tf.close()
-        # rules_rall.tsv
-        if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('TOADD',
-                    dirname+'/input_cache/')
-        # rxn_recipes.tsv
-        if not os.path.isfile(dirname+'/input_cache/rxn_recipes.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('TOADD',
-                    dirname+'/input_cache/')
-        # chem_prop.tsv
-        if not os.path.isfile(dirname+'/input_cache/chem_prop.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://www.metanetx.org/cgi-bin/mnxget/mnxref/chem_prop.tsv',
-                    dirname+'/input_cache/chem_prop.tsv')
+        for file in ['rr_compounds.tsv', 'rules_rall.tsv', 'rxn_recipes.tsv']:
+            if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
+                urllib.request.urlretrieve('TOADD', dirname+'/input_cache/'+file)
+
+
         ###################### Populate the cache #################################
-        if not os.path.isfile(dirname+'/cache/deprecatedMNXR_mnxr.pickle'):
-            self.deprecatedMNXM(dirname+'/input_cache/chem_xref.tsv')
-            pickle.dump(self.deprecatedMNXR_mnxr, open(dirname+'/cache/deprecatedMNXR_mnxr.pickle', 'wb'))
-        self.deprecatedMNXR_mnxr = pickle.load(open(dirname+'/cache/deprecatedMNXR_mnxr.pickle', 'rb'))
-        if not os.path.isfile(dirname+'/cache/deprecatedMNXM_mnxm.pickle'):
-            self.deprecatedMNXM(dirname+'/input_cache/reac_xref.tsv')
-            pickle.dump(self.deprecatedMNXM_mnxm, open(dirname+'/cache/deprecatedMNXM_mnxm.pickle', 'wb'))
-        self.deprecatedMNXM_mnxm = pickle.load(open(dirname+'/cache/deprecatedMNXM_mnxm.pickle', 'rb'))
-        if not os.path.isfile(dirname+'/cache/mnxm_strc.pickle.gz'):
+
+        pickle = 'deprecatedMNXR_mnxr.pickle'
+        file = 'chem_xref.tsv'
+        if not os.path.isfile(dirname+'/cache/'+pickle):
+            self.deprecatedMNXM(dirname+'/input_cache/'+file)
+            pickle.dump(self.deprecatedMNXR_mnxr, open(dirname+'/cache/'+pickle, 'wb'))
+        self.deprecatedMNXR_mnxr = pickle.load(open(dirname+'/cache/'+pickle, 'rb'))
+
+        pickle = 'deprecatedMNXM_mnxm.pickle'
+        file = 'reac_xref.tsv'
+        if not os.path.isfile(dirname+'/cache/'+pickle):
+            self.deprecatedMNXR(dirname+'/input_cache/'+file)
+            pickle.dump(self.deprecatedMNXM_mnxm, open(dirname+'/cache/'+pickle, 'wb'))
+        self.deprecatedMNXM_mnxm = pickle.load(open(dirname+'/cache/'+pickle, 'rb'))
+
+        pickle = 'mnxm_strc.pickle.gz'
+        file = 'chem_prop.tsv'
+        if not os.path.isfile(dirname+'/cache/'+pickle):
             pickle.dump(self.mnx_strc(dirname+'/input_cache/rr_compounds.tsv',
-                            dirname+'/input_cache/chem_prop.tsv'),
-                        gzip.open(dirname+'/cache/mnxm_strc.pickle.gz','wb'))
-        self.mnxm_strc = pickle.load(gzip.open(dirname+'/cache/mnxm_strc.pickle.gz', 'rb'))
-        if not os.path.isfile(dirname+'/cache/chemXref.pickle.gz'):
-            pickle.dump(self.mnx_chemXref(dirname+'/input_cache/chem_xref.tsv'),
-                    gzip.open(dirname+'/cache/chemXref.pickle.gz','wb'))
-        self.chemXref = pickle.load(gzip.open(dirname+'/cache/chemXref.pickle.gz', 'rb'))
-        if not os.path.isfile(dirname+'/cache/rr_reactions.pickle'):
-            pickle.dump(
-                    self.retro_reactions(dirname+'/input_cache/rules_rall.tsv'),
-                    open(dirname+'/cache/rr_reactions.pickle', 'wb'))
-        self.rr_reactions = pickle.load(open(dirname+'/cache/rr_reactions.pickle', 'rb'))
+                                      dirname+'/input_cache/'+file),
+                        gzip.open(dirname+'/cache/'+pickle,'wb'))
+        self.mnxm_strc = pickle.load(gzip.open(dirname+'/cache/'+pickle, 'rb'))
+
+        pickle = 'chemXref.pickle.gz'
+        file = 'chem_xref.tsv'
+        if not os.path.isfile(dirname+'/cache/'+pickle):
+            pickle.dump(self.mnx_chemXref(dirname+'/input_cache/'+file),
+                        gzip.open(dirname+'/cache/'+pickle,'wb'))
+        self.chemXref = pickle.load(gzip.open(dirname+'/cache/'+pickle, 'rb'))
+
+        pickle = 'rr_reactions.pickle'
+        file = 'rules_rall.tsv'
+        if not os.path.isfile(dirname+'/cache/'+pickle):
+            pickle.dump(self.retro_reactions(dirname+'/input_cache/'+file),
+                        open(dirname+'/cache/'+pickle, 'wb'))
+        self.rr_reactions = pickle.load(open(dirname+'/cache/'+pickle, 'rb'))
+
+
         return True
 
 
+
+    ## Private function to encapsulate the urlretrieve function to avoid code repetition
+    #
+    #  Encapsulate 'urlretrive' Python function to avoid code repetition
+    #
+    # @param The oject pointer
+    # @param The base URL where to find data files
+    # @param The filename to copy the data
+    def _loadCache(self, url, file):
 
     ## Convert chemical depiction to others type of depictions
     #
