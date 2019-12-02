@@ -237,7 +237,7 @@ class rpCache:
     def mnx_strc(self, rr_compounds_path, chem_prop_path):
         mnxm_strc = {}
         for row in csv.DictReader(open(rr_compounds_path), delimiter='\t'):
-            tmp = {'forumla':  None,
+            tmp = {'formula':  None,
                     'smiles': None,
                     'inchi': row['inchi'],
                     'inchikey': None,
@@ -256,7 +256,7 @@ class rpCache:
             for row in c:
                 if not row[0][0]=='#':
                     mnxm = self._checkMNXMdeprecated(row[0])
-                    tmp = {'forumla':  row[2],
+                    tmp = {'formula':  row[2],
                             'smiles': row[6],
                             'inchi': row[5],
                             'inchikey': row[8],
@@ -266,7 +266,7 @@ class rpCache:
                         if tmp[i]=='' or tmp[i]=='NA':
                             tmp[i] = None
                     if mnxm in mnxm_strc:
-                        mnxm_strc[mnxm]['forumla'] = row[2]
+                        mnxm_strc[mnxm]['formula'] = row[2]
                         mnxm_strc[mnxm]['name'] = row[1]
                         if not mnxm_strc[mnxm]['smiles'] and tmp['smiles']:
                             mnxm_strc[mnxm]['smiles'] = tmp['smiles']
