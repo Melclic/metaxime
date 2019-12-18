@@ -3,7 +3,7 @@ FROM conda/miniconda3
 WORKDIR /home/
 
 RUN apt-get --quiet update && \
-    apt-get --quiet --yes dist-upgrade && \
+    #apt-get --quiet --yes dist-upgrade && \
     apt-get install --quiet --yes --no-install-recommends \
     ca-certificates \
     build-essential \
