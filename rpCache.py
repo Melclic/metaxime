@@ -7,20 +7,8 @@ import pickle
 import gzip
 import urllib.request
 import re
-
-
-## Error function for the convertion of structures
-#
-class Error(Exception):
-    pass
-
-
-## Error function for the convertion of structures
-#
-class DepictionError(Error):
-    def __init__(self, message):
-        #self.expression = expression
-        self.message = message
+import tarfile
+import shutil
 
 
 #######################################################
@@ -56,6 +44,27 @@ class rpCache:
         if not self._loadCache():
             raise ValueError
 
+    #####################################################
+    ################# ERROR functions ###################
+    #####################################################
+
+    ## Error function for the convertion of structures
+    #
+    class Error(Exception):
+        pass
+
+
+    ## Error function for the convertion of structures
+    #
+    class DepictionError(Error):
+        def __init__(self, message):
+            #self.expression = expression
+            self.message = message
+
+
+    ##########################################################
+    ################## Private Functions #####################
+    ##########################################################
 
     ## Private function to fetch the required data, parse them and generate the pickle
     #
@@ -83,10 +92,29 @@ class rpCache:
                 urllib.request.urlretrieve(url+file, dirname+'/input_cache/'+file)
 
         #TODO: need to add this file to the git or another location
-        for file in ['rr_compounds.tsv', 'rules_rall.tsv', 'rxn_recipes.tsv']:
+        for file in ['rr_compounds.tsv', 'rxn_recipes.tsv']:
             if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
-                urllib.request.urlretrieve('TOADD', dirname+'/input_cache/'+file)
+                urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02', 
+                                           dirname+'/input_cache/rr02_more_data.tar.gz')
+                tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
+                tar.extractall(dirname+'/input_cache/')
+                tar.close()
+                shutil.move(dirname+'/input_cache/rr02_more_data/compounds.tsv', 
+                            dirname+'/input_cache/rr_compounds.tsv')
+                shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv', 
+                            dirname+'/input_cache/')
+                shutil.rm(dirname+'/input_cache/rr02_more_data.tar.gz')
+                shutil.rmtree(dirname+'/input_cache/rr02_more_data')
 
+        if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
+            urllib.request.urlretrieve('https://retrorules.org/dl/preparsed/rr02/rp3/hs', 
+                                       dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
+            tar = tarfile.open(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz', 'r:gz')
+            tar.extractall(dirname+'/input_cache/')
+            tar.close()
+            shutil.move(dirname+'/input_cache/retrorules_rr02_rp3_hs/retrorules_rr02_flat_all.tsv', dirname+'/input_cache/rules_rall.tsv')
+            shutil.rm(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
+            shutil.rmtree(dirname+'/input_cache/retrorules_rr02_rp3_hs')
 
         ###################### Populate the cache #################################
 
@@ -148,7 +176,7 @@ class rpCache:
         else:
             raise NotImplementedError('"{}" is not a valid input type'.format(itype))
         if rdmol is None:  # Check imprt
-            raise DepictionError('Import error from depiction "{}" of type "{}"'.format(idepic, itype))
+            raise self.DepictionError('Import error from depiction "{}" of type "{}"'.format(idepic, itype))
         # Export
         odepic = dict()
         for item in otype:
@@ -184,6 +212,11 @@ class rpCache:
         except KeyError:
             return mnxr
 
+    
+    #################################################################
+    ################## Public functions #############################
+    #################################################################
+    
 
     #[TODO] merge the two functions
     ## Function to parse the chem_xref.tsv file of MetanetX
@@ -247,7 +280,7 @@ class rpCache:
                 resConv = self._convert_depiction(idepic=tmp['inchi'], itype='inchi', otype={'smiles','inchikey'})
                 for i in resConv:
                     tmp[i] = resConv[i]
-            except DepictionError as e:
+            except self.DepictionError as e:
                 self.logger.warning('Could not convert some of the structures: '+str(tmp))
                 self.logger.warning(e)
             mnxm_strc[tmp['mnxm']] = tmp
@@ -293,7 +326,7 @@ class rpCache:
                             resConv = self._convert_depiction(idepic=tmp[itype], itype=itype, otype=otype)
                             for i in resConv:
                                 tmp[i] = resConv[i]
-                        except DepictionError as e:
+                        except self.DepictionError as e:
                             self.logger.warning('Could not convert some of the structures: '+str(tmp))
                             self.logger.warning(e)
                         mnxm_strc[tmp['mnxm']] = tmp
