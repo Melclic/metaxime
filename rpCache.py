@@ -94,20 +94,20 @@ class rpCache:
         #TODO: need to add this file to the git or another location
         for file in ['rr_compounds.tsv', 'rxn_recipes.tsv']:
             if not os.path.isfile(dirname+'/input_cache/'+file) or fetchInputFiles:
-                urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02', 
+                urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02',
                                            dirname+'/input_cache/rr02_more_data.tar.gz')
                 tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
                 tar.extractall(dirname+'/input_cache/')
                 tar.close()
-                shutil.move(dirname+'/input_cache/rr02_more_data/compounds.tsv', 
+                shutil.move(dirname+'/input_cache/rr02_more_data/compounds.tsv',
                             dirname+'/input_cache/rr_compounds.tsv')
-                shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv', 
+                shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
                             dirname+'/input_cache/')
                 shutil.rm(dirname+'/input_cache/rr02_more_data.tar.gz')
                 shutil.rmtree(dirname+'/input_cache/rr02_more_data')
 
         if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
-            urllib.request.urlretrieve('https://retrorules.org/dl/preparsed/rr02/rp3/hs', 
+            urllib.request.urlretrieve('https://retrorules.org/dl/preparsed/rr02/rp3/hs',
                                        dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
             tar = tarfile.open(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz', 'r:gz')
             tar.extractall(dirname+'/input_cache/')
@@ -212,11 +212,11 @@ class rpCache:
         except KeyError:
             return mnxr
 
-    
+
     #################################################################
     ################## Public functions #############################
     #################################################################
-    
+
 
     #[TODO] merge the two functions
     ## Function to parse the chem_xref.tsv file of MetanetX
