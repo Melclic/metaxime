@@ -103,7 +103,7 @@ class rpCache:
                             dirname+'/input_cache/rr_compounds.tsv')
                 shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
                             dirname+'/input_cache/')
-                shutil.rm(dirname+'/input_cache/rr02_more_data.tar.gz')
+                os.remove(dirname+'/input_cache/rr02_more_data.tar.gz')
                 shutil.rmtree(dirname+'/input_cache/rr02_more_data')
 
         if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
@@ -113,7 +113,7 @@ class rpCache:
             tar.extractall(dirname+'/input_cache/')
             tar.close()
             shutil.move(dirname+'/input_cache/retrorules_rr02_rp3_hs/retrorules_rr02_flat_all.tsv', dirname+'/input_cache/rules_rall.tsv')
-            shutil.rm(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
+            os.remove(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
             shutil.rmtree(dirname+'/input_cache/retrorules_rr02_rp3_hs')
 
         ###################### Populate the cache #################################
