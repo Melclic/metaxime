@@ -8,4 +8,4 @@ RUN apt-get install --quiet --yes --no-install-recommends \
 COPY rpCache.py /home/
 RUN python rpCache.py
 
-#ONBUILD COPY Dockerfile rpToolCache.p[y] /home/
+ONBUILD COPY Dockerfile rpToolCache.p[y] /home/
