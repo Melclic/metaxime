@@ -869,47 +869,6 @@ class rpSBML:
   </rdf:RDF>
 </annotation>'''
                     self._checklibSBML(target_fluxObjective.setAnnotation(annotation), 'making BRSynth objective for model objective flux')
-        #########################
-        """TODO: see if you will ever use this
-        #### multi objective
-        #add a multi fluxObjective. Under the assumption that the GEM model input only has a single objective and that that is the biomass one. 
-        #NOTE: only if each model have only one objective with a single flux objective
-        #create the two list of objectives
-        if 1>=len(targetObjectiveID)>0 and 1>=len(sourceObjectiveID)>0:
-            #create a new one objective
-            multi_objective = target_fbc.createObjective()
-            self._checklibSBML(multi_objective, 'creating multi objective')
-            self._checklibSBML(multi_objective.setId('rpFBA_multi_obj'), 'setting multi obj id')
-            self._checklibSBML(multi_objective.setType('maximize'), 'setting type of multi')
-            #list the flux objectives
-            source_fluxObjective = source_fbc.getObjective(sourceObjectiveID[0])
-            target_fluxObjective = target_fbc.getObjective(targetObjectiveID[0])
-            targetFluxObjectives = target_fluxObjective.getListOfFluxObjectives()
-            sourceFluxObjectives = source_fluxObjective.getListOfFluxObjectives()
-            if 1>=len(targetFluxObjectives)>0 and 1>=len(sourceFluxObjectives)>0:
-                #biomass
-                multi_fluxObjective_biomass = multi_objective.createFluxObjective()
-                self._checklibSBML(multi_fluxObjective_biomass.setName(sourceFluxObjectives[0].getName()),
-                    'setting target flux objective name')
-                self._checklibSBML(multi_fluxObjective_biomass.setCoefficient(0.5),
-                    'setting target flux objective coefficient')
-                self._checklibSBML(multi_fluxObjective_biomass.setReaction(sourceFluxObjectives[0].getReaction()),
-                    'setting target flux objective reaction')
-                #target
-                multi_fluxObjective_target = multi_objective.createFluxObjective()
-                self._checklibSBML(multi_fluxObjective_target, 'creating target flux objective')
-                self._checklibSBML(multi_fluxObjective_target.setName(targetFluxObjectives[0].getName()),
-                    'setting target flux objective name')
-                self._checklibSBML(multi_fluxObjective_target.setCoefficient(0.5),
-                    'setting target flux objective coefficient')
-                self._checklibSBML(multi_fluxObjective_target.setReaction(targetFluxObjectives[0].getReaction()),
-                    'setting target flux objective reaction')
-            else:
-                self.logger.warning('Either the target or source model has one of the objectives with multiple flux values')
-        else:
-            self.logger.warning('There are more than one, or zero objective in the target and the source')
-        """
-        #########################
         ################ SPECIES ####################
         #TODO: modify the name to add rpPathway
         sourceSpeciesID_targetSpeciesID = {}
@@ -1003,16 +962,12 @@ class rpSBML:
         #note sure why one needs to set this as False
         self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package')
         #### compare the annotations to find the co-factors
-        #first make the target model dictionnary of the reactions
+        # compile first make the target model dictionnary of the reactions
         targetModel_reactionsAnnot = {}
         for y in range(target_rpsbml.model.getNumReactions()):
-            #target_reaction = target_rpsbml.model.getReaction(y)
-            #self._checklibSBML(target_reaction, 'fetching target reaction annotation') 
-            #target_annotation = target_reaction.getAnnotation()
-            #self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
             target_annotation = target_rpsbml.model.getReaction(y).getAnnotation()
             if not target_annotation:
-                #self.logger.warning('No annotation for the target of reaction: '+str(target_rpsbml.model.getReaction(y).getId()))
+                self.logger.warning('No annotation for the target of reaction: '+str(target_rpsbml.model.getReaction(y).getId()))
                 continue
             self._checklibSBML(target_annotation, 'fetching target reaction annotation')
             targetModel_reactionsAnnot[y] = self.readMIRIAMAnnotation(target_annotation)
@@ -1034,19 +989,8 @@ class rpSBML:
             if source_reaction.getId() in model_rpPathwayIDs:
                 toAddNum.append(i)
                 continue
-            #for y in range(target_rpsbml.model.getNumReactions()):
-                #target_reaction = target_rpsbml.model.getReaction(y)
-                #self._checklibSBML(target_reaction, 'fetching target reaction annotation') 
-                #target_annotation = target_reaction.getAnnotation()
-                #self._checklibSBML(target_annotation, 'fetching target reaction annotation') 
-                #if not target_annotation:    
-                #    self.logger.warning('No annotation for the target of reaction: '+str(target_reaction.getId()))
-                #    continue
             for y in targetModel_reactionsAnnot:
-                #if self.compareMIRIAMAnnotations(source_annotation, target_annotation):
-                #if self.compareMIRIAMAnnotations(source_annotation, targetModel_reactionsAnnot[y]):
                 if self.compareAnnotations_annot_dict(source_annotation, targetModel_reactionsAnnot[y]):
-                    #sourceReactionsID_targetReactionsID[self.model.reactions[i].getId()] = target_rpsbml.model.reactions[y].getId()
                     sourceReactionsID_targetReactionsID[source_reaction.getId()] = target_rpsbml.model.getReaction(y).getId()
                     found = True
                     break
@@ -1614,7 +1558,8 @@ class rpSBML:
 
 
     ## Create libSBML flux objective 
-    #
+    # WARNING DEPRECATED -- use the createMultiFluxObj() with lists of size one to define an objective function
+    # with a single reaction
     # Using the FBC package one can add the FBA flux objective directly to the model. This function sets a particular reaction as objective with maximization or minimization objectives
     #
     # @param model libSBML model to add the unit definition
@@ -1660,6 +1605,59 @@ class rpSBML:
   </rdf:RDF>
 </annotation>'''
         target_flux_obj.setAnnotation(annotation)
+
+
+    ## Create libSBML flux objective 
+    #
+    # Using the FBC package one can add the FBA flux objective directly to the model. This function sets a particular reaction as objective with maximization or minimization objectives
+    #
+    # @param model libSBML model to add the unit definition
+    # @param fluxobj_id The id given to this particular objective
+    # @param reactionName The name or id of the reaction that we are setting a flux objective
+    # @param coefficient FBA coefficient 
+    # @param isMax Boolean to determine if we are maximizing or minimizing the objective
+    # @param meta_id Set the meta_id
+    # @return Boolean exit code
+    def createMultiFluxObj(self, fluxobj_id, reactionNames, coefficients, isMax=True, meta_id=None):
+        if not len(reactionNames)==len(coefficients):
+            self.logger.error('The size of reactionNames is not the same as coefficients')
+            return False
+        fbc_plugin = self.model.getPlugin('fbc')
+        target_obj = fbc_plugin.createObjective()
+        #TODO: need to define inpiut metaID
+        annotation = '''<annotation>
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+      </brsynth:brsynth>
+    </rdf:BRSynth>
+  </rdf:RDF>
+</annotation>'''
+        target_obj.setAnnotation(annotation)
+        target_obj.setId(fluxobj_id)
+        if isMax:
+            target_obj.setType('maximize')
+        else:
+            target_obj.setType('minimize')
+        fbc_plugin.setActiveObjectiveId(fluxobj_id) # this ensures that we are using this objective when multiple
+        for reac, coef in zip(reactionNames, coefficients):
+            target_flux_obj = target_obj.createFluxObjective()
+            target_flux_obj.setReaction(reactionName)
+            target_flux_obj.setCoefficient(coefficient)
+            if meta_id==None:
+                meta_id = self._genMetaID(str(fluxobj_id))
+            target_flux_obj.setMetaId(meta_id)
+            annotation = '''<annotation>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+        <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
+          <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+          </brsynth:brsynth>
+        </rdf:BRSynth>
+      </rdf:RDF>
+    </annotation>'''
+            target_flux_obj.setAnnotation(annotation)
 
 
     ## Generate a generic model 
