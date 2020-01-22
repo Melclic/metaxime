@@ -1632,8 +1632,8 @@ class rpSBML:
         fbc_plugin.setActiveObjectiveId(fluxobj_id) # this ensures that we are using this objective when multiple
         for reac, coef in zip(reactionNames, coefficients):
             target_flux_obj = target_obj.createFluxObjective()
-            target_flux_obj.setReaction(reactionName)
-            target_flux_obj.setCoefficient(coefficient)
+            target_flux_obj.setReaction(reac)
+            target_flux_obj.setCoefficient(coef)
             if meta_id==None:
                 meta_id = self._genMetaID(str(fluxobj_id))
             target_flux_obj.setMetaId(meta_id)
