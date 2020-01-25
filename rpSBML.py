@@ -2,6 +2,7 @@ import libsbml
 from hashlib import md5
 import os
 import logging
+import copy
 
 ## @package RetroPath SBML writer
 # Documentation for SBML representation of the different model
@@ -36,7 +37,8 @@ class rpSBML:
         else:
             self.model = self.document.getModel()
         self.path = path
-        self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc/', 'sabiork': 'seed.compound/', 'reactome': 'reactome.compound/'}}
+        self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment', 'bigg': 'bigg.compartment', 'seed': 'seed', 'name': 'name'}, 'reaction': {'mnx': 'metanetx.reaction', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg': 'bigg.reaction', 'sabiork': 'sabiork.reaction', 'ec': 'ec-code', 'biocyc': 'biocyc'}, 'species': {'mnx': 'metanetx.chemical', 'chebi': 'chebiCHEBI:', 'bigg': 'bigg.metabolite', 'hmdb': 'hmdb', 'kegg_c': 'kegg.compound', 'kegg_d': 'kegg.drug', 'biocyc': 'biocycMETA:', 'seed': 'seed.compound', 'metacyc': 'metacyc', 'sabiork': 'seed.compound', 'reactome': 'reactome.compound'}}
+        self.header_miriam = {'compartment': {'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc'}, 'species': {'metanetx.chemical': 'mnx', 'chebiCHEBI:': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocycMETA:': 'biocyc', 'seed.compound': 'sabiork', 'metacyc': 'metacyc', 'reactome.compound': 'reactome'}}
 
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
@@ -99,7 +101,23 @@ class rpSBML:
     def _genMetaID(self, name):
         return self._nameToSbmlId(md5(str(name).encode('utf-8')).hexdigest())
 
-    
+
+    ## compare two dictionarry of lists and return the 
+    #
+    def _compareXref(self, current, toadd):
+        toadd = copy.deepcopy(toadd)
+        for database_id in current:
+            try:
+                list_diff = [i for i in toadd[database_id] if i not in current[database_id]]
+                if not list_diff:
+                    toadd.pop(database_id)
+                else:
+                    toadd[database_id] = list_diff
+            except KeyError:
+                pass
+        return toadd
+
+
     ######################################################################
     ####################### Annotations ##################################
     ######################################################################
@@ -125,7 +143,7 @@ class rpSBML:
     </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
- 
+
 
     ## Returns a default annotation string
     #
@@ -141,6 +159,7 @@ class rpSBML:
     </rdf:BRSynth>
   </rdf:RDF>
 </annotation>'''
+
 
     ## Returns a default annotation string
     #
@@ -164,63 +183,57 @@ class rpSBML:
     #
     # @sbase_obj libSBML object that may be compartment, reaction or species
     #
-    def addUpdateBRSynth(self, sbase_obj, annot_header, value, isAlone=False, units=None, meta_id=None):
+    def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, meta_id=None):
         #### create the string
-        annotation = None
+        annotation = '''<annotation>
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+    <rdf:BRSynth rdf:about="#adding">
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">'''
         if isAlone:
-            annotation = '<brsynth:'+str(annot_header)+'>'+str(value)+'</brsynth:'+str(annot_header)+'>'
+            annotation += '<brsynth:'+str(annot_header)+'>'+str(value)+'</brsynth:'+str(annot_header)+'>'
         else:
             if units:
-                annotation = '''<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> 
-        <brsynth:'''+str(annot_header)+''' units="'''+str(units)+'''" value="'''+str(value)+'''" /> 
-        </brsynth:brsynth>'''
+                annotation += '<brsynth:'+str(annot_header)+' units="'+str(units)+'" value="'+str(value)+'" />'
             else:
-                annotation = '''<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> 
-        <brsynth:'''+str(annot_header)+''' value="'''+str(value)+'''" /> 
-        </brsynth:brsynth>'''
+                annotation += '<brsynth:'+str(annot_header)+' value="'+str(value)+'" />'
+        annotation += '''
+      </brsynth:brsynth>
+    </rdf:BRSynth>
+  </rdf:RDF>
+</annotation>'''
         annotation = libsbml.XMLNode.convertStringToXMLNode(annotation)
         self._checklibSBML(annotation, 'created annotation')
         #### retreive the annotation object
-        brsynth_annot = None
-        try:
-            brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        except AttributeError:
-            #Cannot find BRSynth annotation, create it
-            try:
-                miriam_annot = sbase_obj.getAnnotation().getChild('RDF')
+        brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        if brsynth_annot.toXMLString()=='':
+            miriam_annot = sbase_obj.getAnnotation()
+            if miriam_annot.toXMLString()=='':
                 if not meta_id:
                     meta_id = self._genMetaID(annot_header)
-                miriam_annot.addChild(libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id)).getChild('RDF').getChild('BRSynth')) 
+                sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
                 brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-            except AttributeError:
-                try:
-                    #Cannot find MIRIAM annotation, create it
-                    if not meta_id:
-                        meta_id = self._genMetaID(annot_header)
-                    sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
-                    brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-                except AttributeError:
-                    self.logger.error('Fatal error fetching the annotation')
+                if brsynth_annot.toXMLString()=='':
+                    self.logger.error('Cannot find the BRSynth annotation')
+                    return False
+            else:
+                if not meta_id:
+                    meta_id = self._genMetaID(annot_header)
+                new_brsynth_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id))
+                miriam_annot.getChild('RDF').addChild(new_brsynth_annot.getChild('RDF').getChild('BRSynth'))
+                brsynth_annot = miriam_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+                if brsynth_annot.toXMLString()=='':
+                    self.logger.error('Cannot find the BRSynth annotation')
                     return False
         #add the annotation and replace if it exists
         if brsynth_annot.getChild(annot_header).toXMLString()=='':
-            brsynth_annot.addChild(annotation.getChild(annot_header))
+            self._checklibSBML(brsynth_annot.addChild(annotation.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
+                'Adding annotation to the brsynth annotation')
         else:
-            if isAlone:
-                #if its on its own then you need to replace it
-                self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
-                    'Removing annotation '+str(annot_header)
-                self._checklibSBML(brsynth_annot.addChild(annotation.getChild(annot_header)), 
-                    'Adding annotation to the brsynth annotation')
-            else:
-                #if not update the value
-                result_brsynth_annot = brsynth_annot.getChild(annot_header)
-                result_brsynth_annot.removeAttr('value')
-                result_brsynth_annot.addAttr('value', str(value))
-                if units:
-                    #TODO: need some sort of check that the unit exists
-                    result_brsynth_annot.removeAttr('units')
-                    result_brsynth_annot.addAttr('units', str(units))
+            self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
+                'Removing annotation '+str(annot_header))
+            self._checklibSBML(brsynth_annot.addChild(annotation.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
+                'Adding annotation to the brsynth annotation')
+        return True
 
 
     ## Function to update or create a MIRIAM annotation for a compartment, reaction or species
@@ -230,6 +243,9 @@ class rpSBML:
     # @xref type of anno
     #
     def addUpdateMIRIAM(self, sbase_obj, type_param, xref, meta_id=None):
+        if not type_param in ['compartment', 'reaction', 'species']:
+            self.logger.error('type_param must be '+str(['compartment', 'reaction', 'species'])+' not '+str(type_param))
+            return False
         miriam_annot = None
         try:
             miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
@@ -238,6 +254,7 @@ class rpSBML:
                 #Cannot find MIRIAM annotation, create it
                 if not meta_id:
                     meta_id = self._genMetaID(annot_header)
+                #WARNING: this will overwrite if there are BRSynth annotations
                 sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
                 miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             except AttributeError:
@@ -248,268 +265,63 @@ class rpSBML:
         for i in range(miriam_annot.getNumChildren()):
             single_miriam = miriam_annot.getChild(i)
             if single_miriam.getAttributes().getLength()>1:
-                self.logger.error('MIRIAM annotations should never have more than 1: '
-                    +str(single_miriam.toXMLString()))
-                return False
+                self.logger.error('MIRIAM annotations should never have more than 1: '+str(single_miriam.toXMLString()))
+                continue
             single_miriam_attr = single_miriam.getAttributes()
-            try:
-                inside[single_miriam_attr.getValue(0).split('/')[-2]].append(
-                    single_miriam_attr.getValue(0).split('/')[-1])
-            except KeyError:
-                inside[single_miriam_attr.getValue(0).split('/')[-2]] = 
-                    [single_miriam_attr.getValue(0).split('/')[-1]]
-        #add or ignore 
-        for database_id in xref:
-            for species_id in xref[database_id]:
-                if not species_id in inside[database_id]:
-                    try:
-                        inside[database_id].append(species_id)
-                    except KeyError:
-                        inside[database_id] = [species_id] 
-        #determine if the dictionnaries 
-        annotation = '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        for database_id in inside:
-            for species_id in inside[database_id]:
+            if not single_miriam_attr.isEmpty():
                 try:
-                    if database_id=='kegg' and species_id[0]=='C':
-                        annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.xref_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
-                    elif dbId=='kegg' and species_id[0]=='D':
-                        annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.xref_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
+                    db = single_miriam_attr.getValue(0).split('/')[-2]
+                    v = single_miriam_attr.getValue(0).split('/')[-1]
+                    inside[self.header_miriam[type_param][db]].append(v)
+                except KeyError:
+                    try:
+                        db = single_miriam_attr.getValue(0).split('/')[-2]
+                        v = single_miriam_attr.getValue(0).split('/')[-1]
+                        inside[self.header_miriam[type_param][db]] = [v]
+                    except KeyError:
+                        self.logger.error('Cannot find the self.header_miriram entry '+str(db))
+                        return False
+            else:
+                self.logger.error('Cannot return MIRIAM attribute')
+        #add or ignore 
+        toadd = self._compareXref(inside, xref)
+        print(toadd)
+        for database_id in toadd:
+            for species_id in toadd[database_id]:
+                #not sure how to avoid having it that way
+                try:
+                    #determine if the dictionnaries 
+                    annotation = '''<annotation>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+<rdf:Description rdf:about="#tmp">
+  <bqbiol:is>
+    <rdf:Bag>'''
+                    if type_param=='species':
+                        if database_id=='kegg' and species_id[0]=='C':
+                            annotation += '''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+'''/'''+str(species_id)+'''"/>'''
+                        elif database_id=='kegg' and species_id[0]=='D':
+                            annotation += '''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+'''/'''+str(species_id)+'''"/>'''
+                        else:
+                            annotation += '''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+'''/'''+str(species_id)+'''"/>'''
                     else:
                         annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.xref_header[type_param][database_id]+str(species_id)+'''"/>'''
-                except KeyError:
-                    self.logger.warning('Cannot add the following species '+str(species_id)+' in '+str(database_id))
-                    continue
-                annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-  </rdf:RDF>
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+'''/'''+str(species_id)+'''"/>'''
+                    annotation += '''
+    </rdf:Bag>
+  </bqbiol:is>
+</rdf:Description>
+</rdf:RDF>
 </annotation>'''
-        miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is')
-        self._checklibSBML(miriam_annot, 'Fetching the XML Child')
-        self._checklibSBML(miriam_annot.removeChild(0), 'Removing an XML child')
-        to_add_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
-        self._checklibSBML(miriam_annot.addChild(to_add_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')), 
-                'adding XML child')
-        self._checklibSBML(sbase_obj.setAnnotation(annotation), 
-                'setting annotation of type '+str(type_param))
+                    toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
+                    miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
+                except KeyError:
+                    self.logger.error('Cannot find '+str(database_id)+' in self.miriam_header')
+                    continue
         return True
 
-
-
-
-                
-
-
-                    annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
-    <rdf:Description rdf:about="#tmp">
-      <bqbiol:is>
-        <rdf:Bag>'''
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(database_id)+'''/'''+str(species_id)+'''"/>'''
-                    annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-  </rdf:RDF>
-</annotation>'''
-                    miriam_annot
-            self.xref_header[type_param][database_id]
-
-
-
-
-        #if the annotation already exists then update it
-        try:
-            miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
-
-        except AttributeError:
-        #if it does not exist then create it.... need to find how there are
-        id_ident = self.xref_header[type_param]
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        #WARNING: compartmentNameID as of now, needs to be a MNX ID
-        for database_id in xref:
-            for species_id in xref[database_id]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(self.xref_header[type_param][database_id])+str(species_id)+'''"/>'''
-                except KeyError:
-                    continue
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(sbase_obj.setAnnotation(annotation), 
-                'setting annotation of type '+str(type_param))
-
-
-    def createBRSAnnotation():
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        ############################ MIRIAM ############################
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        id_ident = {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/'}
-        for dbId in reacXref:
-            for cid in reacXref[dbId]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
-                except KeyError:
-                    continue
-        for ec in ecs:
-            annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/ec-code/'''+str(ec)+'''"/>'''
-
-
-"""
-COMPARTMENT
-	annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        #TODO: for yout to complete
-        id_ident = {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}
-        #WARNING: compartmentNameID as of now, needs to be a MNX ID
-        for databaseId in compXref:
-            for compartment_id in compXref[databaseId]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[databaseId])+str(compartment_id)+'''"/>'''
-                except KeyError:
-                    continue
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(comp.setAnnotation(annotation), 'setting annotation for reaction '+str(compName))
-REACTION
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        ############################ MIRIAM ############################
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        id_ident = {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/'}
-        for dbId in reacXref:
-            for cid in reacXref[dbId]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
-                except KeyError:
-                    continue
-        for ec in ecs:
-            annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/ec-code/'''+str(ec)+'''"/>'''
-        ############################## BRSYNTH #########################
-        #return the EC number associated with the original reaction 
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
-      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
-        <brsynth:smiles>'''+str(reaction_smiles or '')+'''</brsynth:smiles>
-        <brsynth:rule_id>'''+str(step['rule_id'] or '')+'''</brsynth:rule_id>
-        <brsynth:rule_mnxr>'''+str(step['mnxr'] or '')+'''</brsynth:rule_mnxr>
-        <brsynth:rule_score value="'''+str(step['rule_score'] or '')+'''" />
-        <brsynth:path_id value="'''+str(step['path_id'])+'''"/>
-        <brsynth:step_id value="'''+str(step['step'])+'''"/>
-        <brsynth:sub_step_id value="'''+str(step['sub_step'])+'''"/>
-      </brsynth:brsynth>
-    </rdf:BRSynth>
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(reac.setAnnotation(annotation), 'setting annotation for reaction '+str(reac_id))
-SPECIES
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        id_ident = {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc/', 'sabiork': 'seed.compound/', 'reactome': 'reactome.compound/'}
-        for dbId in chemXref:
-            for cid in chemXref[dbId]:
-                try:
-                    if dbId=='kegg' and cid[0]=='C':
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_c']+str(cid)+'''"/>'''
-                    elif dbId=='kegg' and cid[0]=='D':
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_d']+str(cid)+'''"/>'''
-                    else:
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
-                except KeyError:
-                    continue
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>'''
-        ###### BRSYNTH additional information ########
-        annotation += '''
-    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
-      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu/qualifiers">
-        <brsynth:smiles>'''+str(smiles or '')+'''</brsynth:smiles>
-        <brsynth:inchi>'''+str(inchi or '')+'''</brsynth:inchi>
-        <brsynth:inchikey>'''+str(inchiKey or '')+'''</brsynth:inchikey>
-      </brsynth:brsynth>
-    </rdf:BRSynth>'''
-        annotation += '''
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(spe.setAnnotation(annotation), 'setting the annotation for new species')
-"""
 
     #####################################################################
     ########################## INPUT/OUTPUT #############################
