@@ -179,24 +179,40 @@ class rpSBML:
 </annotation>'''
 
 
+
     ## Either add or update the value of a BRSynth annotation
     #
     # @sbase_obj libSBML object that may be compartment, reaction or species
+    # @annot_header String Name of the entry
+    # @entries Dicionnary of strings, float or int (only single entries)
     #
-    def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, meta_id=None):
+    def addUpdateBRSynthList(self, sbase_obj, annot_header, entries, units=None, isAlone=True, isSort=True, meta_id=None):
         #### create the string
         annotation = '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
     <rdf:BRSynth rdf:about="#adding">
-      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">'''
-        if isAlone:
-            annotation += '<brsynth:'+str(annot_header)+'>'+str(value)+'</brsynth:'+str(annot_header)+'>'
+      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+        <brsynth:'''+str(annot_header)+'''>'''
+        if isSort:
+            for name in sorted(entries, key=entries.get, reverse=True):
+                if isAlone:
+                    annotation += '<brsynth:'+str(name)+'>'+str(entries[name])+'</brsynth:'+str(name)+'>'
+                else:
+                    if units:
+                        annotation += '<brsynth:'+str(name)+' units="'+str(units)+'" value="'+str(entries[name])+'" />'
+                    else:
+                        annotation += '<brsynth:'+str(name)+' value="'+str(entries[name])+'" />'
         else:
-            if units:
-                annotation += '<brsynth:'+str(annot_header)+' units="'+str(units)+'" value="'+str(value)+'" />'
-            else:
-                annotation += '<brsynth:'+str(annot_header)+' value="'+str(value)+'" />'
+            for name in entries:
+                if isAlone:
+                    annotation += '<brsynth:'+str(name)+'>'+str(entries[name])+'</brsynth:'+str(name)+'>'
+                else:
+                    if units:
+                        annotation += '<brsynth:'+str(name)+' units="'+str(units)+'" value="'+str(entries[name])+'" />'
+                    else:
+                        annotation += '<brsynth:'+str(name)+' value="'+str(entries[name])+'" />'
         annotation += '''
+        </brsynth:'''+str(annot_header)+'''
       </brsynth:brsynth>
     </rdf:BRSynth>
   </rdf:RDF>
@@ -204,26 +220,23 @@ class rpSBML:
         annotation = libsbml.XMLNode.convertStringToXMLNode(annotation)
         self._checklibSBML(annotation, 'created annotation')
         #### retreive the annotation object
-        brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        if brsynth_annot.toXMLString()=='':
-            miriam_annot = sbase_obj.getAnnotation()
-            if miriam_annot.toXMLString()=='':
-                if not meta_id:
-                    meta_id = self._genMetaID(annot_header)
-                sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
-                brsynth_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-                if brsynth_annot.toXMLString()=='':
-                    self.logger.error('Cannot find the BRSynth annotation')
-                    return False
-            else:
-                if not meta_id:
-                    meta_id = self._genMetaID(annot_header)
-                new_brsynth_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id))
-                miriam_annot.getChild('RDF').addChild(new_brsynth_annot.getChild('RDF').getChild('BRSynth'))
-                brsynth_annot = miriam_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-                if brsynth_annot.toXMLString()=='':
-                    self.logger.error('Cannot find the BRSynth annotation')
-                    return False
+        brsynth_annot = None
+        obj_annot = sbase_obj.getAnnotation()
+        if not obj_annot:
+            #sbase_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
+            sbase_obj.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id)))
+            obj_annot = sbase_obj.getAnnotation()
+            if not obj_annot:
+                self.logger.error('Cannot update BRSynth annotation')
+                return False
+            brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+            if not brsynth_annot:
+                self.logger.error('Cannot find the BRSynth annotation')
+                return False
+        brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        if not brsynth_annot:
+             self.logger.error('Cannot find the BRSynth annotation')
+             return False
         #add the annotation and replace if it exists
         if brsynth_annot.getChild(annot_header).toXMLString()=='':
             self._checklibSBML(brsynth_annot.addChild(annotation.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
@@ -232,6 +245,93 @@ class rpSBML:
             self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
                 'Removing annotation '+str(annot_header))
             self._checklibSBML(brsynth_annot.addChild(annotation.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
+                'Adding annotation to the brsynth annotation')
+        return True
+
+
+    ## Either add or update the value of a BRSynth annotation
+    #
+    # @sbase_obj libSBML object that may be compartment, reaction or species
+    #
+    def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None):
+        if isList:
+            annotation = '''<annotation>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+        <rdf:BRSynth rdf:about="#adding">
+          <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
+            <brsynth:'''+str(annot_header)+'''>'''
+            if isSort:
+                for name in sorted(value, key=value.get, reverse=True):
+                    if isAlone:
+                        annotation += '<brsynth:'+str(name)+'>'+str(value[name])+'</brsynth:'+str(name)+'>'
+                    else:
+                        if units:
+                            annotation += '<brsynth:'+str(name)+' units="'+str(units)+'" value="'+str(value[name])+'" />'
+                        else:
+                            annotation += '<brsynth:'+str(name)+' value="'+str(value[name])+'" />'
+            else:
+                for name in value:
+                    if isAlone:
+                        annotation += '<brsynth:'+str(name)+'>'+str(value[name])+'</brsynth:'+str(name)+'>'
+                    else:
+                        if units:
+                            annotation += '<brsynth:'+str(name)+' units="'+str(units)+'" value="'+str(value[name])+'" />'
+                        else:
+                            annotation += '<brsynth:'+str(name)+' value="'+str(value[name])+'" />'
+            annotation += '''
+            </brsynth:'''+str(annot_header)+'''>
+          </brsynth:brsynth>
+        </rdf:BRSynth>
+      </rdf:RDF>
+    </annotation>'''
+        else:
+            #### create the string
+            annotation = '''<annotation>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+        <rdf:BRSynth rdf:about="#adding">
+          <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">'''
+            if isAlone:
+                annotation += '<brsynth:'+str(annot_header)+'>'+str(value)+'</brsynth:'+str(annot_header)+'>'
+            else:
+                if units:
+                    annotation += '<brsynth:'+str(annot_header)+' units="'+str(units)+'" value="'+str(value)+'" />'
+                else:
+                    annotation += '<brsynth:'+str(annot_header)+' value="'+str(value)+'" />'
+            annotation += '''
+          </brsynth:brsynth>
+        </rdf:BRSynth>
+      </rdf:RDF>
+    </annotation>'''
+        annot_obj = libsbml.XMLNode.convertStringToXMLNode(annotation)
+        if annot_obj==None:
+            self.logger.error('Cannot conver this string to annotation object: '+str(annotation))
+            return False
+        #### retreive the annotation object
+        brsynth_annot = None
+        obj_annot = sbase_obj.getAnnotation()
+        if not obj_annot:
+            #sbase_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
+            sbase_obj.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id)))
+            obj_annot = sbase_obj.getAnnotation()
+            if not obj_annot:
+                self.logger.error('Cannot update BRSynth annotation')
+                return False
+            brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+            if not brsynth_annot:
+                self.logger.error('Cannot find the BRSynth annotation')
+                return False
+        brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        if not brsynth_annot:
+             self.logger.error('Cannot find the BRSynth annotation')
+             return False
+        #add the annotation and replace if it exists
+        if brsynth_annot.getChild(annot_header).toXMLString()=='':
+            self._checklibSBML(brsynth_annot.addChild(annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
+                'Adding annotation to the brsynth annotation')
+        else:
+            self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
+                'Removing annotation '+str(annot_header))
+            self._checklibSBML(brsynth_annot.addChild(annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
                 'Adding annotation to the brsynth annotation')
         return True
 
@@ -285,7 +385,6 @@ class rpSBML:
                 self.logger.error('Cannot return MIRIAM attribute')
         #add or ignore 
         toadd = self._compareXref(inside, xref)
-        print(toadd)
         for database_id in toadd:
             for species_id in toadd[database_id]:
                 #not sure how to avoid having it that way
@@ -318,7 +417,8 @@ class rpSBML:
                     toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
                     miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
                 except KeyError:
-                    self.logger.error('Cannot find '+str(database_id)+' in self.miriam_header')
+                    #WARNING need to check this
+                    #self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
                     continue
         return True
 
@@ -529,7 +629,7 @@ class rpSBML:
                  'inchikey': None,
                  'selenzyme': None,
                  'rule_id': None,
-                 'rule_mnxr': None,
+                 'rule_ori_reac': None,
                  'rule_score': None,
                  'global_score': None
                 }
@@ -539,7 +639,6 @@ class rpSBML:
             if ann=='':
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
-            #if not ann.getName() in toRet:
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_':
                 toRet[ann.getName()] = {
                         'units': ann.getAttrValue('units'),
@@ -556,14 +655,15 @@ class rpSBML:
                     toRet[ann.getName()] = None
             elif ann.getName()=='smiles':
                 toRet[ann.getName()] = ann.getChild(0).toXMLString().replace('&gt;', '>')
-            elif ann.getName()=='selenzyme':
-                toRet['selenzyme'] = {}
+            #lists in the annotation
+            elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
+                toRet[ann.getName()] = {}
                 for y in range(ann.getNumChildren()):
                     selAnn = ann.getChild(y)
                     try:
-                        toRet['selenzyme'][selAnn.getName()] = float(selAnn.getAttrValue('value'))
+                        toRet[ann.getName()][selAnn.getName()] = float(selAnn.getAttrValue('value'))
                     except ValueError:
-                        toRet['selenzyme'][selAnn.getName()] = None
+                        toRet[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
             else:
                 toRet[ann.getName()] = ann.getChild(0).toXMLString()
         return toRet
@@ -686,7 +786,7 @@ class rpSBML:
                     'reaction_rule': brsynthAnnot['smiles'],
                     'rule_score': brsynthAnnot['rule_score'],
                     'rule_id': brsynthAnnot['rule_id'],
-                    'rule_mnxr': brsynthAnnot['rule_mnxr'],
+                    'rule_ori_reac': brsynthAnnot['rule_ori_reac'],
                     'right': speciesReac['right'],
                     'left': speciesReac['left'],
                     'path_id': brsynthAnnot['path_id'],
@@ -859,11 +959,11 @@ class rpSBML:
     # Sets the upper and lower bounds of a reaction. Note that if the numerical values passed
     # are not recognised, new parameters are created for each of them
     #
-    def setReactionConstraints(self, 
-                               reaction_id, 
-                               upper_bound, 
-                               lower_bound, 
-                               units='mmol_per_gDW_per_hr', 
+    def setReactionConstraints(self,
+                               reaction_id,
+                               upper_bound,
+                               lower_bound,
+                               units='mmol_per_gDW_per_hr',
                                isConstant=True):
         reaction = self.model.getReaction(reaction_id)
         if not reaction:
@@ -873,13 +973,14 @@ class rpSBML:
         self._checklibSBML(reac_fbc, 'extending reaction for FBC')
         ########## upper bound #############
         upper_param = None
-        old_upper_param = self.rpsbml.model.getParameter(reac_fbc.getUpperFluxBound()).value
-        for parameter in self.rpsbml.model.getListOfParameters():
+        f_b = reac_fbc.getUpperFluxBound()
+        old_upper_param = self.model.getParameter(reac_fbc.getUpperFluxBound()).value
+        for parameter in self.model.getListOfParameters():
             if parameter.getValue()==upper_bound:
                 upper_param = parameter
                 break
         if not upper_param:
-            upper_param = self.rpsbml.model.createParameter()
+            upper_param = self.model.createParameter()
             self._checklibSBML(upper_param, 'creating target parameter')
             if upper_bound.is_integer():
                 self._checklibSBML(upper_param.setId('B_'+str(upper_bound)),
@@ -899,8 +1000,8 @@ class rpSBML:
             'setting '+str(reaction_id)+' upper flux bound')
         ######### lower bound #############
         lower_param = None
-        old_lower_param = self.rpsbml.model.getParameter(reac_fbc.getLowerFluxBound()).value
-        for parameter in self.rpsbml.model.getListOfParameters():
+        old_lower_param = self.model.getParameter(reac_fbc.getLowerFluxBound()).value
+        for parameter in self.model.getListOfParameters():
             if parameter.getValue()==upper_bound:
                 lower_param = parameter
                 break
@@ -1130,9 +1231,9 @@ class rpSBML:
                         'setting target flux objective coefficient')
                     self._checklibSBML(target_fluxObjective.setReaction(source_fluxObjective.getReaction()),
                         'setting target flux objective reaction')
-                    self._checklibSBML(target_fluxObjective.setAnnotation(source_fluxObjective.getAnnotation()), 
+                    self._checklibSBML(target_fluxObjective.setAnnotation(source_fluxObjective.getAnnotation()),
                         'setting target flux obj annotation from source flux obj')
-                self._checklibSBML(target_objective.setAnnotation(source_objective.getAnnotation()), 
+                self._checklibSBML(target_objective.setAnnotation(source_objective.getAnnotation()),
                         'setting target obj annotation from source obj')
         ################ SPECIES ####################
         #Try to detect the current model species
@@ -1276,7 +1377,7 @@ class rpSBML:
             self._checklibSBML(target_fbc.setLowerFluxBound(source_lowerFluxBound),
                     'setting lower flux bound')
             try:
-                self._checklibSBML(target_reaction.setId(model_reaction_convert[model_reaction.getId()]), 
+                self._checklibSBML(target_reaction.setId(model_reaction_convert[model_reaction.getId()]),
                     'set reaction id')
             except KeyError:
                 self._checklibSBML(target_reaction.setId(model_reaction.getId()), 'set reaction id')
@@ -1302,7 +1403,7 @@ class rpSBML:
                         model_species_convert[model_reaction_speciesID])
                     self._checklibSBML(source_reactant, 'fetch source reactant')
                 except KeyError:
-                    self._checklibSBML(target_reactant.setSpecies(model_reaction_speciesID), 
+                    self._checklibSBML(target_reactant.setSpecies(model_reaction_speciesID),
                         'assign reactant species')
                     source_reactant = model_reaction.getReactant(model_reaction_speciesID)
                     self._checklibSBML(source_reactant, 'fetch source reactant')
@@ -1321,7 +1422,7 @@ class rpSBML:
                         model_reaction_convert[model_reaction_productID])
                     self._checklibSBML(source_reactant, 'fetch source reactant')
                 except KeyError:
-                    self._checklibSBML(target_reactant.setSpecies(model_reaction_productID), 
+                    self._checklibSBML(target_reactant.setSpecies(model_reaction_productID),
                         'assign reactant product')
                     source_reactant = model_reaction.getProduct(model_reaction_productID)
                     self._checklibSBML(source_reactant, 'fetch source reactant')
@@ -1413,34 +1514,8 @@ class rpSBML:
         if meta_id==None:
             meta_id = self._genMetaID(compId)
         self._checklibSBML(comp.setMetaId(meta_id), 'set the meta_id for the compartment')
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        #TODO: for yout to complete
-        id_ident = {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}
-        #WARNING: compartmentNameID as of now, needs to be a MNX ID
-        for databaseId in compXref:
-            for compartment_id in compXref[databaseId]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[databaseId])+str(compartment_id)+'''"/>'''
-                except KeyError:
-                    continue
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(comp.setAnnotation(annotation), 'setting annotation for reaction '+str(compName))
+        ############################ MIRIAM ############################
+        self.addUpdateMIRIAM(comp, 'compartment', compXref, meta_id)
 
 
     ## Create libSBML unit definition
@@ -1513,7 +1588,6 @@ class rpSBML:
     # @param reaction_id Reaction ID
     # @param fluxUpperBounds FBC id for the upper flux bound for this reaction
     # @param fluxLowerBounds FBC id for the lower flux bound for this reaction
-    # BILAL check the lower
     # @param step 2D dictionnary with the following structure {'left': {'name': stoichiometry, ...}, 'right': {}}
     # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
     # @param compartment_id String Optinal parameter compartment ID
@@ -1521,6 +1595,7 @@ class rpSBML:
     # @param hetero_group Groups Optional parameter object that holds all the heterologous pathways
     # @param meta_id String Optional parameter reaction meta_id
     # @return meta_id meta ID for this reaction
+    #TODO as of now not generic, works when creating a new SBML file, but no checks if modifying existing SBML file
     def createReaction(self,
             reac_id,
             fluxUpperBound,
@@ -1572,58 +1647,32 @@ class rpSBML:
             self._checklibSBML(pro.setConstant(True), 'set "constant" on species '+str(product))
             self._checklibSBML(pro.setStoichiometry(float(step['right'][product])),
                 'set the stoichiometry ('+str(float(step['right'][product]))+')')
-        #annotation
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
         ############################ MIRIAM ############################
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        id_ident = {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/'}
-        for dbId in reacXref:
-            for cid in reacXref[dbId]:
-                try:
-                    annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
-                except KeyError:
-                    continue
-        for ec in ecs:
-            annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/ec-code/'''+str(ec)+'''"/>'''
-        ############################## BRSYNTH #########################
-        #return the EC number associated with the original reaction 
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>
-    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
-      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
-        <brsynth:smiles>'''+str(reaction_smiles or '')+'''</brsynth:smiles>
-        <brsynth:rule_id>'''+str(step['rule_id'] or '')+'''</brsynth:rule_id>
-        <brsynth:rule_mnxr>'''+str(step['mnxr'] or '')+'''</brsynth:rule_mnxr>
-        <brsynth:rule_score value="'''+str(step['rule_score'] or '')+'''" />
-        <brsynth:path_id value="'''+str(step['path_id'])+'''"/>
-        <brsynth:step_id value="'''+str(step['step'])+'''"/>
-        <brsynth:sub_step_id value="'''+str(step['sub_step'])+'''"/>
-      </brsynth:brsynth>
-    </rdf:BRSynth>
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(reac.setAnnotation(annotation), 'setting annotation for reaction '+str(reac_id))
+        self.addUpdateMIRIAM(reac, 'reaction', reacXref, meta_id)
+        ###### BRSYNTH additional information ########
+        if reaction_smiles:
+            self.addUpdateBRSynth(reac, 'smiles', reaction_smiles, None, True, False, False, meta_id)
+        if step['rule_id']:
+            self.addUpdateBRSynth(reac, 'rule_id', step['rule_id'], None, True, False, False, meta_id)
+        #TODO: need to change the name and content (to dict) upstream
+        if step['rule_ori_reac']:
+            #self.addUpdateBRSynthList(reac, 'rule_ori_reac', step['rule_ori_reac'], True, False, meta_id)
+            self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
+            #sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None)
+        if step['rule_score']:
+            self.addUpdateBRSynth(reac, 'rule_score', step['rule_score'], None, False, False, False, meta_id)
+        if step['path_id']:
+            self.addUpdateBRSynth(reac, 'path_id', step['path_id'], None, False, False, False, meta_id)
+        if step['step']:
+            self.addUpdateBRSynth(reac, 'step_id', step['step'], None, False, False, False, meta_id)
+        if step['sub_step']:
+            self.addUpdateBRSynth(reac, 'sub_step_id', step['sub_step'], None, False, False, False, meta_id)
         #### GROUPS #####
-        #TODO: check that it actually exists
         if not pathway_id==None:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(pathway_id)
             if not hetero_group:
                 self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model')
-                #TODO: consider creating it if
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
@@ -1650,7 +1699,7 @@ class rpSBML:
             species_name=None,
             chemXref={},
             inchi=None,
-            inchiKey=None,
+            inchikey=None,
             smiles=None,
             species_group_id=None,
             meta_id=None):
@@ -1688,49 +1737,15 @@ class rpSBML:
         #this is setting MNX id as the name
         #this is setting the name as the input name
         ###### annotation ###
-        annotation = '''<annotation>
-  <rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:bqbiol="http://biomodels.net/biology-qualifiers/"
-  xmlns:bqmodel="http://biomodels.net/model-qualifiers/">'''
-        # if the name of the species is MNX then we annotate it using MIRIAM compliance
-        #TODO: need to add all known xref from different databases (not just MetaNetX)
-        annotation += '''
-    <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
-      <bqbiol:is>
-        <rdf:Bag>'''
-        id_ident = {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc/', 'sabiork': 'seed.compound/', 'reactome': 'reactome.compound/'}
-        for dbId in chemXref:
-            for cid in chemXref[dbId]:
-                try:
-                    if dbId=='kegg' and cid[0]=='C':
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_c']+str(cid)+'''"/>'''
-                    elif dbId=='kegg' and cid[0]=='D':
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+id_ident['kegg_d']+str(cid)+'''"/>'''
-                    else:
-                        annotation += '''
-      <rdf:li rdf:resource="http://identifiers.org/'''+str(id_ident[dbId])+str(cid)+'''"/>'''
-                except KeyError:
-                    continue
-        annotation += '''
-        </rdf:Bag>
-      </bqbiol:is>
-    </rdf:Description>'''
+        self.addUpdateMIRIAM(spe, 'species', chemXref, meta_id)
         ###### BRSYNTH additional information ########
-        annotation += '''
-    <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
-      <brsynth:brsynth xmlns:brsynth="http://brsynth.eu/qualifiers">
-        <brsynth:smiles>'''+str(smiles or '')+'''</brsynth:smiles>
-        <brsynth:inchi>'''+str(inchi or '')+'''</brsynth:inchi>
-        <brsynth:inchikey>'''+str(inchiKey or '')+'''</brsynth:inchikey>
-      </brsynth:brsynth>
-    </rdf:BRSynth>'''
-        annotation += '''
-  </rdf:RDF>
-</annotation>'''
-        self._checklibSBML(spe.setAnnotation(annotation), 'setting the annotation for new species')
+        if smiles:
+            self.addUpdateBRSynth(spe, 'smiles', smiles, None, True, False, False, meta_id)
+            #                   sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None)
+        if inchi:
+            self.addUpdateBRSynth(spe, 'inchi', inchi, None, True, False, False, meta_id)
+        if inchikey:
+            self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
         #### GROUPS #####
         #TODO: check that it actually exists
         if not species_group_id==None:
@@ -1743,8 +1758,6 @@ class rpSBML:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
-        #else:
-        #    self.logger.warning('This pathway is not added to a particular group')
 
 
     ## Create libSBML pathway
@@ -1767,7 +1780,7 @@ class rpSBML:
             meta_id = self._genMetaID(pathway_id)
         new_group.setMetaId(meta_id)
         new_group.setKind(libsbml.GROUP_KIND_COLLECTION)
-        new_group.setAnnotation(self._defaultBothAnnot(meta_id))
+        new_group.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
     ## Create libSBML gene
@@ -1791,7 +1804,7 @@ class rpSBML:
         gp.setLabel('gene_'+str(step_id))
         gp.setAssociatedSpecies('RP'+str(step_id))
         ##### NOTE: The parameters here require the input from Pablo to determine what he needs
-        gp.setAnnotation(self._defaultBothAnnot(meta_id))
+        #gp.setAnnotation(self._defaultBothAnnot(meta_id))
 
 
     ## Create libSBML flux objective 
@@ -1810,7 +1823,7 @@ class rpSBML:
         fbc_plugin = self.model.getPlugin('fbc')
         target_obj = fbc_plugin.createObjective()
         #TODO: need to define inpiut metaID
-        target_obj.setAnnotation(self._defaultBothAnnot(meta_id))
+        target_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
         target_obj.setId(fluxobj_id)
         if isMax:
             target_obj.setType('maximize')
@@ -1823,7 +1836,7 @@ class rpSBML:
         if meta_id==None:
             meta_id = self._genMetaID(str(fluxobj_id))
         target_flux_obj.setMetaId(meta_id)
-        target_flux_obj.setAnnotation(self._defaultBothAnnot(meta_id))
+        target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
     ## Create libSBML flux objective 
@@ -1843,7 +1856,7 @@ class rpSBML:
             return False
         fbc_plugin = self.model.getPlugin('fbc')
         target_obj = fbc_plugin.createObjective()
-        target_obj.setAnnotation(self._defaultBothAnnot(meta_id))
+        target_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
         target_obj.setId(fluxobj_id)
         if isMax:
             target_obj.setType('maximize')
@@ -1857,7 +1870,7 @@ class rpSBML:
             if meta_id==None:
                 meta_id = self._genMetaID(str(fluxobj_id))
             target_flux_obj.setMetaId(meta_id)
-            target_flux_obj.setAnnotation(self._defaultBothAnnot(meta_id))
+            target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
     ##############################################################################################
