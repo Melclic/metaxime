@@ -349,7 +349,6 @@ class rpSBML:
 </rdf:Description>
 </rdf:RDF>
 </annotation>'''
-'''https://identifiers.org/go/GO:0009513'''
                     toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
                     miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
                 except KeyError:
