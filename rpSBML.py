@@ -37,8 +37,8 @@ class rpSBML:
         else:
             self.model = self.document.getModel()
         self.path = path
-        self.miriam_header = {'compartment': {'go': 'go', 'mnx': 'metanetx.compartment', 'bigg': 'bigg.compartment', 'seed': 'seed', 'name': 'name'}, 'reaction': {'mnx': 'metanetx.reaction', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg': 'bigg.reaction', 'sabiork': 'sabiork.reaction', 'ec': 'ec-code', 'biocyc': 'biocyc'}, 'species': {'mnx': 'metanetx.chemical', 'chebi': 'chebiCHEBI:', 'bigg': 'bigg.metabolite', 'hmdb': 'hmdb', 'kegg_c': 'kegg.compound', 'kegg_d': 'kegg.drug', 'biocyc': 'biocycMETA:', 'seed': 'seed.compound', 'metacyc': 'metacyc', 'sabiork': 'seed.compound', 'reactome': 'reactome.compound'}}
-        self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc'}, 'species': {'metanetx.chemical': 'mnx', 'chebiCHEBI:': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocycMETA:': 'biocyc', 'seed.compound': 'sabiork', 'metacyc': 'metacyc', 'reactome.compound': 'reactome'}}
+        self.miriam_header = {'compartment': {'go': 'go/GO:', 'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
+        self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps'}, 'species': {'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
 
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
@@ -329,27 +329,22 @@ class rpSBML:
                     if type_param=='species':
                         if database_id=='kegg' and species_id[0]=='C':
                             annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+'''/'''+str(species_id)+'''"/>'''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
                         elif database_id=='kegg' and species_id[0]=='D':
                             annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+'''/'''+str(species_id)+'''"/>'''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
                         else:
                             annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+'''/'''+str(species_id)+'''"/>'''
-                    elif type_param=='compartment':
-                        if database_id=='go':
-                            annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+'''/GO:'''+str(species_id)+'''"/>'''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                     else:
                         annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+'''/'''+str(species_id)+'''"/>'''
+          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                     annotation += '''
     </rdf:Bag>
   </bqbiol:is>
 </rdf:Description>
 </rdf:RDF>
 </annotation>'''
-'''https://identifiers.org/go/GO:0009513'''
                     toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
                     miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
                 except KeyError:
@@ -555,7 +550,6 @@ class rpSBML:
         toRet = {'dfG_prime_m': {},
                  'dfG_uncert': {},
                  'dfG_prime_o': {},
-                 'fba_rpFBA_obj': {},
                  'path_id': None,
                  'step_id': None,
                  'sub_step_id': None,
