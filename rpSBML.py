@@ -373,6 +373,7 @@ class rpSBML:
         errors = document.getNumErrors()
         #display the errors in the log accordning to the severity
         for err in [document.getError(i) for i in range(document.getNumErrors())]:
+            #TODO if the error is related to packages not enabled (like groups or fbc) activate them
             if err.isFatal:
                 self.logger.error('libSBML reading error: '+str(err.getShortMessage()))
                 raise FileNotFoundError
@@ -577,7 +578,7 @@ class rpSBML:
                     toRet[ann.getName()] = int(ann.getAttrValue('value'))
                 except ValueError:
                     toRet[ann.getName()] = None
-            elif ann.getName()=='rule_score' or ann.getName()=='global_score':
+            elif ann.getName()=='rule_score' or ann.getName()=='global_score' or ann.getName()[:5]=='norm_':
                 try:
                     toRet[ann.getName()] = float(ann.getAttrValue('value'))
                 except ValueError:
