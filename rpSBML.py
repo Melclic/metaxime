@@ -446,7 +446,7 @@ class rpSBML:
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
         for objective in fbc_plugin.getListOfObjectives():
-            if set([i.getRefId() for i in objective.getListOfAllElements()])-set(reactions):
+            if not set([i.getReaction() for i in objective.getListOfFluxObjectives()])-set(reactions):
                 return objective.getId()
         #Cannot find a valid objective create it
         if not objective_id:
@@ -455,7 +455,7 @@ class rpSBML:
                                 reactions,
                                 coefficients,
                                 isMax)
-        return obj_id
+        return objective_id
 
 
     #####################################################################
