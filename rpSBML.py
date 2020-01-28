@@ -442,17 +442,20 @@ class rpSBML:
     #
     #
     #
-    def findCreateObjective(self, reaction_id, pathway_id='rp_pathway'):
+    def findCreateObjective(self, reactions, coefficients, isMax=True, objective_id=None):
         fbc_plugin = self.model.getPlugin('fbc')
+        self._checklibSBML(fbc_plugin, 'Getting FBC package')
         for objective in fbc_plugin.getListOfObjectives():
-            if len(objective.getListOfFluxObjectives())==1:
-                #try to retreive the results from the annotation
-                flux_objective = objective.getListOfFluxObjectives()[0]
-                if flux_objective.getReaction()==reaction_id:
-                    return objective.getId()
-        #if here means that was not found -- create and run it
-        self.createMultiFluxObj(str(reaction_id)+'_obj', [reaction_id], [1], True)
-        return str(reaction_id)+'_obj'
+            if set([i.getRefId() for i in objective.getListOfAllElements()])-set(reactions):
+                return objective.getId()
+        #Cannot find a valid objective create it
+        if not objective_id:
+            objective_id = 'obj_'+'_'.join(reactions)
+        self.createMultiFluxObj(objective_id,
+                                reactions,
+                                coefficients,
+                                isMax)
+        return obj_id
 
 
     #####################################################################
@@ -569,7 +572,7 @@ class rpSBML:
             if ann=='':
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
-            if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_':
+            if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
                 toRet[ann.getName()] = {
                         'units': ann.getAttrValue('units'),
                         'value': float(ann.getAttrValue('value'))}
