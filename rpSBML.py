@@ -1085,13 +1085,17 @@ class rpSBML:
             if not source_annotation:
                 self.logger.warning('No annotation for the source of compartment '+str(source_compartment.getId()))
                 continue
-            for target_compartment in target_rpsbml.model.getListOfCompartments():
-                target_annotation = target_compartment.getAnnotation()
-                if not target_annotation:
-                    self.logger.warning('No annotation for the target of compartment: '+str(target_compartment.getId()))
-                    continue
-                if self.compareMIRIAMAnnotations(source_annotation, target_annotation):
-                    found = True
+            if source_compartment.getId() in [i.getId() for i in target_rpsbml.model.getListOfCompartments()]:
+                found = True
+            else:
+                for target_compartment in target_rpsbml.model.getListOfCompartments():
+                    target_annotation = target_compartment.getAnnotation()
+                    if not target_annotation:
+                        self.logger.warning('No annotation for the target of compartment: '+str(target_compartment.getId()))
+                        continue
+                    if self.compareMIRIAMAnnotations(source_annotation, target_annotation):
+                        found = True
+                        break
             if not found:
                 target_compartment = target_rpsbml.model.createCompartment()
                 self._checklibSBML(target_compartment, 'Creating target compartment')
@@ -1174,33 +1178,24 @@ class rpSBML:
         toAdd_model_species_ids = [i.getId() for i in self.model.getListOfSpecies()]
         model_species_ids = [i.getId() for i in self.model.getListOfSpecies()]
         targetModel_species_ids = [i.getId() for i in target_rpsbml.model.getListOfSpecies()]
-        for targetModel_species in target_rpsbml.model.getListOfSpecies():
-            targetModel_species_annotation = targetModel_species.getAnnotation()
-            if not targetModel_species_annotation:
-                self.logger.warning('Cannot find annotations for species: '+str(targetModel_species.getId()))
-                if not targetModel_species.getId() in model_species_ids:
-                    self.logger.warning('This species target model species cannot be detected in model: '+str(targetModel_species.getId()))
-                    continue
+        for model_species in self.model.getListOfSpecies():
+            if model_species.getId() in targetModel_species_ids:
+                toAdd_model_species_ids.remove(model_species.getId())
                 continue
-            else:
-                for model_species in self.model.getListOfSpecies():
-                    if not model_species.getId() in toAdd_model_species_ids:
-                        continue
-                    model_species_annotation = model_species.getAnnotation()
-                    if not model_species_annotation:
-                        self.logger.warning('Cannot find annotations for species: '+str(model_species.getId()))
-                        if model_species.getId() in targetModel_species_ids:
-                            self.logger.warning(str(model_species.getId())+' exists in target model.... Skipping')
-                            toAdd_model_species_ids.remove(model_species.getId())
-                            continue
-                    else:
-                        if self.compareMIRIAMAnnotations(model_species_annotation, targetModel_species_annotation):
-                            #if we find a match from MIRIAM and not from ID we assume that it supersedes the ID and need to replace it in reactions
-                            if not model_species.getId() in targetModel_species_ids:
-                                model_species_convert[model_species.getId()] = targetModel_species.getId()
-                            toAdd_model_species_ids.remove(model_species.getId())
-                        elif model_species.getId() in targetModel_species_ids:
-                            toAdd_model_species_ids.remove(model_species.getId())
+            model_species_annotation = model_species.getAnnotation()
+            if not model_species_annotation:
+                self.logger.error('Cannot find annotations for species: '+str(model_species.getId()))
+                continue
+            for targetModel_species in target_rpsbml.model.getListOfSpecies():
+                targetModel_species_annotation = targetModel_species.getAnnotation()
+                if not targetModel_species_annotation:
+                    self.logger.warning('Cannot find annotations for species: '+str(targetModel_species.getId()))
+                    continue
+                if self.compareMIRIAMAnnotations(model_species_annotation, targetModel_species_annotation):
+                    #if we find a match from MIRIAM and not from ID we assume that it supersedes the ID and need to replace it in reactions
+                    model_species_convert[model_species.getId()] = targetModel_species.getId()
+                    toAdd_model_species_ids.remove(model_species.getId())
+                    break
         #add the new species
         for model_species_id in toAdd_model_species_ids:
             model_species = self.model.getSpecies(model_species_id)
@@ -1234,61 +1229,33 @@ class rpSBML:
         ################ REACTIONS ###################
         # Here we go by ID and check if it exists. If it does we need to check the species are the same
         # and if not, add it changing the ID #model_species_convert
-        model_reaction_convert = {}
         toAdd_model_reaction_ids = [i.getId() for i in self.model.getListOfReactions()]
         model_reaction_ids = [i.getId() for i in self.model.getListOfReactions()]
         targetModel_reaction_ids = [i.getId() for i in target_rpsbml.model.getListOfReactions()]
-        for targetModel_reaction in target_rpsbml.model.getListOfReactions():
-            targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
-            targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
-            targetModel_reaction_annotation = targetModel_reaction.getAnnotation()
-            for model_reaction in self.model.getListOfReactions():
-                model_reaction_annotation = model_reaction.getAnnotation()
-                #skip if the model reaction is not in the list (i.e. it has been found)
-                if not model_reaction.getId() in toAdd_model_reaction_ids:
+        for model_reaction in self.model.getListOfReactions():
+            if model_reaction.getId() in targetModel_reaction_ids:
+                toAdd_model_reaction_ids.remove(model_reaction.getId())
+                continue
+            model_reaction_speciesID = []
+            for reactant in model_reaction.getListOfReactants():
+                try:
+                    model_reaction_speciesID.append(model_species_convert[reactant.species])
+                except KeyError:
+                    model_reaction_speciesID.append(reactant.species)
+            model_reaction_productsID = []
+            for product in model_reaction.getListOfProducts():
+                try:
+                    model_reaction_productsID.append(model_species_convert[product.species])
+                except KeyError:
+                    model_reaction_productsID.append(product.species)
+            for targetModel_reaction in target_rpsbml.model.getListOfReactions():
+                #loop through target model reactions
+                targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
+                targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
+                if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
+                    self.logging.info('The reactions species and products are the same')
+                    toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
-                #extract the model species for this reaction and convert the model species if need be
-                model_reaction_speciesID = []
-                for speID in [i.species for i in model_reaction.getListOfReactants()]:
-                    try:
-                        model_reaction_speciesID.append(model_species_convert[speID])
-                    except KeyError:
-                        model_reaction_speciesID.append(speID)
-                model_reaction_productsID = []
-                for proID in [i.species for i in model_reaction.getListOfProducts()]:
-                    try:
-                        model_reaction_productsID.append(model_species_convert[proID])
-                    except KeyError:
-                        model_reaction_productsID.append(proID)
-                #calculate the species ID difference between the current model and target model
-                speciesID_diff = list(set(targetModel_reaction_speciesID)-set(model_reaction_speciesID))
-                productsID_diff = list(set(targetModel_reaction_productsID)-set(model_reaction_productsID))
-                if model_reaction.getId() in targetModel_reaction_ids:
-                    if self.compareMIRIAMAnnotations(model_reaction_annotation, targetModel_reaction_annotation):
-                        if not speciesID_diff and not productsID_diff:
-                            #ID, MIRIRAM and species are the same
-                            toAdd_model_reaction_ids.remove(model_reaction.getId())
-                        else:
-                            #ID, MIRIRAM are the same, but not species
-                            model_reaction_convert[model_reaction.getId()] = model_reaction.getId()+'_dupli'
-                    else:
-                        if not speciesID_diff and not productsID_diff:
-                            #ID, species are the same, but not MIRIAM
-                            toAdd_model_reaction_ids.remove(model_reaction.getId())
-                        else:
-                            #ID is the same, but not MIRIAM and species
-                            model_reaction_convert[model_reaction.getId()] = model_reaction.getId()+'_dupli'
-                else:
-                    if self.compareMIRIAMAnnotations(model_reaction_annotation, targetModel_reaction_annotation):
-                        if not speciesID_diff and not productsID_diff:
-                            #MIRIRAM and species are the same, but not ID
-                            toAdd_model_reaction_ids.remove(model_reaction.getId())
-                        else:
-                            #MIRIAM only are the same, not ID and species
-                            pass
-                    else:
-                        #None are the same
-                        pass
         #add the new reactions
         for model_reaction_id in toAdd_model_reaction_ids:
             model_reaction = self.model.getReaction(model_reaction_id)
@@ -1309,11 +1276,7 @@ class rpSBML:
             self._checklibSBML(source_lowerFluxBound, 'fetching lower flux bound')
             self._checklibSBML(target_fbc.setLowerFluxBound(source_lowerFluxBound),
                     'setting lower flux bound')
-            try:
-                self._checklibSBML(target_reaction.setId(model_reaction_convert[model_reaction.getId()]),
-                    'set reaction id')
-            except KeyError:
-                self._checklibSBML(target_reaction.setId(model_reaction.getId()), 'set reaction id')
+            self._checklibSBML(target_reaction.setId(model_reaction.getId()), 'set reaction id')
             self._checklibSBML(target_reaction.setName(model_reaction.getName()), 'set name')
             self._checklibSBML(target_reaction.setSBOTerm(model_reaction.getSBOTerm()),
                     'setting the reaction system biology ontology (SBO)') #set as process
@@ -1329,13 +1292,12 @@ class rpSBML:
             for model_reaction_speciesID in [i.species for i in model_reaction.getListOfReactants()]:
                 target_reactant = target_reaction.createReactant()
                 self._checklibSBML(target_reactant, 'create target reactant')
-                try:
+                if model_reaction_speciesID in model_species_convert:
                     self._checklibSBML(target_reactant.setSpecies(
                         model_species_convert[model_reaction_speciesID]), 'assign reactant species')
-                    source_reactant = model_reaction.getReactant(
-                        model_species_convert[model_reaction_speciesID])
+                    source_reactant = model_reaction.getReactant(model_reaction_speciesID)
                     self._checklibSBML(source_reactant, 'fetch source reactant')
-                except KeyError:
+                else:
                     self._checklibSBML(target_reactant.setSpecies(model_reaction_speciesID),
                         'assign reactant species')
                     source_reactant = model_reaction.getReactant(model_reaction_speciesID)
@@ -1348,13 +1310,12 @@ class rpSBML:
             for model_reaction_productID in [i.species for i in model_reaction.getListOfProducts()]:
                 target_reactant = target_reaction.createProduct()
                 self._checklibSBML(target_reactant, 'create target reactant')
-                try:
+                if model_reaction_productID in model_species_convert:
                     self._checklibSBML(target_reactant.setSpecies(
-                        model_reaction_convert[model_reaction_productID]), 'assign reactant product')
-                    source_reactant = model_reaction.getProduct(
-                        model_reaction_convert[model_reaction_productID])
-                    self._checklibSBML(source_reactant, 'fetch source reactant')
-                except KeyError:
+                        model_species_convert[model_reaction_productID]), 'assign reactant product')
+                    source_reactant = model_reaction.getProduct(model_reaction_productID)
+                    self._checklibSBML(source_reactant, 'fetch product reactant')
+                else:
                     self._checklibSBML(target_reactant.setSpecies(model_reaction_productID),
                         'assign reactant product')
                     source_reactant = model_reaction.getProduct(model_reaction_productID)
