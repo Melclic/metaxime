@@ -247,10 +247,6 @@ class rpSBML:
             if not obj_annot:
                 self.logger.error('Cannot update BRSynth annotation')
                 return False
-            brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-            if not brsynth_annot:
-                self.logger.error('Cannot find the BRSynth annotation')
-                return False
         brsynth_annot = obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
         if not brsynth_annot:
              self.logger.error('Cannot find the BRSynth annotation')
