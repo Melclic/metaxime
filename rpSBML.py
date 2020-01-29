@@ -1238,15 +1238,15 @@ class rpSBML:
                 continue
             model_reaction_speciesID = []
             for reactant in model_reaction.getListOfReactants():
-                try:
+                if reactant.species in model_species_convert:
                     model_reaction_speciesID.append(model_species_convert[reactant.species])
-                except KeyError:
+                else:
                     model_reaction_speciesID.append(reactant.species)
             model_reaction_productsID = []
             for product in model_reaction.getListOfProducts():
-                try:
+                if product.species in model_species_convert:
                     model_reaction_productsID.append(model_species_convert[product.species])
-                except KeyError:
+                else:
                     model_reaction_productsID.append(product.species)
             for targetModel_reaction in target_rpsbml.model.getListOfReactions():
                 #loop through target model reactions
@@ -1295,13 +1295,11 @@ class rpSBML:
                 if model_reaction_speciesID in model_species_convert:
                     self._checklibSBML(target_reactant.setSpecies(
                         model_species_convert[model_reaction_speciesID]), 'assign reactant species')
-                    source_reactant = model_reaction.getReactant(model_reaction_speciesID)
-                    self._checklibSBML(source_reactant, 'fetch source reactant')
                 else:
                     self._checklibSBML(target_reactant.setSpecies(model_reaction_speciesID),
                         'assign reactant species')
-                    source_reactant = model_reaction.getReactant(model_reaction_speciesID)
-                    self._checklibSBML(source_reactant, 'fetch source reactant')
+                source_reactant = model_reaction.getReactant(model_reaction_speciesID)
+                self._checklibSBML(source_reactant, 'fetch source reactant')
                 self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()),
                         'set "constant" on species '+str(source_reactant.getConstant()))
                 self._checklibSBML(target_reactant.setStoichiometry(source_reactant.getStoichiometry()),
@@ -1313,13 +1311,11 @@ class rpSBML:
                 if model_reaction_productID in model_species_convert:
                     self._checklibSBML(target_reactant.setSpecies(
                         model_species_convert[model_reaction_productID]), 'assign reactant product')
-                    source_reactant = model_reaction.getProduct(model_reaction_productID)
-                    self._checklibSBML(source_reactant, 'fetch product reactant')
                 else:
                     self._checklibSBML(target_reactant.setSpecies(model_reaction_productID),
                         'assign reactant product')
-                    source_reactant = model_reaction.getProduct(model_reaction_productID)
-                    self._checklibSBML(source_reactant, 'fetch source reactant')
+                source_reactant = model_reaction.getProduct(model_reaction_productID)
+                self._checklibSBML(source_reactant, 'fetch source reactant')
                 self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()),
                         'set "constant" on product '+str(source_reactant.getConstant()))
                 self._checklibSBML(target_reactant.setStoichiometry(source_reactant.getStoichiometry()),
