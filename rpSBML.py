@@ -442,11 +442,14 @@ class rpSBML:
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
         for objective in fbc_plugin.getListOfObjectives():
+            if objective.getId()==objective_id:
+                return objective_id
             if not set([i.getReaction() for i in objective.getListOfFluxObjectives()])-set(reactions):
                 return objective.getId()
         #Cannot find a valid objective create it
         if not objective_id:
-            objective_id = 'obj_'+'_'.join(reactions)
+            self.logger.warning('Creating a new objective')
+            objective_id = 'obj_rpFBA'+'_'.join(reactions)
         self.createMultiFluxObj(objective_id,
                                 reactions,
                                 coefficients,
