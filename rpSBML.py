@@ -1492,7 +1492,6 @@ class rpSBML:
             step,
             compartment_id,
             reaction_smiles=None,
-            ecs=[],
             reacXref={},
             pathway_id=None,
             meta_id=None):
@@ -1556,9 +1555,6 @@ class rpSBML:
             self.addUpdateBRSynth(reac, 'step_id', step['step'], None, False, False, False, meta_id)
         if step['sub_step']:
             self.addUpdateBRSynth(reac, 'sub_step_id', step['sub_step'], None, False, False, False, meta_id)
-        #### EC #####
-        for ec in ecs:
-            self.addUpdateMIRIAM(reac, 'reaction', {'ec': ec})
         #### GROUPS #####
         if not pathway_id==None:
             groups_plugin = self.model.getPlugin('groups')
