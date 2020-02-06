@@ -1,4 +1,4 @@
-FROM brsynth/rpbase
+FROM brsynth/rpbase:dev
 
 RUN apt-get install --quiet --yes --no-install-recommends \
 			libxext6  \
