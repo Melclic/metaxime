@@ -1333,8 +1333,9 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
-        self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
-                'copying the source groups "rp_pathway" to the target groups')
+        if not pathway_id in [i.getId() for i in target_groups.getListOfGroups()]:
+            self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
+                    'copying the source groups "rp_pathway" to the target groups')
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
