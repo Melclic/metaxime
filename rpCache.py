@@ -122,15 +122,15 @@ class rpCache:
         filename = 'chem_xref.tsv'
         if not os.path.isfile(dirname+'/cache/'+picklename):
             self.deprecatedMNXM(dirname+'/input_cache/'+filename)
-            pickle.dump(self.deprecatedMNXM_mnxr, open(dirname+'/cache/'+picklename, 'wb'))
-        self.deprecatedMNXM_mnxr = pickle.load(open(dirname+'/cache/'+picklename, 'rb'))
+            pickle.dump(self.deprecatedMNXM_mnxm, open(dirname+'/cache/'+picklename, 'wb'))
+        self.deprecatedMNXM_mnxm = pickle.load(open(dirname+'/cache/'+picklename, 'rb'))
 
         picklename = 'deprecatedMNXR_mnxr.pickle'
         filename = 'reac_xref.tsv'
         if not os.path.isfile(dirname+'/cache/'+picklename):
             self.deprecatedMNXR(dirname+'/input_cache/'+filename)
-            pickle.dump(self.deprecatedMNXR_mnxm, open(dirname+'/cache/'+picklename, 'wb'))
-        self.deprecatedMNXR_mnxm = pickle.load(open(dirname+'/cache/'+picklename, 'rb'))
+            pickle.dump(self.deprecatedMNXR_mnxr, open(dirname+'/cache/'+picklename, 'wb'))
+        self.deprecatedMNXR_mnxr = pickle.load(open(dirname+'/cache/'+picklename, 'rb'))
 
         picklename = 'mnxm_strc.pickle.gz'
         filename = 'chem_prop.tsv'
