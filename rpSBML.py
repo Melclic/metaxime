@@ -345,7 +345,7 @@ class rpSBML:
                     miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
                 except KeyError:
                     #WARNING need to check this
-                    #self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
+                    self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
                     continue
         return True
 
@@ -520,6 +520,31 @@ class rpSBML:
         return toRet
         #reacMembers = self.readRPspecies(pathway_id)
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
+
+
+    ## Return the MIRIAM annotations of species
+    #
+    #
+    def readTaxonAnnotation(self, annot):
+        try:
+            toRet = {}
+            bag = annot.getChild('RDF').getChild('Description').getChild('hasTaxon').getChild('Bag')
+            for i in range(bag.getNumChildren()):
+                str_annot = bag.getChild(i).getAttrValue(0)
+                if str_annot=='':
+                    self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
+                    continue
+                dbid = str_annot.split('/')[-2].split('.')[0]
+                if len(str_annot.split('/')[-1].split(':'))==2:
+                    cid = str_annot.split('/')[-1].split(':')[1]
+                else:
+                    cid = str_annot.split('/')[-1]
+                if not dbid in toRet:
+                    toRet[dbid] = []
+                toRet[dbid].append(cid)
+            return toRet
+        except AttributeError:
+            return {}
 
 
     ## Return the MIRIAM annotations of species
@@ -1035,7 +1060,8 @@ class rpSBML:
     # @param addOrphanSpecies Boolean Default False
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
-    def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):
+    #def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):
+    def mergeModels(self, target_rpsbml):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -1333,14 +1359,21 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
+        '''
         if not pathway_id in [i.getId() for i in target_groups.getListOfGroups()]:
             self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
+                    'copying the source groups "rp_pathway" to the target groups')
+        '''
+        for group in target_groups.getListOfGroups():
+            self._checklibSBML(target_groups.addGroup(group),
                     'copying the source groups "rp_pathway" to the target groups')
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
+        '''
         if fillOrphanSpecies==True:
             self.fillOrphan(target_rpsbml, pathway_id, compartment_id)
+        '''
 
 
     #########################################################################

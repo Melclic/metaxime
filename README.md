@@ -15,7 +15,7 @@ TODO
 Build the docker image:
 
 ```
-docker build -t brsynth/rpbase .
+docker build -t brsynth/rpbase:dev .
 ```
 
 ## Running the tests
