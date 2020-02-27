@@ -920,8 +920,8 @@ class rpSBML:
                                reaction_id,
                                upper_bound,
                                lower_bound,
-                               units='mmol_per_gDW_per_hr',
-                               isConstant=True):
+                               unit='mmol_per_gDW_per_hr',
+                               is_constant=True):
         reaction = self.model.getReaction(reaction_id)
         if not reaction:
             self.logger.error('Cannot find the reaction: '+str(reaction_id))
@@ -929,60 +929,16 @@ class rpSBML:
         reac_fbc = reaction.getPlugin('fbc')
         self._checklibSBML(reac_fbc, 'extending reaction for FBC')
         ########## upper bound #############
-        upper_param = None
-        f_b = reac_fbc.getUpperFluxBound()
-        old_upper_param = self.model.getParameter(reac_fbc.getUpperFluxBound()).value
-        for parameter in self.model.getListOfParameters():
-            if parameter.getValue()==upper_bound:
-                upper_param = parameter
-                break
-        if not upper_param:
-            upper_param = self.model.createParameter()
-            self._checklibSBML(upper_param, 'creating target parameter')
-            if upper_bound.is_integer():
-                self._checklibSBML(upper_param.setId('B_'+str(upper_bound)),
-                    'setting target parameter ID')
-            else:
-                self._checklibSBML(upper_param.setId('B_'+str(upper_bound).split('.')[0]+'_'+str(upper_bound).split('.')[1]),
-                    'setting target parameter ID')
-            self._checklibSBML(upper_param.setSBOTerm(626),
-                'setting target parameter SBO')
-            self._checklibSBML(upper_param.setUnits(units),
-                'setting target parameter Units')
-            self._checklibSBML(upper_param.setValue(upper_bound),
-                'setting target parameter Value')
-            self._checklibSBML(upper_param.setConstant(isConstant),
-                'setting target parameter ID')
+        old_upper_value = self.model.getParameter(reac_fbc.getUpperFluxBound()).value
+        upper_param = self.createReturnFluxParameter(upper_bound, unit, is_constant)
         self._checklibSBML(reac_fbc.setUpperFluxBound(upper_param.getId()),
             'setting '+str(reaction_id)+' upper flux bound')
         ######### lower bound #############
-        lower_param = None
-        old_lower_param = self.model.getParameter(reac_fbc.getLowerFluxBound()).value
-        for parameter in self.model.getListOfParameters():
-            if parameter.getValue()==upper_bound:
-                lower_param = parameter
-                break
-        if not lower_param:
-            lower_param = target_rpsbml.model.createParameter()
-            self._checklibSBML(lower_param, 'creating target parameter')
-            if upper_bound.is_integer():
-                self._checklibSBML(lower_param.setId('B_'+str(upper_bound)),
-                    'setting target parameter ID')
-            else:
-                self._checklibSBML(lower_param.setId('B_'+str(upper_bound).split('.')[0]+'_'+str(upper_bound).split('.')[1]),
-                    'setting target parameter ID')
-            self._checklibSBML(lower_param.setSBOTerm(626),
-                'setting target parameter SBO')
-            #WARNING: need to have a way to generate the right unit
-            self._checklibSBML(lower_param.setUnits(units),
-                'setting target parameter Units')
-            self._checklibSBML(lower_param.setValue(upper_bound),
-                'setting target parameter Value')
-            self._checklibSBML(lower_param.setConstant(isConstant),
-                'setting target parameter ID')
+        old_lower_value = self.model.getParameter(reac_fbc.getLowerFluxBound()).value
+        lower_param = self.createReturnFluxParameter(lower_bound, unit, is_constant)
         self._checklibSBML(reac_fbc.setLowerFluxBound(lower_param.getId()),
             'setting '+str(reaction_id)+' lower flux bound')
-        return old_upper_param, old_lower_param
+        return old_upper_value, old_lower_value
 
 
     ##### ADD SOURCE FROM ORPHAN #####
@@ -991,7 +947,12 @@ class rpSBML:
     #TODO: that transports the reactions that creates the species in the
     # extracellular matrix and another reaction that transports it from the extracellular matrix to the cytoplasm
     #TODO: does not work
-    def fillOrphan(self, rpsbml=None, pathway_id='rp_pathway', compartment_id='MNXC3'):
+    def fillOrphan(self, 
+            rpsbml=None, 
+            pathway_id='rp_pathway', 
+            compartment_id='MNXC3',
+            upper_flux_bound=999999,
+            lower_flux_bound=10):
         if rpsbml==None:
             model = self.model
         else:
@@ -1008,21 +969,6 @@ class rpSBML:
             else:
                 isSpePro = rpsbml.isSpeciesProduct(species_id, [reaction_id])
             if not isSpePro:
-                #the species is not produced by anything... 
-                #add a reaction that produces it in the cytoplasm
-                #create lowerFluxBound of -10
-                ######################################
-                #add the new parameter to the rpSBML model as well
-                if not 'B__10' in [i.getId() for i in model.getListOfParameters()]:
-                    newParam = model.createParameter()
-                    self._checklibSBML(newParam, 'Creating a new parameter object')
-                    self._checklibSBML(newParam.setConstant(True), 'setting as constant')
-                    self._checklibSBML(newParam.setId('B__10'), 'setting ID')
-                    self._checklibSBML(newParam.setValue(-10), 'setting value')
-                    self._checklibSBML(newParam.setUnits('mmol_per_gDW_per_hr'), 'setting units')
-                    self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
-                    meta_id = self._genMetaID('B__10')
-                    self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
                 #create the step
                 createStep = {'rule_id': None,
                               'left': {species_id.split('__')[0]: 1},
@@ -1036,14 +982,14 @@ class rpSBML:
                 #create the model in the 
                 if rpsbml==None:
                     self.createReaction('create_'+species_id,
-                                        'B_999999',
-                                        'B__10',
+                                        upper_flux_bound,
+                                        lower_flux_bound,
                                         createStep,
                                         compartment_id)
                 else:
                     rpsbml.createReaction('create_'+species_id,
-                                        'B_999999',
-                                        'B__10',
+                                        upper_flux_bound,
+                                        lower_flux_bound,
                                         createStep,
                                         compartment_id)
 
@@ -1488,19 +1434,34 @@ class rpSBML:
     # @param unit libSBML unit parameter
     # @param meta_id String Optional parameter for SBML meta_id
     # @return libSBML parameter object
-    def createParameter(self, parameter_id, value, unit, meta_id=None):
-        newParam = self.model.createParameter()
-        self._checklibSBML(newParam, 'Creating a new parameter object')
-        self._checklibSBML(newParam.setConstant(True), 'setting as constant')
-        self._checklibSBML(newParam.setId(parameter_id), 'setting ID')
-        self._checklibSBML(newParam.setValue(value), 'setting value')
-        self._checklibSBML(newParam.setUnits(unit), 'setting units')
-        self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
-        if meta_id==None:
-            meta_id = self._genMetaID(parameter_id)
-        self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
-        #self.parameters.append(parameter_id)
-        return newParam
+    def createReturnFluxParameter(self, 
+            value, 
+            unit='mmol_per_gDW_per_hr', 
+            is_constant=True,
+            parameter_id=None,
+            meta_id=None):
+        if parameter_id:
+            param_id = parameter_id
+        else:
+            if value>=0:
+                param_id = 'B_'+str(abs(value)).replace('.', '-')
+            else:
+                param_id = 'B__'+str(abs(value)).replace('.', '-')
+        if param_id in [i.getId() for i in self.model.getListOfParameters()]:
+            return self.model.getParameter(param_id)
+        else:
+            newParam = self.model.createParameter()
+            self._checklibSBML(newParam, 'Creating a new parameter object')
+            self._checklibSBML(newParam.setConstant(is_constant), 'setting as constant')
+            self._checklibSBML(newParam.setId(param_id), 'setting ID')
+            self._checklibSBML(newParam.setValue(value), 'setting value')
+            self._checklibSBML(newParam.setUnits(unit), 'setting units')
+            self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
+            if meta_id==None:
+                meta_id = self._genMetaID(parameter_id)
+            self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
+            #self.parameters.append(parameter_id)
+            return newParam
 
 
     ## Create libSBML reaction
@@ -1535,8 +1496,10 @@ class rpSBML:
         reac_fbc = reac.getPlugin('fbc')
         self._checklibSBML(reac_fbc, 'extending reaction for FBC')
         #bounds
-        self._checklibSBML(reac_fbc.setUpperFluxBound(fluxUpperBound), 'setting '+str(reac_id)+' upper flux bound')
-        self._checklibSBML(reac_fbc.setLowerFluxBound(fluxLowerBound), 'setting '+str(reac_id)+' lower flux bound')
+        upper_bound = self.createReturnFluxParameter(fluxUpperBound)
+        lower_bound = self.createReturnFluxParameter(fluxLowerBound)
+        self._checklibSBML(reac_fbc.setUpperFluxBound(upper_bound.getId()), 'setting '+str(reac_id)+' upper flux bound')
+        self._checklibSBML(reac_fbc.setLowerFluxBound(lower_bound.getId()), 'setting '+str(reac_id)+' lower flux bound')
         #########################################
         #reactions
         self._checklibSBML(reac.setId(reac_id), 'set reaction id') #same convention as cobrapy
@@ -1807,23 +1770,26 @@ class rpSBML:
     #
     #
     #
-    def genericModel(self, modelName, model_id, compXref, compartment_id):
+    def genericModel(self, 
+            modelName, 
+            model_id, 
+            compXref, 
+            compartment_id,
+            upper_flux_bound=999999,
+            lower_flux_bound=0):
         self.createModel(modelName, model_id)
-        # mmol_per_gDW_per_hr
+        # mmol_per_gDW_per_hr -- flux
         unitDef = self.createUnitDefinition('mmol_per_gDW_per_hr')
         self.createUnit(unitDef, libsbml.UNIT_KIND_MOLE, 1, -3, 1)
         self.createUnit(unitDef, libsbml.UNIT_KIND_GRAM, 1, 0, 1)
         self.createUnit(unitDef, libsbml.UNIT_KIND_SECOND, 1, 0, 3600)
-        # kj_per_mol
+        # kj_per_mol -- thermodynamics
         gibbsDef = self.createUnitDefinition('kj_per_mol')
         self.createUnit(gibbsDef, libsbml.UNIT_KIND_JOULE, 1, 3, 1)
         self.createUnit(gibbsDef, libsbml.UNIT_KIND_MOLE, -1, 1, 1)
-        # infinity parameters (FBA)
-        #upInfParam = self.createParameter('B_INF', float('inf'), 'kj_per_mol')
-        #lowInfParam = self.createParameter('B__INF', float('-inf'), 'kj_per_mol')
-        upNineParam = self.createParameter('B__999999', -999999, 'mmol_per_gDW_per_hr')
-        lowNineParam = self.createParameter('B_999999', 999999, 'mmol_per_gDW_per_hr')
-        lowZeroParam = self.createParameter('B_0', 0, 'mmol_per_gDW_per_hr')
+        ### set the bounds
+        upBound = self.createReturnFluxParameter(upper_flux_bound)
+        lowBound = self.createReturnFluxParameter(lower_flux_bound)
         #compartment
         #TODO: create a new compartment 
         #self.createCompartment(1, 'MNXC3', 'cytoplasm', compXref)
