@@ -44,6 +44,14 @@ class rpSBML:
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
 
+    #We do this so that it is not stopping
+    class libSBMLError(Exception):   
+        # Constructor or Initializer 
+        def __init__(self, value): 
+            self.value = value 
+        # __str__ is to print() the value 
+        def __str__(self): 
+            return(repr(self.value)) 
 
     ## Check the libSBML calls
     #
@@ -54,7 +62,8 @@ class rpSBML:
     def _checklibSBML(self, value, message):
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
-            raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
+            #raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
+            raise libSBMLError('LibSBML returned a null value trying to ' + message + '.')
         elif type(value) is int:
             if value==libsbml.LIBSBML_OPERATION_SUCCESS:
                 return
@@ -63,7 +72,8 @@ class rpSBML:
                         + 'LibSBML returned error code ' + str(value) + ': "' \
                         + libsbml.OperationReturnValue_toString(value).strip() + '"'
                 self.logger.error(err_msg)
-                raise SystemExit(err_msg)
+                raise libSBMLError(err_msg)
+                #raise SystemExit(err_msg)
         else:
             #self.logger.info(message)
             return None
@@ -1444,9 +1454,9 @@ class rpSBML:
             param_id = parameter_id
         else:
             if value>=0:
-                param_id = 'B_'+str(abs(value)).replace('.', '-')
+                param_id = 'B_'+str(round(abs(value), 4)).replace('.', '_')
             else:
-                param_id = 'B__'+str(abs(value)).replace('.', '-')
+                param_id = 'B__'+str(round(abs(value), 4)).replace('.', '_')
         if param_id in [i.getId() for i in self.model.getListOfParameters()]:
             return self.model.getParameter(param_id)
         else:
