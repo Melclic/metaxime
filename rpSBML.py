@@ -263,13 +263,13 @@ class rpSBML:
              return False
         #add the annotation and replace if it exists
         if brsynth_annot.getChild(annot_header).toXMLString()=='':
-            self._checklibSBML(brsynth_annot.addChild(annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
-                'Adding annotation to the brsynth annotation')
+            toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
+            self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
         else:
             self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
                 'Removing annotation '+str(annot_header))
-            self._checklibSBML(brsynth_annot.addChild(annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)),
-                'Adding annotation to the brsynth annotation')
+            toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
+            self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
         return True
 
 
@@ -352,7 +352,8 @@ class rpSBML:
 </rdf:RDF>
 </annotation>'''
                     toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
-                    miriam_annot.insertChild(0, toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0))
+                    toWrite_annot = toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0)
+                    miriam_annot.insertChild(0, toWrite_annot)
                 except KeyError:
                     #WARNING need to check this
                     self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
