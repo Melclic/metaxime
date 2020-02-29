@@ -44,14 +44,16 @@ class rpSBML:
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
 
+    '''
+    # define Python user-defined exceptions
+    class Error(Exception):
+        """Base class for other exceptions"""
+        pass
+
     #We do this so that it is not stopping
-    class libSBMLError(Exception):   
-        # Constructor or Initializer 
-        def __init__(self, value): 
-            self.value = value 
-        # __str__ is to print() the value 
-        def __str__(self): 
-            return(repr(self.value)) 
+    class libSBMLError(Error):
+        pass
+    '''
 
     ## Check the libSBML calls
     #
@@ -63,7 +65,9 @@ class rpSBML:
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
             #raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
-            raise libSBMLError('LibSBML returned a null value trying to ' + message + '.')
+            #raise libSBMLError('LibSBML returned a null value trying to ' + message + '.')
+            #raise self.libSBMLError
+            raise AttributeError
         elif type(value) is int:
             if value==libsbml.LIBSBML_OPERATION_SUCCESS:
                 return
@@ -72,8 +76,10 @@ class rpSBML:
                         + 'LibSBML returned error code ' + str(value) + ': "' \
                         + libsbml.OperationReturnValue_toString(value).strip() + '"'
                 self.logger.error(err_msg)
-                raise libSBMLError(err_msg)
+                #raise self.libSBMLError
+                #raise libSBMLError(err_msg)
                 #raise SystemExit(err_msg)
+                raise AttributeError
         else:
             #self.logger.info(message)
             return None
@@ -139,8 +145,7 @@ class rpSBML:
     #
     def _defaultBothAnnot(self, meta_id):
         return '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-      xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
       <bqbiol:is>
         <rdf:Bag>
@@ -161,8 +166,7 @@ class rpSBML:
     #
     def _defaultBRSynthAnnot(self, meta_id):
         return '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-      xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
       <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
       </brsynth:brsynth>
@@ -177,11 +181,11 @@ class rpSBML:
     #
     def _defaultMIRIAMAnnot(self, meta_id):
         return '''<annotation>
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-      xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
       <bqbiol:is>
         <rdf:Bag>
+          <rdf:li rdf:resource="http://identifiers.org/uniprot/test2i33"/>
         </rdf:Bag>
       </bqbiol:is>
     </rdf:Description>
@@ -284,16 +288,28 @@ class rpSBML:
             self.logger.error('type_param must be '+str(['compartment', 'reaction', 'species'])+' not '+str(type_param))
             return False
         miriam_annot = None
+        isReplace = False
         try:
             miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
+            miriam_elements = self.readMIRIAMAnnotation(sbase_obj.getAnnotation())
+            if not miriam_elements:
+                #tmp_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
+                isReplace = True
+                if not meta_id:
+                    meta_id = self._genMetaID('tmp_addUpdateMIRIAM')
+                #miriam_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
+                miriam_annot_1 = libsbml.XMLNode.convertStringToXMLNode(self._defaultBothAnnot(meta_id))
+                miriam_annot = miriam_annot_1.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
+            else:
+                miriam_elements = None
         except AttributeError:
             try:
                 #Cannot find MIRIAM annotation, create it
+                isReplace = True
                 if not meta_id:
-                    meta_id = self._genMetaID('TODO_addUpdateMIRIAM')
-                #WARNING: this will overwrite if there are BRSynth annotations
-                sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
-                miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
+                    meta_id = self._genMetaID('tmp_addUpdateMIRIAM')
+                miriam_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
+                miriam_annot = miriam_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             except AttributeError:
                 self.logger.error('Fatal error fetching the annotation')
                 return False
@@ -319,7 +335,8 @@ class rpSBML:
                         self.logger.error('Cannot find the self.header_miriram entry '+str(db))
                         return False
             else:
-                self.logger.error('Cannot return MIRIAM attribute')
+                self.logger.warning('Cannot return MIRIAM attribute')
+                pass
         #add or ignore 
         toadd = self._compareXref(inside, xref)
         for database_id in toadd:
@@ -358,6 +375,10 @@ class rpSBML:
                     #WARNING need to check this
                     self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
                     continue
+        if isReplace:
+            ori_miriam_annot = sbase_obj.getAnnotation()
+            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').removeChild(0), 'Removing annotation "is"')
+            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').addChild(miriam_annot), 'Adding annotation to the brsynth annotation')
         return True
 
 
