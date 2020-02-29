@@ -290,7 +290,7 @@ class rpSBML:
             try:
                 #Cannot find MIRIAM annotation, create it
                 if not meta_id:
-                    meta_id = self._genMetaID(annot_header)
+                    meta_id = self._genMetaID('TODO_addUpdateMIRIAM')
                 #WARNING: this will overwrite if there are BRSynth annotations
                 sbase_obj.setAnnotation(self._defaultBothAnnot(meta_id))
                 miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
