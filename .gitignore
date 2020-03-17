@@ -1,5 +1,5 @@
 *.swp
-<<<<<<< HEAD
-=======
 __pycache__/
->>>>>>> dev
+.DS_Store
+*.tar
+*.sbml
