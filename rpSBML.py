@@ -50,17 +50,6 @@ class rpSBML:
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
 
-    '''
-    # define Python user-defined exceptions
-    class Error(Exception):
-        """Base class for other exceptions"""
-        pass
-
-    #We do this so that it is not stopping
-    class libSBMLError(Error):
-        pass
-    '''
-
     ## Check the libSBML calls
     #
     # Check that the libSBML python calls do not return error INT and if so, display the error. Taken from: http://sbml.org/Software/libSBML/docs/python-api/create_simple_model_8py-example.html
@@ -299,11 +288,9 @@ class rpSBML:
             miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             miriam_elements = self.readMIRIAMAnnotation(sbase_obj.getAnnotation())
             if not miriam_elements:
-                #tmp_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
                 isReplace = True
                 if not meta_id:
                     meta_id = self._genMetaID('tmp_addUpdateMIRIAM')
-                #miriam_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
                 miriam_annot_1 = libsbml.XMLNode.convertStringToXMLNode(self._defaultBothAnnot(meta_id))
                 miriam_annot = miriam_annot_1.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             else:
@@ -348,43 +335,48 @@ class rpSBML:
         for database_id in toadd:
             for species_id in toadd[database_id]:
                 #not sure how to avoid having it that way
-                try:
-                    #determine if the dictionnaries 
-                    annotation = '''<annotation>
-<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
-<rdf:Description rdf:about="#tmp">
-  <bqbiol:is>
-    <rdf:Bag>'''
-                    if type_param=='species':
-                        if database_id=='kegg' and species_id[0]=='C':
-                            annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
-                        elif database_id=='kegg' and species_id[0]=='D':
-                            annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
+                if database_id in self.miriam_header[type_param]:
+                    try:
+                        #determine if the dictionnaries 
+                        annotation = '''<annotation>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+    <rdf:Description rdf:about="#tmp">
+      <bqbiol:is>
+        <rdf:Bag>'''
+                        if type_param=='species':
+                            if database_id=='kegg' and species_id[0]=='C':
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
+                            elif database_id=='kegg' and species_id[0]=='D':
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
+                            else:
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                         else:
                             annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
-                    else:
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                         annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
-                    annotation += '''
-    </rdf:Bag>
-  </bqbiol:is>
-</rdf:Description>
-</rdf:RDF>
-</annotation>'''
-                    toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
-                    toWrite_annot = toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0)
-                    miriam_annot.insertChild(0, toWrite_annot)
-                except KeyError:
-                    #WARNING need to check this
-                    self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
-                    continue
+        </rdf:Bag>
+      </bqbiol:is>
+    </rdf:Description>
+    </rdf:RDF>
+    </annotation>'''
+                        toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
+                        toWrite_annot = toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0)
+                        miriam_annot.insertChild(0, toWrite_annot)
+                    except KeyError:
+                        #WARNING need to check this
+                        self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
+                        continue
         if isReplace:
             ori_miriam_annot = sbase_obj.getAnnotation()
-            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').removeChild(0), 'Removing annotation "is"')
-            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').addChild(miriam_annot), 'Adding annotation to the brsynth annotation')
+            if ori_miriam_annot==None:
+                sbase_obj.unsetAnnotation()
+                sbase_obj.setAnnotation(miriam_annot)
+            else:
+                self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').removeChild(0), 'Removing annotation "is"')
+                self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').addChild(miriam_annot), 'Adding annotation to the brsynth annotation')
         return True
 
 
@@ -1422,6 +1414,7 @@ class rpSBML:
             meta_id = self._genMetaID(compId)
         self._checklibSBML(comp.setMetaId(meta_id), 'set the meta_id for the compartment')
         ############################ MIRIAM ############################
+        comp.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id)))
         self.addUpdateMIRIAM(comp, 'compartment', compXref, meta_id)
 
 
@@ -1541,7 +1534,6 @@ class rpSBML:
         #########################################
         #reactions
         self._checklibSBML(reac.setId(reac_id), 'set reaction id') #same convention as cobrapy
-        #self._checklibSBML(reac.setName(str(reac_id)+), 'set name') #same convention as cobrapy
         self._checklibSBML(reac.setSBOTerm(185), 'setting the system biology ontology (SBO)') #set as process
         #TODO: consider having the two parameters as input to the function
         self._checklibSBML(reac.setReversible(True), 'set reaction reversibility flag')
@@ -1571,6 +1563,7 @@ class rpSBML:
             self._checklibSBML(pro.setStoichiometry(float(step['right'][product])),
                 'set the stoichiometry ('+str(float(step['right'][product]))+')')
         ############################ MIRIAM ############################
+        self._checklibSBML(reac.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
         self.addUpdateMIRIAM(reac, 'reaction', reacXref, meta_id)
         ###### BRSYNTH additional information ########
         if reaction_smiles:
@@ -1659,6 +1652,8 @@ class rpSBML:
             self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_name))
         #this is setting MNX id as the name
         #this is setting the name as the input name
+        #self._checklibSBML(spe.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'creating annotation')
+        self._checklibSBML(spe.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
         ###### annotation ###
         self.addUpdateMIRIAM(spe, 'species', chemXref, meta_id)
         ###### BRSYNTH additional information ########
@@ -1680,7 +1675,7 @@ class rpSBML:
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
-                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
 
 
     ## Create libSBML pathway
