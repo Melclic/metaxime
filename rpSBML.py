@@ -180,7 +180,6 @@ class rpSBML:
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
       <bqbiol:is>
         <rdf:Bag>
-          <rdf:li rdf:resource="http://identifiers.org/uniprot/test2i33"/>
         </rdf:Bag>
       </bqbiol:is>
     </rdf:Description>
