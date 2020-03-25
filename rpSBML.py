@@ -1339,7 +1339,7 @@ class rpSBML:
             self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
                     'copying the source groups "rp_pathway" to the target groups')
         '''
-        for group in target_groups.getListOfGroups():
+        for group in source_groups.getListOfGroups():
             self._checklibSBML(target_groups.addGroup(group),
                     'copying the source groups "rp_pathway" to the target groups')
         ###### TITLES #####
