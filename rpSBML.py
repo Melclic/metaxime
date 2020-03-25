@@ -59,9 +59,6 @@ class rpSBML:
     def _checklibSBML(self, value, message):
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
-            #raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
-            #raise libSBMLError('LibSBML returned a null value trying to ' + message + '.')
-            #raise self.libSBMLError
             raise AttributeError
         elif type(value) is int:
             if value==libsbml.LIBSBML_OPERATION_SUCCESS:
@@ -71,9 +68,6 @@ class rpSBML:
                         + 'LibSBML returned error code ' + str(value) + ': "' \
                         + libsbml.OperationReturnValue_toString(value).strip() + '"'
                 self.logger.error(err_msg)
-                #raise self.libSBMLError
-                #raise libSBMLError(err_msg)
-                #raise SystemExit(err_msg)
                 raise AttributeError
         else:
             #self.logger.info(message)
@@ -249,7 +243,6 @@ class rpSBML:
         brsynth_annot = None
         obj_annot = sbase_obj.getAnnotation()
         if not obj_annot:
-            #sbase_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
             sbase_obj.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id)))
             obj_annot = sbase_obj.getAnnotation()
             if not obj_annot:
@@ -1334,11 +1327,6 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
-        '''
-        if not pathway_id in [i.getId() for i in target_groups.getListOfGroups()]:
-            self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
-                    'copying the source groups "rp_pathway" to the target groups')
-        '''
         for group in source_groups.getListOfGroups():
             self._checklibSBML(target_groups.addGroup(group),
                     'copying the source groups "rp_pathway" to the target groups')
