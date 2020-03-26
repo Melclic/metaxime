@@ -624,12 +624,14 @@ class rpSBML:
                         'value': float(ann.getAttrValue('value'))}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
-                    toRet[ann.getName()] = int(ann.getAttrValue('value'))
+                    #toRet[ann.getName()] = int(ann.getAttrValue('value'))
+                    toRet[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
                 except ValueError:
                     toRet[ann.getName()] = None
             elif ann.getName()=='rule_score' or ann.getName()=='global_score' or ann.getName()[:5]=='norm_':
                 try:
-                    toRet[ann.getName()] = float(ann.getAttrValue('value'))
+                    #toRet[ann.getName()] = float(ann.getAttrValue('value'))
+                    toRet[ann.getName()] = {'value': float(ann.getAttrValue('value'))}
                 except ValueError:
                     toRet[ann.getName()] = None
             elif ann.getName()=='smiles':
@@ -645,7 +647,9 @@ class rpSBML:
                         toRet[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
             else:
                 toRet[ann.getName()] = ann.getChild(0).toXMLString()
-        return toRet
+        #to delete empty
+        return {k: v for k, v in toRet.items() if v is not None}
+        #return toRet
 
 
     ## Function to return the products and the species associated with a reaction
