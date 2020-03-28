@@ -1525,7 +1525,7 @@ class rpSBML:
         #########################################
         #reactions
         self._checklibSBML(reac.setId(reac_id), 'set reaction id') #same convention as cobrapy
-        self._checklibSBML(reac.setSBOTerm(185), 'setting the system biology ontology (SBO)') #set as process
+        self._checklibSBML(reac.setSBOTerm(176), 'setting the system biology ontology (SBO)') #set as process
         #TODO: consider having the two parameters as input to the function
         self._checklibSBML(reac.setReversible(True), 'set reaction reversibility flag')
         self._checklibSBML(reac.setFast(False), 'set reaction "fast" attribute')
