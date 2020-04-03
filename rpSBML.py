@@ -1054,7 +1054,7 @@ class rpSBML:
 
     ## Merge two models species and reactions using the annotations to recognise the same species and reactions
     #
-    # The source mode has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
+    # The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
     #called rp_pathway. If not use the readSBML() function to create a model
     # We add the reactions and species from the rpsbml to the target_model
     # 
@@ -1281,7 +1281,7 @@ class rpSBML:
                 targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
                 targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
                 if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logging.info('The reactions species and products are the same')
+                    self.logger.info('The reactions species and products are the same')
                     toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
         #add the new reactions
