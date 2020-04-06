@@ -806,7 +806,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
-            pathway[brsynthAnnot['step_id']] = step
+            pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
 
