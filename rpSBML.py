@@ -1375,7 +1375,7 @@ class rpSBML:
                             foundIt = True
                             break
                     if not foundIt:
-                        self.logger.error('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
+                        self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
             self._checklibSBML(target_groups.addGroup(group),
                     'copying the source groups to the target groups')
         ###### TITLES #####
