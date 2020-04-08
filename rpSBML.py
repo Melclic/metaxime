@@ -375,31 +375,29 @@ class rpSBML:
     #
     #
     def genJSON(self, pathway_id='rp_pathway'):
-        groups = rpsbml.model.getPlugin('groups')
+        groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
         reactions = rp_pathway.getListOfMembers()
         #pathway
         rpsbml_json = {}
         rpsbml_json['pathway'] = {}
-        rpsbml_json['pathway']['brsynth'] = rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
+        rpsbml_json['pathway']['brsynth'] = self.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
         #reactions
         rpsbml_json['reactions'] = {}
         for member in reactions:
-            reaction = rpsbml.model.getReaction(member.getIdRef())
+            reaction = self.model.getReaction(member.getIdRef())
             annot = reaction.getAnnotation()
             rpsbml_json['reactions'][member.getIdRef()] = {}
-            rpsbml_json['reactions'][member.getIdRef()]['brsynth'] = rpsbml.readBRSYNTHAnnotation(annot)
-            rpsbml_json['reactions'][member.getIdRef()]['miriam'] = rpsbml.readMIRIAMAnnotation(annot)
+            rpsbml_json['reactions'][member.getIdRef()]['brsynth'] = self.readBRSYNTHAnnotation(annot)
+            rpsbml_json['reactions'][member.getIdRef()]['miriam'] = self.readMIRIAMAnnotation(annot)
         #loop though all the species
         rpsbml_json['species'] = {}
         for spe_id in self.readUniqueRPspecies(pathway_id):
-            species = rpsbml.model.getSpecies(spe_id)
+            species = self.model.getSpecies(spe_id)
             annot = species.getAnnotation()
             rpsbml_json['species'][spe_id] = {}
-            rpsbml_json['species'][spe_id]['brsynth'] = rpsbml.readBRSYNTHAnnotation(annot)
-            rpsbml_json['species'][spe_id]['miriam'] = rpsbml.readMIRIAMAnnotation(annot)
-        with open('tmp.json', 'w') as oj:
-            json.dump(rpsbml_json, oj)
+            rpsbml_json['species'][spe_id]['brsynth'] = self.readBRSYNTHAnnotation(annot)
+            rpsbml_json['species'][spe_id]['miriam'] = self.readMIRIAMAnnotation(annot)
         return rpsbml_json
 
 
