@@ -650,9 +650,15 @@ class rpSBML:
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
-                toRet[ann.getName()] = {
-                        'units': ann.getAttrValue('units'),
-                        'value': float(ann.getAttrValue('value'))}
+                try:
+                    toRet[ann.getName()] = {
+                            'units': ann.getAttrValue('units'),
+                            'value': float(ann.getAttrValue('value'))}
+                except ValueError:
+                    self.logger.warning('Cannot interpret '+str(ann.getName())+': '+str(ann.getAttrValue('value')+' - '+str(ann.getAttrValue('units'))))
+                    toRet[ann.getName()] = {
+                            'units': None,
+                            'value': None}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
                     #toRet[ann.getName()] = int(ann.getAttrValue('value'))
