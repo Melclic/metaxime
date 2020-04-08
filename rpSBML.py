@@ -825,6 +825,16 @@ class rpSBML:
     def compareBRSYNTHAnnotations(self, source_annot, target_annot):
         source_dict = self.readBRSYNTHAnnotation(source_annot)
         target_dict = self.readBRSYNTHAnnotation(target_annot)
+        #ignore thse when comparing reactions
+        for i in ['path_id', 'step', 'sub_step', 'rule_score', 'rule_ori_reac']:
+            try:
+                del source_dict[i]
+            except KeyError:
+                pass
+            try:
+                del target_dict[i]
+            except KeyError:
+                pass
         #list the common keys between the two
         for same_key in list(set(list(source_dict.keys())).intersection(list(target_dict.keys()))):
             if source_dict[same_key]==target_dict[same_key]:
