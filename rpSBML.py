@@ -648,9 +648,15 @@ class rpSBML:
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
-                toRet[ann.getName()] = {
-                        'units': ann.getAttrValue('units'),
-                        'value': float(ann.getAttrValue('value'))}
+                try:
+                    toRet[ann.getName()] = {
+                            'units': ann.getAttrValue('units'),
+                            'value': float(ann.getAttrValue('value'))}
+                except ValueError:
+                    self.logger.warning('Cannot interpret '+str(ann.getName())+': '+str(ann.getAttrValue('value')+' - '+str(ann.getAttrValue('units'))))
+                    toRet[ann.getName()] = {
+                            'units': None,
+                            'value': None}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
                     #toRet[ann.getName()] = int(ann.getAttrValue('value'))
@@ -804,7 +810,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
-            pathway[brsynthAnnot['step_id']] = step
+            pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
 
@@ -823,6 +829,16 @@ class rpSBML:
     def compareBRSYNTHAnnotations(self, source_annot, target_annot):
         source_dict = self.readBRSYNTHAnnotation(source_annot)
         target_dict = self.readBRSYNTHAnnotation(target_annot)
+        #ignore thse when comparing reactions
+        for i in ['path_id', 'step', 'sub_step', 'rule_score', 'rule_ori_reac']:
+            try:
+                del source_dict[i]
+            except KeyError:
+                pass
+            try:
+                del target_dict[i]
+            except KeyError:
+                pass
         #list the common keys between the two
         for same_key in list(set(list(source_dict.keys())).intersection(list(target_dict.keys()))):
             if source_dict[same_key]==target_dict[same_key]:
@@ -1373,7 +1389,7 @@ class rpSBML:
                             foundIt = True
                             break
                     if not foundIt:
-                        self.logger.error('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
+                        self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
             self._checklibSBML(target_groups.addGroup(group),
                     'copying the source groups to the target groups')
         ###### TITLES #####
