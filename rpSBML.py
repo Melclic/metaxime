@@ -30,6 +30,8 @@ class rpSBML:
     def __init__(self, modelName, document=None, path=None):
         self.logger = logging.getLogger(__name__)
         self.logger.info('Started instance of rpSBML')
+        #WARNING: change this to reflect the different debugging levels
+        self.logger.setLevel(logging.ERROR)
         self.modelName = modelName
         self.document = document
         if self.document==None:
@@ -37,23 +39,16 @@ class rpSBML:
         else:
             self.model = self.document.getModel()
         self.path = path
-        self.miriam_header = {'compartment': {'go': 'go/GO:', 'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
-        self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
+        #More complete with 
+        #self.miriam_header = {'compartment': {'go': 'go/GO:', 'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
+        #self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
+        #removed GO
+        self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'pubchem': 'pubchem.compound/','mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
+        self.header_miriam = {'compartment': {'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'pubchem.compound': 'pubchem', 'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
 
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
-
-    '''
-    # define Python user-defined exceptions
-    class Error(Exception):
-        """Base class for other exceptions"""
-        pass
-
-    #We do this so that it is not stopping
-    class libSBMLError(Error):
-        pass
-    '''
 
     ## Check the libSBML calls
     #
@@ -64,9 +59,6 @@ class rpSBML:
     def _checklibSBML(self, value, message):
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
-            #raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
-            #raise libSBMLError('LibSBML returned a null value trying to ' + message + '.')
-            #raise self.libSBMLError
             raise AttributeError
         elif type(value) is int:
             if value==libsbml.LIBSBML_OPERATION_SUCCESS:
@@ -76,9 +68,6 @@ class rpSBML:
                         + 'LibSBML returned error code ' + str(value) + ': "' \
                         + libsbml.OperationReturnValue_toString(value).strip() + '"'
                 self.logger.error(err_msg)
-                #raise self.libSBMLError
-                #raise libSBMLError(err_msg)
-                #raise SystemExit(err_msg)
                 raise AttributeError
         else:
             #self.logger.info(message)
@@ -185,7 +174,6 @@ class rpSBML:
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
       <bqbiol:is>
         <rdf:Bag>
-          <rdf:li rdf:resource="http://identifiers.org/uniprot/test2i33"/>
         </rdf:Bag>
       </bqbiol:is>
     </rdf:Description>
@@ -255,7 +243,6 @@ class rpSBML:
         brsynth_annot = None
         obj_annot = sbase_obj.getAnnotation()
         if not obj_annot:
-            #sbase_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
             sbase_obj.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultBRSynthAnnot(meta_id)))
             obj_annot = sbase_obj.getAnnotation()
             if not obj_annot:
@@ -293,11 +280,9 @@ class rpSBML:
             miriam_annot = sbase_obj.getAnnotation().getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             miriam_elements = self.readMIRIAMAnnotation(sbase_obj.getAnnotation())
             if not miriam_elements:
-                #tmp_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
                 isReplace = True
                 if not meta_id:
                     meta_id = self._genMetaID('tmp_addUpdateMIRIAM')
-                #miriam_annot = libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id))
                 miriam_annot_1 = libsbml.XMLNode.convertStringToXMLNode(self._defaultBothAnnot(meta_id))
                 miriam_annot = miriam_annot_1.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             else:
@@ -342,44 +327,80 @@ class rpSBML:
         for database_id in toadd:
             for species_id in toadd[database_id]:
                 #not sure how to avoid having it that way
-                try:
-                    #determine if the dictionnaries 
-                    annotation = '''<annotation>
-<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
-<rdf:Description rdf:about="#tmp">
-  <bqbiol:is>
-    <rdf:Bag>'''
-                    if type_param=='species':
-                        if database_id=='kegg' and species_id[0]=='C':
-                            annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
-                        elif database_id=='kegg' and species_id[0]=='D':
-                            annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
+                if database_id in self.miriam_header[type_param]:
+                    try:
+                        #determine if the dictionnaries 
+                        annotation = '''<annotation>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+    <rdf:Description rdf:about="#tmp">
+      <bqbiol:is>
+        <rdf:Bag>'''
+                        if type_param=='species':
+                            if database_id=='kegg' and species_id[0]=='C':
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_c']+str(species_id)+'''"/>'''
+                            elif database_id=='kegg' and species_id[0]=='D':
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param]['kegg_d']+str(species_id)+'''"/>'''
+                            else:
+                                annotation += '''
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                         else:
                             annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
-                    else:
+              <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
                         annotation += '''
-          <rdf:li rdf:resource="http://identifiers.org/'''+self.miriam_header[type_param][database_id]+str(species_id)+'''"/>'''
-                    annotation += '''
-    </rdf:Bag>
-  </bqbiol:is>
-</rdf:Description>
-</rdf:RDF>
-</annotation>'''
-                    toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
-                    toWrite_annot = toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0)
-                    miriam_annot.insertChild(0, toWrite_annot)
-                except KeyError:
-                    #WARNING need to check this
-                    self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
-                    continue
+        </rdf:Bag>
+      </bqbiol:is>
+    </rdf:Description>
+    </rdf:RDF>
+    </annotation>'''
+                        toPass_annot = libsbml.XMLNode.convertStringToXMLNode(annotation)
+                        toWrite_annot = toPass_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag').getChild(0)
+                        miriam_annot.insertChild(0, toWrite_annot)
+                    except KeyError:
+                        #WARNING need to check this
+                        self.logger.warning('Cannot find '+str(database_id)+' in self.miriam_header for '+str(type_param))
+                        continue
         if isReplace:
             ori_miriam_annot = sbase_obj.getAnnotation()
-            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').removeChild(0), 'Removing annotation "is"')
-            self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').addChild(miriam_annot), 'Adding annotation to the brsynth annotation')
+            if ori_miriam_annot==None:
+                sbase_obj.unsetAnnotation()
+                sbase_obj.setAnnotation(miriam_annot)
+            else:
+                self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').removeChild(0), 'Removing annotation "is"')
+                self._checklibSBML(ori_miriam_annot.getChild('RDF').getChild('Description').getChild('is').addChild(miriam_annot), 'Adding annotation to the brsynth annotation')
         return True
+
+    ## Generate in-house json output of the rpSBML model including the annotations for the BRSynth and MIRIAM 
+    #
+    #
+    def genJSON(self, pathway_id='rp_pathway'):
+        groups = rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        reactions = rp_pathway.getListOfMembers()
+        #pathway
+        rpsbml_json = {}
+        rpsbml_json['pathway'] = {}
+        rpsbml_json['pathway']['brsynth'] = rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
+        #reactions
+        rpsbml_json['reactions'] = {}
+        for member in reactions:
+            reaction = rpsbml.model.getReaction(member.getIdRef())
+            annot = reaction.getAnnotation()
+            rpsbml_json['reactions'][member.getIdRef()] = {}
+            rpsbml_json['reactions'][member.getIdRef()]['brsynth'] = rpsbml.readBRSYNTHAnnotation(annot)
+            rpsbml_json['reactions'][member.getIdRef()]['miriam'] = rpsbml.readMIRIAMAnnotation(annot)
+        #loop though all the species
+        rpsbml_json['species'] = {}
+        for spe_id in self.readUniqueRPspecies(pathway_id):
+            species = rpsbml.model.getSpecies(spe_id)
+            annot = species.getAnnotation()
+            rpsbml_json['species'][spe_id] = {}
+            rpsbml_json['species'][spe_id]['brsynth'] = rpsbml.readBRSYNTHAnnotation(annot)
+            rpsbml_json['species'][spe_id]['miriam'] = rpsbml.readMIRIAMAnnotation(annot)
+        with open('tmp.json', 'w') as oj:
+            json.dump(rpsbml_json, oj)
+        return rpsbml_json
 
 
     #####################################################################
@@ -629,17 +650,25 @@ class rpSBML:
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
-                toRet[ann.getName()] = {
-                        'units': ann.getAttrValue('units'),
-                        'value': float(ann.getAttrValue('value'))}
+                try:
+                    toRet[ann.getName()] = {
+                            'units': ann.getAttrValue('units'),
+                            'value': float(ann.getAttrValue('value'))}
+                except ValueError:
+                    self.logger.warning('Cannot interpret '+str(ann.getName())+': '+str(ann.getAttrValue('value')+' - '+str(ann.getAttrValue('units'))))
+                    toRet[ann.getName()] = {
+                            'units': None,
+                            'value': None}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
-                    toRet[ann.getName()] = int(ann.getAttrValue('value'))
+                    #toRet[ann.getName()] = int(ann.getAttrValue('value'))
+                    toRet[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
                 except ValueError:
                     toRet[ann.getName()] = None
             elif ann.getName()=='rule_score' or ann.getName()=='global_score' or ann.getName()[:5]=='norm_':
                 try:
-                    toRet[ann.getName()] = float(ann.getAttrValue('value'))
+                    #toRet[ann.getName()] = float(ann.getAttrValue('value'))
+                    toRet[ann.getName()] = {'value': float(ann.getAttrValue('value'))}
                 except ValueError:
                     toRet[ann.getName()] = None
             elif ann.getName()=='smiles':
@@ -655,7 +684,9 @@ class rpSBML:
                         toRet[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
             else:
                 toRet[ann.getName()] = ann.getChild(0).toXMLString()
-        return toRet
+        #to delete empty
+        return {k: v for k, v in toRet.items() if v is not None}
+        #return toRet
 
 
     ## Function to return the products and the species associated with a reaction
@@ -781,7 +812,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
-            pathway[brsynthAnnot['step_id']] = step
+            pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
 
@@ -800,6 +831,16 @@ class rpSBML:
     def compareBRSYNTHAnnotations(self, source_annot, target_annot):
         source_dict = self.readBRSYNTHAnnotation(source_annot)
         target_dict = self.readBRSYNTHAnnotation(target_annot)
+        #ignore thse when comparing reactions
+        for i in ['path_id', 'step', 'sub_step', 'rule_score', 'rule_ori_reac']:
+            try:
+                del source_dict[i]
+            except KeyError:
+                pass
+            try:
+                del target_dict[i]
+            except KeyError:
+                pass
         #list the common keys between the two
         for same_key in list(set(list(source_dict.keys())).intersection(list(target_dict.keys()))):
             if source_dict[same_key]==target_dict[same_key]:
@@ -1029,7 +1070,7 @@ class rpSBML:
 
     ## Merge two models species and reactions using the annotations to recognise the same species and reactions
     #
-    # The source mode has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
+    # The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
     #called rp_pathway. If not use the readSBML() function to create a model
     # We add the reactions and species from the rpsbml to the target_model
     # 
@@ -1039,7 +1080,7 @@ class rpSBML:
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):
-    def mergeModels(self, target_rpsbml):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
+    def mergeModels(self, target_rpsbml, species_group_id='central_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -1256,7 +1297,7 @@ class rpSBML:
                 targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
                 targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
                 if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logging.info('The reactions species and products are the same')
+                    self.logger.info('The reactions species and products are the same')
                     toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
         #add the new reactions
@@ -1337,14 +1378,22 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
-        '''
-        if not pathway_id in [i.getId() for i in target_groups.getListOfGroups()]:
-            self._checklibSBML(target_groups.addGroup(source_groups.getGroup(pathway_id)),
-                    'copying the source groups "rp_pathway" to the target groups')
-        '''
-        for group in target_groups.getListOfGroups():
+        #TODO: this will overwrite two groups of the same id, need to change
+        for group in source_groups.getListOfGroups():
+            #for all the species that need to be converted, replace the ones that are
+            #if the group is the species group, replace the ones detected from model_species_convert
+            if group.getId()==species_group_id:
+                for spe_conv in model_species_convert:
+                    foundIt = False
+                    for member in group.getListOfMembers():
+                        if member.getIdRef()==spe_conv:
+                            member.setIdRef(model_species_convert[spe_conv])
+                            foundIt = True
+                            break
+                    if not foundIt:
+                        self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
             self._checklibSBML(target_groups.addGroup(group),
-                    'copying the source groups "rp_pathway" to the target groups')
+                    'copying the source groups to the target groups')
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
@@ -1416,6 +1465,7 @@ class rpSBML:
             meta_id = self._genMetaID(compId)
         self._checklibSBML(comp.setMetaId(meta_id), 'set the meta_id for the compartment')
         ############################ MIRIAM ############################
+        comp.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id)))
         self.addUpdateMIRIAM(comp, 'compartment', compXref, meta_id)
 
 
@@ -1535,8 +1585,7 @@ class rpSBML:
         #########################################
         #reactions
         self._checklibSBML(reac.setId(reac_id), 'set reaction id') #same convention as cobrapy
-        #self._checklibSBML(reac.setName(str(reac_id)+), 'set name') #same convention as cobrapy
-        self._checklibSBML(reac.setSBOTerm(185), 'setting the system biology ontology (SBO)') #set as process
+        self._checklibSBML(reac.setSBOTerm(176), 'setting the system biology ontology (SBO)') #set as process
         #TODO: consider having the two parameters as input to the function
         self._checklibSBML(reac.setReversible(True), 'set reaction reversibility flag')
         self._checklibSBML(reac.setFast(False), 'set reaction "fast" attribute')
@@ -1565,6 +1614,7 @@ class rpSBML:
             self._checklibSBML(pro.setStoichiometry(float(step['right'][product])),
                 'set the stoichiometry ('+str(float(step['right'][product]))+')')
         ############################ MIRIAM ############################
+        self._checklibSBML(reac.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
         self.addUpdateMIRIAM(reac, 'reaction', reacXref, meta_id)
         ###### BRSYNTH additional information ########
         if reaction_smiles:
@@ -1653,6 +1703,8 @@ class rpSBML:
             self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_name))
         #this is setting MNX id as the name
         #this is setting the name as the input name
+        #self._checklibSBML(spe.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'creating annotation')
+        self._checklibSBML(spe.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
         ###### annotation ###
         self.addUpdateMIRIAM(spe, 'species', chemXref, meta_id)
         ###### BRSYNTH additional information ########
@@ -1674,7 +1726,7 @@ class rpSBML:
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
-                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
 
 
     ## Create libSBML pathway
