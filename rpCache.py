@@ -41,6 +41,7 @@ class rpCache:
         self.mnxm_strc = None
         self.chemXref = None
         self.rr_reactions = None
+        self.chebi_mnxm = None
         if not self._loadCache():
             raise ValueError
 
@@ -143,9 +144,16 @@ class rpCache:
         picklename = 'chemXref.pickle.gz'
         filename = 'chem_xref.tsv'
         if not os.path.isfile(dirname+'/cache/'+picklename):
-            pickle.dump(self.mnx_chemXref(dirname+'/input_cache/'+filename),
+            self.chemXref = self.mnx_chemXref(dirname+'/input_cache/'+filename)
+            pickle.dump(self.chemXref,
                         gzip.open(dirname+'/cache/'+picklename,'wb'))
         self.chemXref = pickle.load(gzip.open(dirname+'/cache/'+picklename, 'rb'))
+
+        picklename = 'chebi_mnxm.pickle.gz'
+        if not os.path.isfile(dirname+'/cache/'+picklename):
+            pickle.dump(self.chebi_xref(self.chemXref),
+                        gzip.open(dirname+'/cache/'+picklename,'wb'))
+        self.chebi_mnxm = pickle.load(gzip.open(dirname+'/cache/'+picklename, 'rb'))
 
         picklename = 'rr_reactions.pickle'
         filename = 'rules_rall.tsv'
@@ -369,6 +377,23 @@ class rpCache:
                     if not dbId in chemXref[dbName]:
                         chemXref[dbName][dbId] = mnx
         return chemXref
+
+
+    ## Function to parse the chem_xref.tsv file of MetanetX
+    #
+    #  Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id's
+    #
+    #  @param self Object pointer
+    #  @param chem_xref_path Input file path
+    #  @return a The dictionnary of identifiers
+    #TODO: save the self.deprecatedMNXM_mnxm to be used in case there rp_paths uses an old version of MNX
+    def chebi_xref(self, chemXref):
+        chebi_mnxm = {}
+        for mnxm in chemXref:
+            if 'chebi' in chemXref[mnxm]:
+                for c in chemXref[mnxm]['chebi']:
+                    chebi_mnxm[c] = mnxm 
+        return chebi_mnxm
 
 
     ## Function to parse the rules_rall.tsv from RetroRules
