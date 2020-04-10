@@ -12,6 +12,11 @@ import copy
 # Here we also define our own annotations that are used internally in that we call BRSYNTH nodes.
 # The object holds an SBML object and a series of methods to write and access BRSYNTH related annotations
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
 
 ##################################################################
 ############################### rpSBML ###########################
@@ -29,9 +34,9 @@ class rpSBML:
     # @param nameSpaceModel libSBML name space (not required)
     def __init__(self, modelName, document=None, path=None):
         self.logger = logging.getLogger(__name__)
-        self.logger.info('Started instance of rpSBML')
         #WARNING: change this to reflect the different debugging levels
-        self.logger.setLevel(logging.ERROR)
+        self.logger.info('Started instance of rpSBML')
+        #self.logger.setLevel(logging.INFO)
         self.modelName = modelName
         self.document = document
         if self.document==None:
@@ -494,15 +499,18 @@ class rpSBML:
     def findCreateObjective(self, reactions, coefficients, isMax=True, objective_id=None):
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
+        if not objective_id:
+            objective_id = 'obj_'+'_'.join(reactions)
+            self.logger.info('Setting objective as '+str(objective_id))
         for objective in fbc_plugin.getListOfObjectives():
             if objective.getId()==objective_id:
+                self.logger.warning('The specified objective id ('+str(objective_id)+') already exists')
                 return objective_id
             if not set([i.getReaction() for i in objective.getListOfFluxObjectives()])-set(reactions):
+                #TODO: consider setting changing the name of the objective 
+                self.logger.warning('The specified objective id ('+str(objective_id)+') has another objective with the same reactions: '+str(objective.getId()))
                 return objective.getId()
-        #Cannot find a valid objective create it
-        if not objective_id:
-            self.logger.warning('Creating a new objective')
-            objective_id = 'obj_rpFBA'+'_'.join(reactions)
+        #If cannot find a valid objective create it
         self.createMultiFluxObj(objective_id,
                                 reactions,
                                 coefficients,
