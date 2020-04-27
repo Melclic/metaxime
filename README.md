@@ -15,7 +15,7 @@ TODO
 Build the docker image:
 
 ```
-docker build -t brsynth/rpbase:dev .
+docker build -t brsynth/rpbase:newrules .
 ```
 
 ## Running the tests
