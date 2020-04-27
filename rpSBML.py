@@ -680,7 +680,8 @@ class rpSBML:
             elif ann.getName()=='smiles':
                 toRet[ann.getName()] = ann.getChild(0).toXMLString().replace('&gt;', '>')
             #lists in the annotation
-            elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
+            #elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
+            elif ann.getName()=='selenzyme':
                 toRet[ann.getName()] = {}
                 for y in range(ann.getNumChildren()):
                     selAnn = ann.getChild(y)
@@ -808,6 +809,7 @@ class rpSBML:
             reaction = self.model.getReaction(member)
             brsynthAnnot = self.readBRSYNTHAnnotation(reaction.getAnnotation())
             speciesReac = self.readReactionSpecies(reaction)
+            logging.info('brsynthAnnot:'+str(brsynthAnnot))
             step = {'reaction_id': member,
                     'reaction_rule': brsynthAnnot['smiles'],
                     'rule_score': brsynthAnnot['rule_score'],
@@ -818,6 +820,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
+            logging.info('Step: '+str(step))
             pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
@@ -1057,7 +1060,7 @@ class rpSBML:
                               'path_id': None,
                               'transformation_id': None,
                               'rule_score': None,
-                              'mnxr': None}
+                              'rule_ori_reac': None}
                 #create the model in the 
                 if rpsbml==None:
                     self.createReaction('create_'+species_id,
@@ -1569,15 +1572,15 @@ class rpSBML:
     # @return meta_id meta ID for this reaction
     #TODO as of now not generic, works when creating a new SBML file, but no checks if modifying existing SBML file
     def createReaction(self,
-            reac_id,
-            fluxUpperBound,
-            fluxLowerBound,
-            step,
-            compartment_id,
-            reaction_smiles=None,
-            reacXref={},
-            pathway_id=None,
-            meta_id=None):
+                       reac_id,
+                       fluxUpperBound,
+                       fluxLowerBound,
+                       step,
+                       compartment_id,
+                       reaction_smiles=None,
+                       reacXref={},
+                       pathway_id=None,
+                       meta_id=None):
         reac = self.model.createReaction()
         self._checklibSBML(reac, 'create reaction')
         ################ FBC ####################
@@ -1629,9 +1632,10 @@ class rpSBML:
             self.addUpdateBRSynth(reac, 'rule_id', step['rule_id'], None, True, False, False, meta_id)
         #TODO: need to change the name and content (to dict) upstream
         if step['rule_ori_reac']:
-            #self.addUpdateBRSynthList(reac, 'rule_ori_reac', step['rule_ori_reac'], True, False, meta_id)
-            self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
-            #sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None)
+            #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
+            logging.info('rule_ori_reac: '+str(step['rule_ori_reac']))
+            #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
+            self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, True, False, False, meta_id)
         if step['rule_score']:
             self.addUpdateBRSynth(reac, 'rule_score', step['rule_score'], None, False, False, False, meta_id)
         if step['path_id']:
@@ -1667,18 +1671,18 @@ class rpSBML:
     # @param dG Optinal Thermodynamics constant for this species
     # @param dG_uncert Optional Uncertainty associated with the thermodynamics of the reaction 
     def createSpecies(self,
-            species_id,
-            compartment_id,
-            species_name=None,
-            chemXref={},
-            inchi=None,
-            inchikey=None,
-            smiles=None,
-            species_group_id=None,
-            meta_id=None):
-            #TODO: add these at some point -- not very important
-            #charge=0,
-            #chemForm=''):
+                      species_id,
+                      compartment_id,
+                      species_name=None,
+                      chemXref={},
+                      inchi=None,
+                      inchikey=None,
+                      smiles=None,
+                      species_group_id=None,
+                      meta_id=None):
+                      #TODO: add these at some point -- not very important
+                      #charge=0,
+                      #chemForm=''):
         spe = self.model.createSpecies()
         self._checklibSBML(spe, 'create species')
         ##### FBC #####
