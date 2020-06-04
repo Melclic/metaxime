@@ -493,7 +493,7 @@ class rpSBML:
     ## Find the objective (with only one reaction associated) based on the reaction ID and if not found create it
     #
     #
-    #
+    #TODO: seperate the find and the create
     def findCreateObjective(self, reactions, coefficients, isMax=True, objective_id=None):
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
