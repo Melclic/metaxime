@@ -1,7 +1,7 @@
 import libsbml
 from graphviz import Digraph
 
-document = libsbml.readSBMLFromFile('/Users/melchior/Downloads/Galaxy85/rp_1_1.sbml.xml')
+document = libsbml.readSBMLFromFile('/Users/melchior/Downloads/rpglobalscore/rp_4_5.sbml.xml')
 model = document.getModel()
 
 f = Digraph('rp_1_1', filename='rp_1_1.gv')

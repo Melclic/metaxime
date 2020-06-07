@@ -1,10 +1,10 @@
 import libsbml
 import networkx as nx
 
-document = libsbml.readSBMLFromFile('/Users/melchior/Downloads/Galaxy85/rp_1_1.sbml.xml')
+document = libsbml.readSBMLFromFile('rpglobalscore/rp_4_5.sbml.xml')
 model = document.getModel()
 
-g = nx.DiGraph()
+ = nx.DiGraph()
 
 def color_hex( color, prefix = '#' ):
 	if len( color ) == 3:
