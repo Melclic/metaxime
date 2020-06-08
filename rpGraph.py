@@ -19,7 +19,7 @@ class rpGraph:
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
-        self.logger.info('Started instance of rpSBML')
+        self.logger.info('Started instance of rpGraph')
         self.pathway_id = pathway_id
         self.G = None
         self.species = None
@@ -34,21 +34,35 @@ class rpGraph:
     #
     #
     def _makeGraph(self, pathway_id='rp_pathway'):
-        self.G = nx.DiGraph()
         self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
-        rp_dict = self.rpsbml.readRPspecies(pathway_id)
-        self.reactions = [self.rpsbml.model.getReaction(i) for i in list(rp_dict.keys())]
+        groups = self.rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        self.reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
+        self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
+        #nodes
         for spe in self.species:
             self.num_species += 1
-            self.G.add_node(spe.getId(), type='species')
+            self.G.add_node(spe.getId(), 
+                            type='species',
+                            name=spe.getName(),
+                            miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
+                            brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()))
         for reac in self.reactions:
             self.num_reactions += 1
-            self.G.add_node(reac.getId(), type='reaction')
+            self.G.add_node(reac.getId(),
+                            type='reaction',
+                            miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
+                            brsynth=self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation()))
+        #edges
         for reaction in self.reactions:
             for reac in reaction.getListOfReactants():
-                self.G.add_edge(reac.species, reaction.getId())
+                self.G.add_edge(reac.species,
+                                reaction.getId(),
+                                stoichio=reac.stoichiometry)
             for prod in reaction.getListOfProducts():
-                self.G.add_edge(reaction.getId(), prod.species)
+                self.G.add_edge(reaction.getId(),
+                                prod.species,
+                                stoichio=reac.stoichiometry)
 
 
     ##
@@ -186,7 +200,7 @@ class rpGraph:
 
 
 
-    ##
+    ## BUG: need to fix - infinite loop
     #
     #
     def orderedReaction(self):
@@ -214,7 +228,7 @@ class rpGraph:
     #
     def startSpecies(self):
         staspe = []
-        self.logger.info(self._onlyConsumedSpecies())
+        self.logger.info('onlyConsumedSpecies: '+str(self._onlyConsumedSpecies()))
         for spe in self._onlyConsumedSpecies():
             if len(self._countForwReac(spe))==self.num_reactions:
                 staspe.append(spe)
