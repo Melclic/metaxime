@@ -380,7 +380,7 @@ class rpSBML:
 
     ## Generate in-house json output of the rpSBML model including the annotations for the BRSynth and MIRIAM 
     #
-    #
+    # TODO: change the name of the function to: rpJSON
     def genJSON(self, pathway_id='rp_pathway'):
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
