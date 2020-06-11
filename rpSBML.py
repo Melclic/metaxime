@@ -1675,6 +1675,7 @@ class rpSBML:
             inchikey=None,
             smiles=None,
             species_group_id=None,
+            in_sink_group_id=None,
             meta_id=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1700,6 +1701,7 @@ class rpSBML:
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
         self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
+        self.logger.info('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
         if meta_id==None:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
@@ -1723,6 +1725,7 @@ class rpSBML:
             self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
         #### GROUPS #####
         #TODO: check that it actually exists
+        self.logger.info('species_group_id: '+str(species_group_id))
         if not species_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(species_group_id)
@@ -1731,6 +1734,19 @@ class rpSBML:
                 #TODO: consider creating it if
             else:
                 newM = hetero_group.createMember()
+                self._checklibSBML(newM, 'Creating a new groups member')
+                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
+        #TODO: check that it actually exists
+        #add the species to the sink species
+        self.logger.info('in_sink_group_id: '+str(in_sink_group_id))
+        if not in_sink_group_id==None:
+            groups_plugin = self.model.getPlugin('groups')
+            sink_group = groups_plugin.getGroup(in_sink_group_id)
+            if not sink_group:
+                self.logger.warning('The species_group_id '+str(in_sink_group_id)+' does not exist in the model')
+                #TODO: consider creating it if
+            else:
+                newM = sink_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
 
@@ -1747,9 +1763,11 @@ class rpSBML:
     # @param products list of species that are the products of this reaction
     # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
     # @return hetero_group The number libSBML groups object to pass to createReaction to categorise the new reactions
+    #TODO: change the name of this function to createGroup
     def createPathway(self, pathway_id, meta_id=None):
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
+        self.logger.info('setting new group id: '+str(pathway_id))
         new_group.setId(pathway_id)
         if meta_id==None:
             meta_id = self._genMetaID(pathway_id)
