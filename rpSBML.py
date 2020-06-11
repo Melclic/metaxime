@@ -1086,7 +1086,10 @@ class rpSBML:
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):
-    def mergeModels(self, target_rpsbml, species_group_id='central_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
+    def mergeModels(self,
+                    target_rpsbml,
+                    species_group_id='central_species',
+                    sink_species_group_id='rp_sink_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -1388,7 +1391,7 @@ class rpSBML:
         for group in source_groups.getListOfGroups():
             #for all the species that need to be converted, replace the ones that are
             #if the group is the species group, replace the ones detected from model_species_convert
-            if group.getId()==species_group_id:
+            if group.getId()==species_group_id or group.getId()==sink_species_group_id:
                 for spe_conv in model_species_convert:
                     foundIt = False
                     for member in group.getListOfMembers():
