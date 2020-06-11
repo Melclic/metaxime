@@ -15,38 +15,45 @@ class rpGraph:
     ##
     #
     #
-    def __init__(self, rpsbml, pathway_id='rp_pathway'):
+    def __init__(self, rpsbml, pathway_id='rp_pathway', species_group_id='central_species'):
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.info('Started instance of rpGraph')
         self.pathway_id = pathway_id
+        self.species_group_id = species_group_id
         self.G = None
         self.species = None
         self.reactions = None
         self.pathway_id = pathway_id
         self.num_reactions = 0
         self.num_species = 0
-        self._makeGraph(pathway_id)
+        self._makeGraph(pathway_id, species_group_id)
 
 
     ##
     #
     #
-    def _makeGraph(self, pathway_id='rp_pathway'):
+    def _makeGraph(self, pathway_id='rp_pathway', species_group_id='central_species'):
         self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
         groups = self.rpsbml.model.getPlugin('groups')
+        central_species = groups.getGroup(species_group_id)
+        central_species = [i.getIdRef() for i in central_species.getListOfMembers()]
         rp_pathway = groups.getGroup(pathway_id)
         self.reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
         self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
         #nodes
         for spe in self.species:
             self.num_species += 1
+            is_central = False
+            if spe.getId() in central_species:
+                is_central = True
             self.G.add_node(spe.getId(), 
                             type='species',
                             name=spe.getName(),
                             miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
-                            brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()))
+                            brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()),
+                            central_species=is_central)
         for reac in self.reactions:
             self.num_reactions += 1
             self.G.add_node(reac.getId(),
@@ -81,6 +88,21 @@ class rpGraph:
     ##
     #
     #
+    def _onlyConsumedCentralSpecies(self):
+        only_consumed_species = []
+        for node_name in self.G.nodes.keys():
+            node = self.G.nodes.get(node_name)
+            if node['type']=='species':
+                if node['central_species']==True:
+                    if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
+                        only_consumed_species.append(node_name)
+        return only_consumed_species
+
+
+
+    ##
+    #
+    #
     def _onlyProducedSpecies(self):
         only_produced_species = []
         for node_name in self.G.nodes.keys():
@@ -94,142 +116,159 @@ class rpGraph:
     ##
     #
     #
-    def _countBackReac(self, start_species):
-        is_reac = True
-        reaction = None
-        ordered_reac = []
-        self.logger.info('============= '+str(start_species)+' ==============')
-        only_consumed_species = self._onlyConsumedSpecies()
-        for node_name in self.G.predecessors(start_species):
-            self.logger.info('-> '+str(node_name))
+    def _onlyProducedCentralSpecies(self):
+        only_produced_species = []
+        for node_name in self.G.nodes.keys():
             node = self.G.nodes.get(node_name)
-            if node['type']=='reaction':
-                if reaction:
-                    self.logger.warning('Species is produced by multiple reactions')
-                    return []
-                else:
-                    reaction = node_name
-                    ordered_reac.append(node_name)
-            elif node['type']=='species':
-                self.logger.warning('Species '+str(start_species)+' has species for predecessor')
-            else:
-                self.logger.warning('Detected another node type: '+str(node['type']))
-        if reaction==None:
-            self.logger.error('Species '+str(start_species)+' does not have reaction predecessor')
-            return 0
-        while is_reac:
-            for spe_name in self.G.predecessors(reaction):
-                spe_node = self.G.nodes.get(spe_name)
-                if spe_node['type']=='species':
-                    for reac_name in self.G.predecessors(spe_name):
-                        if all([i in only_consumed_species for i in self.G.predecessors(reac_name)]):
-                            is_reac = False
-                        reac_node = self.G.nodes.get(reac_name)
-                        if reac_node['type']=='reaction':
-                            if not reac_name==reaction:
-                                reaction = reac_name
-                                ordered_reac.append(reac_name)
-                        elif reac_node['type']=='species':
-                            self.logger.warning('Species '+str(start_species)+' has species for predecessor')
-                        else:
-                            self.logger.warning('Detected another node type: '+str(node['type']))
-                elif node['type']=='reaction':
-                    self.logger.warning('Reation '+str(spe_name)+' contains species as predecessor')
-                else:
-                    self.logger.warning('Detected another node type: '+str(node['type']))
-        return ordered_reac
+            if node['type']=='species':
+                if node['central_species']==True:
+                    if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
+                        only_produced_species.append(node_name)
+        return only_produced_species
 
 
-    ##
+    ## 
     #
+    # Better than before, however bases itself on the fact that central species do not have multiple predesessors
+    # if that is the case then the algorithm will return badly ordered reactions
     #
-    def _countForwReac(self, end_species):
-        is_reac = True
-        reaction = None
-        ordered_reac = []
-        self.logger.info('============= '+str(end_species)+' ==============')
-        only_produced_species = self._onlyProducedSpecies()
-        for node_name in self.G.successors(end_species):
-            self.logger.info('-> '+str(node_name))
-            node = self.G.nodes.get(node_name)
-            if node['type']=='reaction':
-                if reaction:
-                    self.logger.warning('Species is produced by multiple reactions')
-                    return []
+    def _recursiveReacPrecessors(self, node_name, reac_list):
+        self.logger.info('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
+        pred_node_list = [i for i in self.G.predecessors(node_name)]
+        self.logger.info(pred_node_list)
+        if pred_node_list==[]:
+            return reac_list
+        for n_n in pred_node_list:
+            n = self.G.nodes.get(n_n)
+            if n['type']=='reaction':
+                if n_n in reac_list:
+                    return reac_list
                 else:
-                    reaction = node_name
-                    ordered_reac.append(node_name)
-            elif node['type']=='species':
-                self.logger.warning('Species '+str(end_species)+' has species for predecessor')
-            else:
-                self.logger.warning('Detected another node type: '+str(node['type']))
-        if reaction==None:
-            self.logger.error('Species '+str(end_species)+' does not have reaction predecessor')
-            return 0
-        while is_reac:
-            for spe_name in self.G.successors(reaction):
-                spe_node = self.G.nodes.get(spe_name)
-                if spe_node['type']=='species':
-                    for reac_name in self.G.successors(spe_name):
-                        if all([i in only_produced_species for i in self.G.successors(reac_name)]):
-                            is_reac = False
-                        reac_node = self.G.nodes.get(reac_name)
-                        if reac_node['type']=='reaction':
-                            if not reac_name==reaction:
-                                reaction = reac_name
-                                ordered_reac.append(reac_name)
-                        elif reac_node['type']=='species':
-                            self.logger.warning('Species '+str(end_species)+' has species for predecessor')
-                        else:
-                            self.logger.warning('Detected another node type: '+str(node['type']))
-                elif node['type']=='reaction':
-                    self.logger.warning('Reation '+str(spe_name)+' contains species as predecessor')
+                    reac_list.append(n_n)
+                    self._recursiveReacPrecessors(n_n, reac_list)
+            elif n['type']=='species':
+                if n['central_species']==True:
+                    self._recursiveReacPrecessors(n_n, reac_list)
                 else:
-                    self.logger.warning('Detected another node type: '+str(node['type']))
-        return ordered_reac
+                    return reac_list
+        return reac_list
 
 
-    ##
+    ## Warning that this search algorithm only works for mono-component reactions
     #
     #
     def orderedRetroReaction(self):
-        end_species = self.endSpecies()
-        if not len(end_species)==1:
-            logging.warning('There are multiple end species: '+str(end_species))
-        return self._countBackReac(end_species[0])
+        #Note: may be better to loop tho
+        if not len(prod_cent)==1:
+            self.logger.warning('The rppathway contains more than one only produced central species: '+str(prod_cent))
+        for i in prod_cent:
+            self.logger.info('Testing '+str(i))
+            ordered = self._recursiveReacPrecessors(i, [])
+            self.logger.info(ordered)
+            if len(ordered)==self.num_reactions:
+                return ordered
+            
+
+    ################################################# BELOW IS DEV ################################
+
+    """
+    def orderedRetroReac(self):
+        for node_name in self.G.nodes:
+            node = self.G.nodes.get(node_name)
+            if node['type']=='reaction':
+                self.logger.info('---> Starting reaction: '+str(node_name))
+                tmp_retrolist = [node_name]
+                is_not_end_reac = True
+                while is_not_end_reac:
+                    tmp_spereacs = []
+                    #for all the species, gather the ones that are not valid
+                    for spe_name in self.G.predecessors(tmp_retrolist[-1]):
+                        spe_node = self.G.nodes.get(spe_name)
+                        if spe_node['type']=='reaction':
+                            self.logger.warning('Reaction '+str(tmp_retrolist[-1])+' is directly connected to the following reaction '+str(spe_name))
+                            continue
+                        elif spe_node['type']=='species':
+                            if spe_node['central_species']==True:
+                                self.logger.info('\tSpecies: '+str(spe_name))
+                                self.logger.info('\t'+str([i for i in self.G.predecessors(spe_name)]))
+                                tmp_spereacs.append([i for i in self.G.predecessors(spe_name)])
+                        else:
+                            self.logger.warning('Node type should be either reaction or species: '+str(node['type']))
+                    #remove empty lists
+                    self.logger.info(tmp_spereacs)
+                    tmp_spereacs = [i for i in tmp_spereacs if i != []]
+                    self.logger.info(tmp_spereacs)
+                    #return the number of same intersect
+                    if tmp_spereacs==[]:
+                        is_not_end_reac = False
+                        continue
+                    tmp_spereacs = list(set.intersection(*map(set, tmp_spereacs)))
+                    self.logger.info(tmp_spereacs)
+                    if len(tmp_spereacs)>1:     
+                        self.logger.warning('There are multiple matches: '+str(tmp_spereacs))
+                    elif len(tmp_spereacs)==0:
+                        self.logger.info('Found the last reaction')
+                        is_not_end_reac = False
+                    elif len(tmp_spereacs)==1:
+                        self.logger.info('Found the next reaction: '+str(tmp_spereacs[0]))
+                        if tmp_spereacs[0] not in tmp_retrolist:
+                            tmp_retrolist.append(tmp_spereacs[0])
+                        else:
+                            self.logger.warning('Trying to add a reaction in the sequence that already exists')
+                            is_not_end_reac = False
+                    self.logger.info(tmp_retrolist)
+                self.logger.info('The tmp result is: '+str(tmp_retrolist))
+                if len(tmp_retrolist)==self.num_reactions:
+                    return tmp_retrolist
 
 
+    def orderedReac(self):
+        for node_name in self.G.nodes:
+            node = self.G.nodes.get(node_name)
+            if node['type']=='reaction':
+                self.logger.info('---> Starting reaction: '+str(node_name))
+                tmp_retrolist = [node_name]
+                is_not_end_reac = True
+                while is_not_end_reac:
+                    tmp_spereacs = []
+                    #for all the species, gather the ones that are not valid
+                    for spe_name in self.G.successors(tmp_retrolist[-1]):
+                        spe_node = self.G.nodes.get(spe_name)
+                        if spe_node['type']=='reaction':
+                            self.logger.warning('Reaction '+str(tmp_retrolist[-1])+' is directly connected to the following reaction '+str(spe_name))
+                            continue
+                        elif spe_node['type']=='species':
+                            if spe_node['central_species']==True:
+                                self.logger.info('\tSpecies: '+str(spe_name))
+                                self.logger.info('\t'+str([i for i in self.G.successors(spe_name)]))
+                                tmp_spereacs.append([i for i in self.G.successors(spe_name)])
+                        else:
+                            self.logger.warning('Node type should be either reaction or species: '+str(node['type']))
+                    #remove empty lists
+                    self.logger.info(tmp_spereacs)
+                    tmp_spereacs = [i for i in tmp_spereacs if i!=[]]
+                    self.logger.info(tmp_spereacs)
+                    #return the number of same intersect
+                    if tmp_spereacs==[]:
+                        is_not_end_reac = False
+                        continue
+                    tmp_spereacs = list(set.intersection(*map(set, tmp_spereacs)))
+                    self.logger.info(tmp_spereacs)
+                    if len(tmp_spereacs)>1:     
+                        self.logger.warning('There are multiple matches: '+str(tmp_spereacs))
+                    elif len(tmp_spereacs)==0:
+                        self.logger.info('Found the last reaction')
+                        is_not_end_reac = False
+                    elif len(tmp_spereacs)==1:
+                        self.logger.info('Found the next reaction: '+str(tmp_spereacs[0]))
+                        if tmp_spereacs[0] not in tmp_retrolist:
+                            tmp_retrolist.append(tmp_spereacs[0])
+                        else:
+                            self.logger.warning('Trying to add a reaction in the sequence that already exists')
+                            is_not_end_reac = False
+                    self.logger.info(tmp_retrolist)
+                self.logger.info('The tmp result is: '+str(tmp_retrolist))
+                if len(tmp_retrolist)==self.num_reactions:
+                    return tmp_retrolist
 
-    ## BUG: need to fix - infinite loop
-    #
-    #
-    def orderedReaction(self):
-        start_species = self.startSpecies()
-        if not len(start_species)==1:
-            logging.warning('There are multiple end species: '+str(start_species))
-        return self._countForwReac(start_species[0])
-
-
-
-    ##
-    #
-    #
-    def endSpecies(self):
-        endspe = []
-        self.logger.info(self._onlyProducedSpecies())
-        for spe in self._onlyProducedSpecies():
-            if len(self._countBackReac(spe))==self.num_reactions:
-                endspe.append(spe)
-        return endspe
-
-
-    ##
-    #
-    #
-    def startSpecies(self):
-        staspe = []
-        self.logger.info('onlyConsumedSpecies: '+str(self._onlyConsumedSpecies()))
-        for spe in self._onlyConsumedSpecies():
-            if len(self._countForwReac(spe))==self.num_reactions:
-                staspe.append(spe)
-        return staspe
+    """
