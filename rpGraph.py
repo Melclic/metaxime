@@ -157,16 +157,16 @@ class rpGraph:
     ## Warning that this search algorithm only works for mono-component reactions
     #
     #
-    def orderedRetroReaction(self):
+    def orderedRetroReactions(self):
         #Note: may be better to loop tho
-        if not len(prod_cent)==1:
-            self.logger.warning('The rppathway contains more than one only produced central species: '+str(prod_cent))
-        for i in prod_cent:
-            self.logger.info('Testing '+str(i))
-            ordered = self._recursiveReacPrecessors(i, [])
+        for prod_spe in sim_rpgraph._onlyProducedSpecies():
+            self.logger.info('Testing '+str(prod_spe))
+            ordered = self._recursiveReacPrecessors(prod_spe, [])
             self.logger.info(ordered)
             if len(ordered)==self.num_reactions:
                 return ordered
+        self.logger.error('Could not find the full ordered reactions')
+        return []
             
 
     ################################################# BELOW IS DEV ################################
