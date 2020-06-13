@@ -159,7 +159,7 @@ class rpGraph:
     #
     def orderedRetroReactions(self):
         #Note: may be better to loop tho
-        for prod_spe in sim_rpgraph._onlyProducedSpecies():
+        for prod_spe in self._onlyProducedSpecies():
             self.logger.info('Testing '+str(prod_spe))
             ordered = self._recursiveReacPrecessors(prod_spe, [])
             self.logger.info(ordered)
