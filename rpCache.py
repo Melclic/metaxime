@@ -186,7 +186,7 @@ class rpCache:
         picklename = 'cid_strc.pickle.gz'
         filename = 'chem_prop.tsv'
         if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.MNXstrc(os.path.join(dirname, 'input_cache', filename))
+            self.mnxStrc(os.path.join(dirname, 'input_cache', filename))
             self.retroRulesStrc(dirname+'/input_cache/rr_compounds.tsv')
             pickle.dump(self.cid_strc, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
         self.cid_strc = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
@@ -333,7 +333,7 @@ class rpCache:
     ################## RetroRules parsers ####################################
 
 
-    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules. Uses the InchIkey as key to the dictionnary
+    ## Function to parse the compounds.tsv from RetroRules. Uses the InchIkey as key to the dictionnary
     #
     #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
     #
@@ -556,14 +556,14 @@ class rpCache:
                         self.deprecatedRID_rid[mnx[1]] = row[1]
 
 
-    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules
+    ## Function to parse the chemp_prop.tsv file from MetanetX 
     # TODO: use the inchikey for all the cid
     #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
     #
     #  @param self Object pointer
     #  @param chem_prop_path Input file path
     #  @return cid_strc Dictionnary of formula, smiles, inchi and inchikey
-    def MNXstrc(self, chem_prop_path):
+    def mnxStrc(self, chem_prop_path):
         with open(chem_prop_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -643,6 +643,7 @@ class rpCache:
                         self.cid_xref[dbName] = {}
                     if not dbId in self.cid_xref[dbName]:
                         self.cid_xref[dbName][dbId] = mnx
+
 
 
 if __name__ == "__main__":
