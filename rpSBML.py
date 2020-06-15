@@ -1408,7 +1408,7 @@ class rpSBML:
                         self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
                     '''
             self._checklibSBML(target_groups.addGroup(group),
-                    'copying the source groups to the target groups')
+                    'copy the source groups to the target groups')
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
