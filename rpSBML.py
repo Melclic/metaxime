@@ -35,7 +35,7 @@ class rpSBML:
     def __init__(self, modelName, document=None, path=None):
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
-        self.logger.info('Started instance of rpSBML')
+        self.logger.debug('Started instance of rpSBML')
         #self.logger.setLevel(logging.INFO)
         self.modelName = modelName
         self.document = document
@@ -79,7 +79,7 @@ class rpSBML:
                 self.logger.error(err_msg)
                 raise AttributeError
         else:
-            #self.logger.info(message)
+            #self.logger.debug(message)
             return None
 
 
@@ -503,7 +503,7 @@ class rpSBML:
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
         if not objective_id:
             objective_id = 'obj_'+'_'.join(reactions)
-            self.logger.info('Setting objective as '+str(objective_id))
+            self.logger.debug('Setting objective as '+str(objective_id))
         for objective in fbc_plugin.getListOfObjectives():
             if objective.getId()==objective_id:
                 self.logger.warning('The specified objective id ('+str(objective_id)+') already exists')
@@ -813,7 +813,7 @@ class rpSBML:
             reaction = self.model.getReaction(member)
             brsynthAnnot = self.readBRSYNTHAnnotation(reaction.getAnnotation())
             speciesReac = self.readReactionSpecies(reaction)
-            logging.info('brsynthAnnot:'+str(brsynthAnnot))
+            self.logger.debug('brsynthAnnot:'+str(brsynthAnnot))
             step = {'reaction_id': member,
                     'reaction_rule': brsynthAnnot['smiles'],
                     'rule_score': brsynthAnnot['rule_score'],
@@ -824,7 +824,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
-            logging.info('Step: '+str(step))
+            self.logger.debug('Step: '+str(step))
             pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
@@ -1043,7 +1043,7 @@ class rpSBML:
             model = self.model
         else:
             model = rpsbml.model
-        self.logger.info('Adding the orphan species to the GEM model')
+        self.logger.debug('Adding the orphan species to the GEM model')
         #only for rp species
         groups = model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -1313,7 +1313,7 @@ class rpSBML:
                 targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
                 targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
                 if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logger.info('The reactions species and products are the same')
+                    self.logger.debug('The reactions species and products are the same')
                     toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
         #add the new reactions
@@ -1642,7 +1642,7 @@ class rpSBML:
         #TODO: need to change the name and content (to dict) upstream
         if step['rule_ori_reac']:
             #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
-            logging.info('rule_ori_reac: '+str(step['rule_ori_reac']))
+            self.logger.debug('rule_ori_reac: '+str(step['rule_ori_reac']))
             #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
             self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, True, False, False, meta_id)
         if step['rule_score']:
@@ -1714,7 +1714,7 @@ class rpSBML:
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
         self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
-        self.logger.info('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
+        self.logger.debug('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
         if meta_id==None:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
@@ -1738,7 +1738,7 @@ class rpSBML:
             self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
         #### GROUPS #####
         #TODO: check that it actually exists
-        self.logger.info('species_group_id: '+str(species_group_id))
+        self.logger.debug('species_group_id: '+str(species_group_id))
         if not species_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(species_group_id)
@@ -1751,7 +1751,7 @@ class rpSBML:
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
         #TODO: check that it actually exists
         #add the species to the sink species
-        self.logger.info('in_sink_group_id: '+str(in_sink_group_id))
+        self.logger.debug('in_sink_group_id: '+str(in_sink_group_id))
         if not in_sink_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             sink_group = groups_plugin.getGroup(in_sink_group_id)
@@ -1780,7 +1780,7 @@ class rpSBML:
     def createPathway(self, pathway_id, meta_id=None):
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
-        self.logger.info('setting new group id: '+str(pathway_id))
+        self.logger.debug('setting new group id: '+str(pathway_id))
         new_group.setId(pathway_id)
         if meta_id==None:
             meta_id = self._genMetaID(pathway_id)
