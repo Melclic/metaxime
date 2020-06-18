@@ -12,16 +12,11 @@ import shutil
 import argparse
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    #level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-
-'''
-logging.disable(logging.INFO)
-logging.disable(logging.WARNING)
-'''
-
 
 #######################################################
 ################### rpCache  ##########################
@@ -43,7 +38,7 @@ class rpCache:
         self.rr_rxn_recipes_path = rr_rxn_recipes_path
         #given by Thomas
         self.logger = logging.getLogger(__name__)
-        self.logger.info('Started instance of rpCache')
+        self.logger.debug('Started instance of rpCache')
         self.deprecatedCID_cid = {'MNXM162231': 'MNXM6',
                                   'MNXM84': 'MNXM15',
                                   'MNXM96410': 'MNXM14',
@@ -57,7 +52,7 @@ class rpCache:
         self.cid_xref = {} #cid_xref['MNXM287765'] = {'slm': ['000474284'], 'mnx': ['MNXM287765']}
         self.comp_xref = {}
         self.xref_comp = {}
-        #self.cid_name = {} #TODO: add valid names to the cid's
+        self.cid_name = {} #TODO: add valid names to the cid's
         #self.rid_name = {} #TODO: add valid reaction names
         self.chebi_cid = {} # for chebi_cid['88281']: 'MXM2323'
         self.inchikey_cid = {} # for key 'BZXZFDKIRZBJEP-UHFFFAOYSA-N': ['MNXM10', '10101']
@@ -106,8 +101,8 @@ class rpCache:
 
         ####################### Fetch the input_cache files if necessary ######################
 
-        # MNX
-        url = 'https://www.metanetx.org/cgi-bin/mnxget/mnxref/'
+        # MNX 3.2
+        url = 'ftp://ftp.vital-it.ch/databases/metanetx/MNXref/3.2/'
         for in_file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv', 'comp_xref.tsv']:
             if not os.path.isfile(dirname+'/input_cache/'+in_file) or fetchInputFiles:
                 urllib.request.urlretrieve(url+in_file, dirname+'/input_cache/'+in_file)
@@ -160,25 +155,7 @@ class rpCache:
                 os.remove(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
                 shutil.rmtree(dirname+'/input_cache/retrorules_rr02_rp3_hs')
 
-
         ###################### Populate the cache #################################
-
-        ###### RetroRules #####
-        picklename = 'rr_full_reactions.pickle.gz'
-        filename = 'rxn_recipes.tsv'
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.retroRulesFullReac(os.path.join(dirname, 'input_cache', filename))
-            pickle.dump(self.rr_full_reactions,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
-
-        picklename = 'rr_reactions.pickle.gz'
-        filename = 'rules_rall.tsv'
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.retroReactions(os.path.join(dirname, 'input_cache', filename))
-            pickle.dump(self.rr_reactions,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.rr_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
 
         ### MNX
 
@@ -186,7 +163,7 @@ class rpCache:
         picklename = 'cid_strc.pickle.gz'
         filename = 'chem_prop.tsv'
         if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.mnxStrc(os.path.join(dirname, 'input_cache', filename))
+            self.MNXstrc(os.path.join(dirname, 'input_cache', filename))
             self.retroRulesStrc(dirname+'/input_cache/rr_compounds.tsv')
             pickle.dump(self.cid_strc, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
         self.cid_strc = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
@@ -223,7 +200,25 @@ class rpCache:
         self.xref_comp = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename1), 'rb'))
         self.comp_xref = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename2), 'rb'))
 
-        ### intermidiate generate
+        ###### RetroRules ##### WARNING: run this at the end so that you can add the BASF to the xref
+
+        picklename = 'rr_full_reactions.pickle.gz'
+        filename = 'rxn_recipes.tsv'
+        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+            self.retroRulesFullReac(os.path.join(dirname, 'input_cache', filename))
+            pickle.dump(self.rr_full_reactions,
+                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
+        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+
+        picklename = 'rr_reactions.pickle.gz'
+        filename = 'rules_rall.tsv'
+        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+            self.retroReactions(os.path.join(dirname, 'input_cache', filename))
+            pickle.dump(self.rr_reactions,
+                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
+        self.rr_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+
+        ### intermidiate generate, WARNING: needs to be added at the end after the other files
 
         picklename = 'chebi_cid.pickle.gz'
         if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
@@ -238,6 +233,14 @@ class rpCache:
             self._inchikeyCID()
             pickle.dump(self.inchikey_cid, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
         self.inchikey_cid = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+
+        picklename = 'cid_name.pickle.gz'
+        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+            pickle.dump(self.cid_name,
+                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
+        self.cid_name = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+
+
         return True
 
 
@@ -333,21 +336,20 @@ class rpCache:
     ################## RetroRules parsers ####################################
 
 
-    ## Function to parse the compounds.tsv from RetroRules. Uses the InchIkey as key to the dictionnary
+    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules. Uses the InchIkey as key to the dictionnary
     #
     #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
     #
     #  @param self Object pointer
     #  @param chem_prop_path Input file path
     def retroRulesStrc(self, rr_compounds_path):
-        #TODO generate the structure when you get a chance
         for row in csv.DictReader(open(rr_compounds_path), delimiter='\t'):
             tmp = {'formula':  None,
-                    'smiles': None,
-                    'inchi': row['inchi'],
-                    'inchikey': None}
+                   'smiles': None,
+                   'inchi': row['inchi'],
+                   'inchikey': row['inchikey']}
             try:
-                resConv = self._convert_depiction(idepic=tmp['inchi'], itype='inchi', otype={'smiles','inchikey'})
+                resConv = self._convert_depiction(idepic=tmp['inchi'], itype='inchi', otype={'smiles'})
                 for i in resConv:
                     tmp[i] = resConv[i]
             except self.DepictionError as e:
@@ -355,6 +357,9 @@ class rpCache:
                 self.logger.warning(e)
             if not self._checkCIDdeprecated(row['cid']) in self.cid_strc:
                 self.cid_strc[self._checkCIDdeprecated(row['cid'])] = tmp
+            else:
+                if resConv['smiles'] and not self.cid_strc[self._checkCIDdeprecated(row['cid'])]['smiles']:
+                    self.cid_strc[self._checkCIDdeprecated(row['cid'])]['smiles'] = resConv['smiles']
 
 
     ## Function to parse the rules_rall.tsv from RetroRules
@@ -366,11 +371,6 @@ class rpCache:
     #  @return rule Dictionnary describing each reaction rule
     def retroReactions(self, rules_rall_path):
         try:
-            #with open(rules_rall_path, 'r') as f:
-            #    reader = csv.reader(f, delimiter = '\t')
-            #    next(reader)
-            #    rule = {}
-            #    for row in reader:
             for row in csv.DictReader(open(rules_rall_path), delimiter='\t'):
                 #NOTE: as of now all the rules are generated using MNX
                 #but it may be that other db are used, we are handling this case
@@ -390,7 +390,13 @@ class rpCache:
                         self.rr_reactions[row['# Rule_ID']] = {}
                     if row['# Rule_ID'] in self.rr_reactions[row['# Rule_ID']]:
                         self.logger.warning('There is already reaction '+str(row['# Rule_ID'])+' in reaction rule '+str(row['# Rule_ID']))
-                    self.rr_reactions[row['# Rule_ID']][row['Reaction_ID']] = {'rule_id': row['# Rule_ID'], 'rule_score': float(row['Score_normalized']), 'reac_id': self._checkRIDdeprecated(row['Reaction_ID']), 'subs_id': self._checkCIDdeprecated(row['Substrate_ID']), 'rel_direction': int(row['Rule_relative_direction']), 'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1}, 'right': products}
+                    self.rr_reactions[row['# Rule_ID']][row['Reaction_ID']] = {'rule_id': row['# Rule_ID'], 
+                                                                               'rule_score': float(row['Score_normalized']), 
+                                                                               'reac_id': self._checkRIDdeprecated(row['Reaction_ID']), 
+                                                                               'subs_id': self._checkCIDdeprecated(row['Substrate_ID']), 
+                                                                               'rel_direction': int(row['Rule_relative_direction']), 
+                                                                               'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1}, 
+                                                                               'right': products}
                 except ValueError:
                     self.logger.error('Problem converting rel_direction: '+str(row['Rule_relative_direction']))
                     self.logger.error('Problem converting rule_score: '+str(row['Score_normalized']))
@@ -523,7 +529,6 @@ class rpCache:
     #  @return Dictionnary of identifiers
     #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def deprecatedMNXM(self, chem_xref_path):
-        self.deprecatedCID_cid = {}
         with open(chem_xref_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -546,7 +551,6 @@ class rpCache:
     #  @param reac_xref_path Input file path
     #  @return Dictionnary of identifiers
     def deprecatedMNXR(self, reac_xref_path):
-        self.deprecatedRID_rid = {}
         with open(reac_xref_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -556,26 +560,29 @@ class rpCache:
                         self.deprecatedRID_rid[mnx[1]] = row[1]
 
 
-    ## Function to parse the chemp_prop.tsv file from MetanetX 
+    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules
     # TODO: use the inchikey for all the cid
     #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
     #
     #  @param self Object pointer
     #  @param chem_prop_path Input file path
     #  @return cid_strc Dictionnary of formula, smiles, inchi and inchikey
-    def mnxStrc(self, chem_prop_path):
+    def MNXstrc(self, chem_prop_path):
         with open(chem_prop_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
                 if not row[0][0]=='#':
                     mnxm = self._checkCIDdeprecated(row[0])
                     tmp = {'formula':  row[2],
+                           'name': row[1],
                            'smiles': row[6],
                            'inchi': row[5],
                            'inchikey': row[8]}
                     for i in tmp:
                         if tmp[i]=='' or tmp[i]=='NA':
                             tmp[i] = None
+                    if not mnxm in self.cid_name and tmp['name']:
+                        self.cid_name[mnxm] = tmp['name']
                     if mnxm in self.cid_strc:
                         self.cid_strc[mnxm]['formula'] = row[2]
                         if not self.cid_strc[mnxm]['smiles'] and tmp['smiles']:
@@ -599,13 +606,14 @@ class rpCache:
                         else:
                             self.logger.warning('No valid entry for the convert_depiction function')
                             continue
-                        try:
-                            resConv = self._convert_depiction(idepic=tmp[itype], itype=itype, otype=otype)
-                            for i in resConv:
-                                tmp[i] = resConv[i]
-                        except self.DepictionError as e:
-                            self.logger.warning('Could not convert some of the structures: '+str(tmp))
-                            self.logger.warning(e)
+                        if otype:
+                            try:
+                                resConv = self._convert_depiction(idepic=tmp[itype], itype=itype, otype=otype)
+                                for i in resConv:
+                                    tmp[i] = resConv[i]
+                            except self.DepictionError as e:
+                                self.logger.warning('Could not convert some of the structures: '+str(tmp))
+                                self.logger.warning(e)
                         self.cid_strc[mnxm] = tmp
 
 
@@ -643,7 +651,6 @@ class rpCache:
                         self.cid_xref[dbName] = {}
                     if not dbId in self.cid_xref[dbName]:
                         self.cid_xref[dbName][dbId] = mnx
-
 
 
 if __name__ == "__main__":
