@@ -43,7 +43,11 @@ class rpSBML:
             self.model = None
         else:
             self.model = self.document.getModel()
-        self.path = path
+        if not path==None:
+            self.path = path
+            self.readSBML(path)
+        else:
+            self.path = None
         #More complete with 
         #self.miriam_header = {'compartment': {'go': 'go/GO:', 'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
         #self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
@@ -378,7 +382,7 @@ class rpSBML:
 
     ## Generate in-house json output of the rpSBML model including the annotations for the BRSynth and MIRIAM 
     #
-    #
+    # TODO: change the name of the function to: rpJSON
     def genJSON(self, pathway_id='rp_pathway'):
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -493,7 +497,7 @@ class rpSBML:
     ## Find the objective (with only one reaction associated) based on the reaction ID and if not found create it
     #
     #
-    #
+    #TODO: seperate the find and the create
     def findCreateObjective(self, reactions, coefficients, isMax=True, objective_id=None):
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
@@ -1086,7 +1090,10 @@ class rpSBML:
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #def mergeModels(self, target_rpsbml, pathway_id='rp_pathway', fillOrphanSpecies=False, compartment_id='MNXC3'):
-    def mergeModels(self, target_rpsbml, species_group_id='central_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
+    def mergeModels(self,
+                    target_rpsbml,
+                    species_group_id='central_species',
+                    sink_species_group_id='rp_sink_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -1388,7 +1395,7 @@ class rpSBML:
         for group in source_groups.getListOfGroups():
             #for all the species that need to be converted, replace the ones that are
             #if the group is the species group, replace the ones detected from model_species_convert
-            if group.getId()==species_group_id:
+            if group.getId()==species_group_id or group.getId()==sink_species_group_id:
                 for spe_conv in model_species_convert:
                     foundIt = False
                     for member in group.getListOfMembers():
@@ -1396,10 +1403,12 @@ class rpSBML:
                             member.setIdRef(model_species_convert[spe_conv])
                             foundIt = True
                             break
+                    '''
                     if not foundIt:
                         self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(model_species_convert[spe_conv]))
+                    '''
             self._checklibSBML(target_groups.addGroup(group),
-                    'copying the source groups to the target groups')
+                    'copy the source groups to the target groups')
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+self.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+self.model.getId())
@@ -1675,6 +1684,7 @@ class rpSBML:
             inchikey=None,
             smiles=None,
             species_group_id=None,
+            in_sink_group_id=None,
             meta_id=None):
             #TODO: add these at some point -- not very important
             #charge=0,
@@ -1700,6 +1710,7 @@ class rpSBML:
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
         self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
+        self.logger.info('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
         if meta_id==None:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
@@ -1723,6 +1734,7 @@ class rpSBML:
             self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
         #### GROUPS #####
         #TODO: check that it actually exists
+        self.logger.info('species_group_id: '+str(species_group_id))
         if not species_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(species_group_id)
@@ -1731,6 +1743,19 @@ class rpSBML:
                 #TODO: consider creating it if
             else:
                 newM = hetero_group.createMember()
+                self._checklibSBML(newM, 'Creating a new groups member')
+                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
+        #TODO: check that it actually exists
+        #add the species to the sink species
+        self.logger.info('in_sink_group_id: '+str(in_sink_group_id))
+        if not in_sink_group_id==None:
+            groups_plugin = self.model.getPlugin('groups')
+            sink_group = groups_plugin.getGroup(in_sink_group_id)
+            if not sink_group:
+                self.logger.warning('The species_group_id '+str(in_sink_group_id)+' does not exist in the model')
+                #TODO: consider creating it if
+            else:
+                newM = sink_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
 
@@ -1747,9 +1772,11 @@ class rpSBML:
     # @param products list of species that are the products of this reaction
     # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
     # @return hetero_group The number libSBML groups object to pass to createReaction to categorise the new reactions
+    #TODO: change the name of this function to createGroup
     def createPathway(self, pathway_id, meta_id=None):
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
+        self.logger.info('setting new group id: '+str(pathway_id))
         new_group.setId(pathway_id)
         if meta_id==None:
             meta_id = self._genMetaID(pathway_id)
