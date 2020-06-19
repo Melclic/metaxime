@@ -32,7 +32,7 @@ class rpCache:
     #
     # @param self The object pointer
     # @param inputPath The path to the folder that contains all the input/output files required
-    def __init__(self, rr_compounds_path=None, rr_rules_path=None, rr_rxn_recipes_path=None):
+    def __init__(self, rr_compounds_path=None, rr_rules_path=None, rr_rxn_recipes_path=None, fetchInputFiles=False):
         self.rr_compounds_path = rr_compounds_path
         self.rr_rules_path = rr_rules_path
         self.rr_rxn_recipes_path = rr_rxn_recipes_path
@@ -58,7 +58,7 @@ class rpCache:
         self.inchikey_cid = {} # for key 'BZXZFDKIRZBJEP-UHFFFAOYSA-N': ['MNXM10', '10101']
         self.rr_reactions = {} # rr_reactions['RR-02-d2e7c5761b5a9b4b-04-F'] = {'MNXR139133': {'rule_id': 'RR-02-d2e7c5761b5a9b4b-04-F', 'rule_score': 0.3151075983206353, 'reac_id': 'MNXR139133', 'subs_id': 'MNXM89557', 'rel_direction': 1, 'left': {'MNXM89557': 1}, 'right': {'MNXM20': 1, 'MNXM722724': 1}}}
         self.rr_full_reactions = {} #rr_full_reactions['MNXR142257'] = {'left': {'MNXM4660': 1}, 'right': {'MNXM97172': 1}, 'direction': 0, 'main_left': ['MNXM4660'], 'main_right': ['MNXM97172']}
-        if not self._loadCache():
+        if not self._loadCache(fetchInputFiles):
             raise ValueError
 
     #####################################################
@@ -104,14 +104,14 @@ class rpCache:
         # MNX 3.2
         url = 'ftp://ftp.vital-it.ch/databases/metanetx/MNXref/3.2/'
         for in_file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv', 'comp_xref.tsv']:
-            if not os.path.isfile(dirname+'/input_cache/'+in_file) or fetchInputFiles:
+            if not os.path.isfile(dirname+'/input_cache/'+in_file) and fetchInputFiles:
                 urllib.request.urlretrieve(url+in_file, dirname+'/input_cache/'+in_file)
 
         # RetroRules
         if self.rr_compounds_path:
             shutil.copy(self.rr_compounds_path, os.path.join(dirname, 'input_cache', 'rr_compounds.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rr_compounds.tsv') or fetchInputFiles:
+            if not os.path.isfile(dirname+'/input_cache/rr_compounds.tsv') and fetchInputFiles:
                 urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02',
                                            dirname+'/input_cache/rr02_more_data.tar.gz')
                 tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
@@ -128,7 +128,7 @@ class rpCache:
         if self.rr_rxn_recipes_path:
             shutil.copy(self.rr_rxn_recipes_path, os.path.join(dirname, 'input_cache', 'rxn_recipes.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rxn_recipes.tsv') or fetchInputFiles:
+            if not os.path.isfile(dirname+'/input_cache/rxn_recipes.tsv') and fetchInputFiles:
                 urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02',
                                            dirname+'/input_cache/rr02_more_data.tar.gz')
                 tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
@@ -145,7 +145,7 @@ class rpCache:
         if self.rr_rules_path:
             shutil.copy(self.rr_rules_path, os.path.join(dirname, 'input_cache', 'rules_rall.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') or fetchInputFiles:
+            if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv') and fetchInputFiles:
                 urllib.request.urlretrieve('https://retrorules.org/dl/preparsed/rr02/rp3/hs',
                                            dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
                 tar = tarfile.open(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz', 'r:gz')
