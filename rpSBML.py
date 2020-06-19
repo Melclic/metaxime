@@ -14,6 +14,7 @@ import copy
 
 logging.basicConfig(
     level=logging.DEBUG,
+    #level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -35,7 +36,7 @@ class rpSBML:
     def __init__(self, modelName, document=None, path=None):
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
-        self.logger.info('Started instance of rpSBML')
+        self.logger.debug('Started instance of rpSBML')
         #self.logger.setLevel(logging.INFO)
         self.modelName = modelName
         self.document = document
@@ -48,12 +49,8 @@ class rpSBML:
             self.readSBML(path)
         else:
             self.path = None
-        #More complete with 
-        #self.miriam_header = {'compartment': {'go': 'go/GO:', 'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
-        #self.header_miriam = {'compartment': {'go': 'go', 'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
-        #removed GO
-        self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'pubchem': 'pubchem.compound/','mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
-        self.header_miriam = {'compartment': {'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'pubchem.compound': 'pubchem', 'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
+        self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'inchikey': 'inchikey/', 'pubchem': 'pubchem.compound/','mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
+        self.header_miriam = {'compartment': {'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'inchikey': 'inchikey', 'pubchem.compound': 'pubchem', 'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
 
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
@@ -79,7 +76,7 @@ class rpSBML:
                 self.logger.error(err_msg)
                 raise AttributeError
         else:
-            #self.logger.info(message)
+            #self.logger.debug(message)
             return None
 
 
@@ -326,8 +323,8 @@ class rpSBML:
                         v = single_miriam_attr.getValue(0).split('/')[-1]
                         inside[self.header_miriam[type_param][db]] = [v]
                     except KeyError:
-                        self.logger.error('Cannot find the self.header_miriram entry '+str(db))
-                        return False
+                        self.logger.warning('Cannot find the self.header_miriram entry '+str(db))
+                        continue
             else:
                 self.logger.warning('Cannot return MIRIAM attribute')
                 pass
@@ -503,7 +500,7 @@ class rpSBML:
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
         if not objective_id:
             objective_id = 'obj_'+'_'.join(reactions)
-            self.logger.info('Setting objective as '+str(objective_id))
+            self.logger.debug('Setting objective as '+str(objective_id))
         for objective in fbc_plugin.getListOfObjectives():
             if objective.getId()==objective_id:
                 self.logger.warning('The specified objective id ('+str(objective_id)+') already exists')
@@ -554,7 +551,7 @@ class rpSBML:
 
     ## Return the species annitations 
     #
-    #
+    # TODO: merge with unique species
     def readRPspecies(self, pathway_id='rp_pathway'):
         reacMembers = {}
         for reacId in self.readRPpathwayIDs(pathway_id):
@@ -585,7 +582,7 @@ class rpSBML:
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
 
 
-    ## Return the MIRIAM annotations of species
+    ## Return the Taxonomy ID from an annotation
     #
     #
     def readTaxonAnnotation(self, annot):
@@ -684,7 +681,8 @@ class rpSBML:
             elif ann.getName()=='smiles':
                 toRet[ann.getName()] = ann.getChild(0).toXMLString().replace('&gt;', '>')
             #lists in the annotation
-            elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
+            #elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
+            elif ann.getName()=='selenzyme':
                 toRet[ann.getName()] = {}
                 for y in range(ann.getNumChildren()):
                     selAnn = ann.getChild(y)
@@ -700,7 +698,7 @@ class rpSBML:
 
 
     ## Function to return the products and the species associated with a reaction
-    #
+    # TODO: delete
     # @return Dictionnary with right==product and left==reactants
     def readReactionSpecies_old(self, reaction, isID=False):
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
@@ -749,7 +747,7 @@ class rpSBML:
     #####################################################################
 
 
-    ## Function to find out if the model already contains a species according to its name
+    ## Function to find out if the model already contains a species according to its ID
     #
     #
     def speciesExists(self, speciesName, compartment_id='MNXC3'):
@@ -812,6 +810,7 @@ class rpSBML:
             reaction = self.model.getReaction(member)
             brsynthAnnot = self.readBRSYNTHAnnotation(reaction.getAnnotation())
             speciesReac = self.readReactionSpecies(reaction)
+            self.logger.debug('brsynthAnnot:'+str(brsynthAnnot))
             step = {'reaction_id': member,
                     'reaction_rule': brsynthAnnot['smiles'],
                     'rule_score': brsynthAnnot['rule_score'],
@@ -822,6 +821,7 @@ class rpSBML:
                     'path_id': brsynthAnnot['path_id'],
                     'step': brsynthAnnot['step_id'],
                     'sub_step': brsynthAnnot['sub_step_id']}
+            self.logger.debug('Step: '+str(step))
             pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
 
@@ -1040,7 +1040,7 @@ class rpSBML:
             model = self.model
         else:
             model = rpsbml.model
-        self.logger.info('Adding the orphan species to the GEM model')
+        self.logger.debug('Adding the orphan species to the GEM model')
         #only for rp species
         groups = model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -1061,7 +1061,7 @@ class rpSBML:
                               'path_id': None,
                               'transformation_id': None,
                               'rule_score': None,
-                              'mnxr': None}
+                              'rule_ori_reac': None}
                 #create the model in the 
                 if rpsbml==None:
                     self.createReaction('create_'+species_id,
@@ -1310,7 +1310,7 @@ class rpSBML:
                 targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
                 targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
                 if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logger.info('The reactions species and products are the same')
+                    self.logger.debug('The reactions species and products are the same')
                     toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
         #add the new reactions
@@ -1578,15 +1578,15 @@ class rpSBML:
     # @return meta_id meta ID for this reaction
     #TODO as of now not generic, works when creating a new SBML file, but no checks if modifying existing SBML file
     def createReaction(self,
-            reac_id,
-            fluxUpperBound,
-            fluxLowerBound,
-            step,
-            compartment_id,
-            reaction_smiles=None,
-            reacXref={},
-            pathway_id=None,
-            meta_id=None):
+                       reac_id,
+                       fluxUpperBound,
+                       fluxLowerBound,
+                       step,
+                       compartment_id,
+                       reaction_smiles=None,
+                       reacXref={},
+                       pathway_id=None,
+                       meta_id=None):
         reac = self.model.createReaction()
         self._checklibSBML(reac, 'create reaction')
         ################ FBC ####################
@@ -1638,9 +1638,10 @@ class rpSBML:
             self.addUpdateBRSynth(reac, 'rule_id', step['rule_id'], None, True, False, False, meta_id)
         #TODO: need to change the name and content (to dict) upstream
         if step['rule_ori_reac']:
-            #self.addUpdateBRSynthList(reac, 'rule_ori_reac', step['rule_ori_reac'], True, False, meta_id)
-            self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
-            #sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None)
+            #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
+            self.logger.debug('rule_ori_reac: '+str(step['rule_ori_reac']))
+            #self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, False, True, False, meta_id)
+            self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, True, False, False, meta_id)
         if step['rule_score']:
             self.addUpdateBRSynth(reac, 'rule_score', step['rule_score'], None, False, False, False, meta_id)
         if step['path_id']:
@@ -1676,19 +1677,19 @@ class rpSBML:
     # @param dG Optinal Thermodynamics constant for this species
     # @param dG_uncert Optional Uncertainty associated with the thermodynamics of the reaction 
     def createSpecies(self,
-            species_id,
-            compartment_id,
-            species_name=None,
-            chemXref={},
-            inchi=None,
-            inchikey=None,
-            smiles=None,
-            species_group_id=None,
-            in_sink_group_id=None,
-            meta_id=None):
-            #TODO: add these at some point -- not very important
-            #charge=0,
-            #chemForm=''):
+                      species_id,
+                      compartment_id,
+                      species_name=None,
+                      chemXref={},
+                      inchi=None,
+                      inchikey=None,
+                      smiles=None,
+                      species_group_id=None,
+                      in_sink_group_id=None,
+                      meta_id=None):
+                      #TODO: add these at some point -- not very important
+                      #charge=0,
+                      #chemForm=''):
         spe = self.model.createSpecies()
         self._checklibSBML(spe, 'create species')
         ##### FBC #####
@@ -1710,7 +1711,7 @@ class rpSBML:
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
         self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
-        self.logger.info('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
+        self.logger.debug('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
         if meta_id==None:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
@@ -1732,9 +1733,10 @@ class rpSBML:
             self.addUpdateBRSynth(spe, 'inchi', inchi, None, True, False, False, meta_id)
         if inchikey:
             self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
+            self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
         #### GROUPS #####
         #TODO: check that it actually exists
-        self.logger.info('species_group_id: '+str(species_group_id))
+        self.logger.debug('species_group_id: '+str(species_group_id))
         if not species_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(species_group_id)
@@ -1747,7 +1749,7 @@ class rpSBML:
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
         #TODO: check that it actually exists
         #add the species to the sink species
-        self.logger.info('in_sink_group_id: '+str(in_sink_group_id))
+        self.logger.debug('in_sink_group_id: '+str(in_sink_group_id))
         if not in_sink_group_id==None:
             groups_plugin = self.model.getPlugin('groups')
             sink_group = groups_plugin.getGroup(in_sink_group_id)
@@ -1776,7 +1778,7 @@ class rpSBML:
     def createPathway(self, pathway_id, meta_id=None):
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
-        self.logger.info('setting new group id: '+str(pathway_id))
+        self.logger.debug('setting new group id: '+str(pathway_id))
         new_group.setId(pathway_id)
         if meta_id==None:
             meta_id = self._genMetaID(pathway_id)
