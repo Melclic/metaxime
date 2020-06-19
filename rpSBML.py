@@ -14,6 +14,7 @@ import copy
 
 logging.basicConfig(
     level=logging.DEBUG,
+    #level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -1732,6 +1733,7 @@ class rpSBML:
             self.addUpdateBRSynth(spe, 'inchi', inchi, None, True, False, False, meta_id)
         if inchikey:
             self.addUpdateBRSynth(spe, 'inchikey', inchikey, None, True, False, False, meta_id)
+            self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
         #### GROUPS #####
         #TODO: check that it actually exists
         self.logger.debug('species_group_id: '+str(species_group_id))
