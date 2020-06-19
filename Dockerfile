@@ -1,4 +1,4 @@
-FROM brsynth/rpbase:newrules
+FROM brsynth/rpbase:dev
 
 WORKDIR /home/
 

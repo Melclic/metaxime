@@ -93,7 +93,7 @@ class rpCache:
         dirname = os.path.dirname(os.path.abspath( __file__ ))
         #################### make the local folders ############################
         # input_cache
-        if not os.path.isdir(dirname+'/input_cache'):
+        if not os.path.isdir(dirname+'/input_cache') and fetchInputFiles:
             os.mkdir(dirname+'/input_cache')
         # cache
         if not os.path.isdir(dirname+'/cache'):
@@ -658,7 +658,15 @@ if __name__ == "__main__":
     parser.add_argument('-rr_compounds_path', type=str, default=None)
     parser.add_argument('-rr_rules_path', type=str, default=None)
     parser.add_argument('-rr_rxn_recipes_path', type=str, default=None)
+    parser.add_argument('-fetchInputFiles', type=str, default='False')
     params = parser.parse_args()
+    if params.fetchInputFiles==True or params.fetchInputFiles=='True' or params.fetchInputFiles=='true':
+        fetchInputFiles = True
+    elif params.fetchInputFiles==False or params.fetchInputFiles=='False' or params.fetchInputFiles=='false':
+        fetchInputFiles = False
+    else:
+        logging.error('Cannot interpret '+str(params.fetchInputFiles))
+        exit(1)
     if params.rr_compounds_path:
         if not os.path.exists(params.rr_compounds_path):
             logging.error('The file: '+str(params.rr_compounds_path)+' does not exist')
@@ -671,4 +679,4 @@ if __name__ == "__main__":
         if not os.path.exists(params.rr_rxn_recipes_path):
             logging.error('The file: '+str(params.rr_rxn_recipes_path)+' does not exist')
             exit(1)
-    rpcache = rpCache()
+    rpcache = rpCache(params.rr_compounds_path, params.rr_rules_path, params.rr_rxn_recipes_path, params.fetchInputFiles)
