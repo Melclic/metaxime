@@ -2,6 +2,7 @@ import os
 from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 import csv
 import logging
+import numpy as np
 import os
 import pickle
 import gzip
@@ -10,6 +11,8 @@ import re
 import tarfile
 import shutil
 import argparse
+from ast import literal_eval
+import json
 
 logging.basicConfig(
     #level=logging.DEBUG,
@@ -58,12 +61,15 @@ class rpCache:
         self.inchikey_cid = {} # for key 'BZXZFDKIRZBJEP-UHFFFAOYSA-N': ['MNXM10', '10101']
         self.rr_reactions = {} # rr_reactions['RR-02-d2e7c5761b5a9b4b-04-F'] = {'MNXR139133': {'rule_id': 'RR-02-d2e7c5761b5a9b4b-04-F', 'rule_score': 0.3151075983206353, 'reac_id': 'MNXR139133', 'subs_id': 'MNXM89557', 'rel_direction': 1, 'left': {'MNXM89557': 1}, 'right': {'MNXM20': 1, 'MNXM722724': 1}}}
         self.rr_full_reactions = {} #rr_full_reactions['MNXR142257'] = {'left': {'MNXM4660': 1}, 'right': {'MNXM97172': 1}, 'direction': 0, 'main_left': ['MNXM4660'], 'main_right': ['MNXM97172']}
+        self.kegg_dG = None
+        self.cc_preprocess = None
+        self.dirname = os.path.dirname(os.path.abspath( __file__ ))
         if fetchInputFiles:
             if not self._fetchInputFiles():
                 raise ValueError
         # cache
-        if not os.path.isdir(dirname+'/cache'):
-            os.mkdir(dirname+'/cache')
+        if not os.path.isdir(self.dirname+'/cache'):
+            os.mkdir(self.dirname+'/cache')
 
     #####################################################
     ################# ERROR functions ###################
@@ -95,67 +101,66 @@ class rpCache:
     # @param The oject pointer
     # @return Boolean detemining the success of the function or not
     def _fetchInputFiles(self):
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
         #################### make the local folders ############################
         # input_cache
-        if not os.path.isdir(dirname+'/input_cache'):
-            os.mkdir(dirname+'/input_cache')
+        if not os.path.isdir(self.dirname+'/input_cache'):
+            os.mkdir(self.dirname+'/input_cache')
 
         ####################### Fetch the input_cache files if necessary ######################
 
         # MNX 3.2
         url = 'ftp://ftp.vital-it.ch/databases/metanetx/MNXref/3.2/'
         for in_file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv', 'comp_xref.tsv']:
-            if not os.path.isfile(dirname+'/input_cache/'+in_file):
-                urllib.request.urlretrieve(url+in_file, dirname+'/input_cache/'+in_file)
+            if not os.path.isfile(self.dirname+'/input_cache/'+in_file):
+                urllib.request.urlretrieve(url+in_file, self.dirname+'/input_cache/'+in_file)
 
         # RetroRules
         if self.rr_compounds_path:
-            shutil.copy(self.rr_compounds_path, os.path.join(dirname, 'input_cache', 'rr_compounds.tsv'))
+            shutil.copy(self.rr_compounds_path, os.path.join(self.dirname, 'input_cache', 'rr_compounds.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rr_compounds.tsv'):
+            if not os.path.isfile(self.dirname+'/input_cache/rr_compounds.tsv'):
                 urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02',
-                                           dirname+'/input_cache/rr02_more_data.tar.gz')
-                tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
-                tar.extractall(dirname+'/input_cache/')
+                                           self.dirname+'/input_cache/rr02_more_data.tar.gz')
+                tar = tarfile.open(self.dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
+                tar.extractall(self.dirname+'/input_cache/')
                 tar.close()
-                shutil.move(dirname+'/input_cache/rr02_more_data/compounds.tsv',
-                            dirname+'/input_cache/rr_compounds.tsv')
-                if not os.path.exists(dirname+'/input_cache/rxn_recipes.tsv'):
-                    shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
-                                dirname+'/input_cache/')
-                os.remove(dirname+'/input_cache/rr02_more_data.tar.gz')
-                shutil.rmtree(dirname+'/input_cache/rr02_more_data')
+                shutil.move(self.dirname+'/input_cache/rr02_more_data/compounds.tsv',
+                            self.dirname+'/input_cache/rr_compounds.tsv')
+                if not os.path.exists(self.dirname+'/input_cache/rxn_recipes.tsv'):
+                    shutil.move(self.dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
+                                self.dirname+'/input_cache/')
+                os.remove(self.dirname+'/input_cache/rr02_more_data.tar.gz')
+                shutil.rmtree(self.dirname+'/input_cache/rr02_more_data')
 
         if self.rr_rxn_recipes_path:
-            shutil.copy(self.rr_rxn_recipes_path, os.path.join(dirname, 'input_cache', 'rxn_recipes.tsv'))
+            shutil.copy(self.rr_rxn_recipes_path, os.path.join(self.dirname, 'input_cache', 'rxn_recipes.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rxn_recipes.tsv'):
+            if not os.path.isfile(self.dirname+'/input_cache/rxn_recipes.tsv'):
                 urllib.request.urlretrieve('https://retrorules.org/dl/this/is/not/a/secret/path/rr02',
-                                           dirname+'/input_cache/rr02_more_data.tar.gz')
-                tar = tarfile.open(dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
-                tar.extractall(dirname+'/input_cache/')
+                                           self.dirname+'/input_cache/rr02_more_data.tar.gz')
+                tar = tarfile.open(self.dirname+'/input_cache/rr02_more_data.tar.gz', 'r:gz')
+                tar.extractall(self.dirname+'/input_cache/')
                 tar.close()
-                if not os.path.exists(dirname+'/input_cache/rr_compounds.tsv'):
-                    shutil.move(dirname+'/input_cache/rr02_more_data/compounds.tsv',
-                                dirname+'/input_cache/rr_compounds.tsv')
-                shutil.move(dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
-                            dirname+'/input_cache/')
-                os.remove(dirname+'/input_cache/rr02_more_data.tar.gz')
-                shutil.rmtree(dirname+'/input_cache/rr02_more_data')
+                if not os.path.exists(self.dirname+'/input_cache/rr_compounds.tsv'):
+                    shutil.move(self.dirname+'/input_cache/rr02_more_data/compounds.tsv',
+                                self.dirname+'/input_cache/rr_compounds.tsv')
+                shutil.move(self.dirname+'/input_cache/rr02_more_data/rxn_recipes.tsv',
+                            self.dirname+'/input_cache/')
+                os.remove(self.dirname+'/input_cache/rr02_more_data.tar.gz')
+                shutil.rmtree(self.dirname+'/input_cache/rr02_more_data')
 
         if self.rr_rules_path:
-            shutil.copy(self.rr_rules_path, os.path.join(dirname, 'input_cache', 'rules_rall.tsv'))
+            shutil.copy(self.rr_rules_path, os.path.join(self.dirname, 'input_cache', 'rules_rall.tsv'))
         else:
-            if not os.path.isfile(dirname+'/input_cache/rules_rall.tsv'):
+            if not os.path.isfile(self.dirname+'/input_cache/rules_rall.tsv'):
                 urllib.request.urlretrieve('https://retrorules.org/dl/preparsed/rr02/rp3/hs',
-                                           dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
-                tar = tarfile.open(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz', 'r:gz')
-                tar.extractall(dirname+'/input_cache/')
+                                           self.dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
+                tar = tarfile.open(self.dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz', 'r:gz')
+                tar.extractall(self.dirname+'/input_cache/')
                 tar.close()
-                shutil.move(dirname+'/input_cache/retrorules_rr02_rp3_hs/retrorules_rr02_flat_all.tsv', dirname+'/input_cache/rules_rall.tsv')
-                os.remove(dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
-                shutil.rmtree(dirname+'/input_cache/retrorules_rr02_rp3_hs')
+                shutil.move(self.dirname+'/input_cache/retrorules_rr02_rp3_hs/retrorules_rr02_flat_all.tsv', self.dirname+'/input_cache/rules_rall.tsv')
+                os.remove(self.dirname+'/input_cache/retrorules_rr02_rp3_hs.tar.gz')
+                shutil.rmtree(self.dirname+'/input_cache/retrorules_rr02_rp3_hs')
         return True
 
     ###################### Populate the cache #################################
@@ -183,60 +188,55 @@ class rpCache:
         #this one hos both mnx and RR
         picklename = 'cid_strc.pickle.gz'
         filename = 'chem_prop.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.MNXstrc(os.path.join(dirname, 'input_cache', filename))
-            self.retroRulesStrc(dirname+'/input_cache/rr_compounds.tsv')
-            pickle.dump(self.cid_strc, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.cid_strc = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.MNXstrc(os.path.join(self.dirname, 'input_cache', filename))
+            self.retroRulesStrc(self.dirname+'/input_cache/rr_compounds.tsv')
+            pickle.dump(self.cid_strc, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_strc = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.cid_strc
-        #return pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getDeprecatedCID(self):
         picklename = 'deprecatedCID_cid.pickle.gz'
         filename = 'chem_xref.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.deprecatedMNXM(os.path.join(dirname, 'input_cache', filename))
-            pickle.dump(self.deprecatedCID_cid, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.deprecatedCID_cid = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.deprecatedMNXM(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.deprecatedCID_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.deprecatedCID_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.deprecatedCID_cid
-        #return pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getDeprecatedRID(self):
         picklename = 'deprecatedRID_rid.pickle.gz'
         filename = 'reac_xref.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.deprecatedMNXR(os.path.join(dirname, 'input_cache', filename))
-            pickle.dump(self.deprecatedRID_rid, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.deprecatedRID_rid = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.deprecatedMNXR(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.deprecatedRID_rid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.deprecatedRID_rid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.deprecatedRID_rid
-        #return pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getCIDxref(self):
         picklename = 'cid_xref.pickle.gz'
         filename = 'chem_xref.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.mnxXref(os.path.join(dirname, 'input_cache', filename))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.mnxXref(os.path.join(self.dirname, 'input_cache', filename))
             pickle.dump(self.cid_xref,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.cid_xref = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.cid_xref
-        #return pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getCompXref(self):
         picklename1 = 'xref_comp.pickle.gz'
         picklename2 = 'comp_xref.pickle.gz'
         filename = 'comp_xref.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename1)) or not os.path.isfile(os.path.join(dirname, 'cache', picklename2)):
-            self.mnxCompXref(dirname+'/input_cache/comp_xref.tsv')
-            pickle.dump(self.xref_comp, gzip.open(os.path.join(dirname, 'cache', picklename1),'wb'))
-            pickle.dump(self.comp_xref, gzip.open(os.path.join(dirname, 'cache', picklename2), 'wb'))
-        self.xref_comp = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename1), 'rb'))
-        self.comp_xref = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename2), 'rb'))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename1)) or not os.path.isfile(os.path.join(self.dirname, 'cache', picklename2)):
+            self.mnxCompXref(self.dirname+'/input_cache/comp_xref.tsv')
+            pickle.dump(self.xref_comp, gzip.open(os.path.join(self.dirname, 'cache', picklename1),'wb'))
+            pickle.dump(self.comp_xref, gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'wb'))
+        self.xref_comp = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename1), 'rb'))
+        self.comp_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'rb'))
         return self.xref_comp, self.comp_xref
 
 
@@ -245,40 +245,37 @@ class rpCache:
     def getFullReactions(self):
         picklename = 'rr_full_reactions.pickle.gz'
         filename = 'rxn_recipes.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.retroRulesFullReac(os.path.join(dirname, 'input_cache', filename))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.retroRulesFullReac(os.path.join(self.dirname, 'input_cache', filename))
             pickle.dump(self.rr_full_reactions,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.rr_full_reactions
 
     def getRRreactions(self):
         picklename = 'rr_reactions.pickle.gz'
         filename = 'rules_rall.tsv'
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
-            self.retroReactions(os.path.join(dirname, 'input_cache', filename))
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename))
             pickle.dump(self.rr_reactions,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.rr_reactions = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.rr_reactions
 
     ### Thermo
 
     def getKEGGdG(self):
         #kegg_dG.pickle
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if not os.path.isfile(dirname+'/cache/kegg_dG.pickle'):
-            pickle.dump(self.keggdG(dirname+'/input_cache/cc_compounds.json.gz',
-                dirname+'/input_cache/alberty.json',
-                dirname+'/input_cache/rr_compounds.csv'),
-                open(dirname+'/cache/kegg_dG.pickle', 'wb'))
-        self.kegg_dG = pickle.load(open(dirname+'/cache/kegg_dG.pickle', 'rb'))
+        if not os.path.isfile(self.dirname+'/cache/kegg_dG.pickle'):
+            pickle.dump(self.keggdG(self.dirname+'/input_cache/cc_compounds.json.gz',
+                self.dirname+'/input_cache/alberty.json',
+                self.dirname+'/input_cache/rr_compounds.csv'),
+                open(self.dirname+'/cache/kegg_dG.pickle', 'wb'))
+        self.kegg_dG = pickle.load(open(self.dirname+'/cache/kegg_dG.pickle', 'rb'))
         return self.kegg_dG
 
     def getCCpreprocess(self):
-        self.cc_preprocess = np.load(dirname+'/cache/cc_preprocess.npz')
+        self.cc_preprocess = np.load(self.dirname+'/cache/cc_preprocess.npz')
         return self.cc_preprocess
 
 
@@ -286,28 +283,28 @@ class rpCache:
     
     def getChebiCID(self):
         picklename = 'chebi_cid.pickle.gz'
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             self._chebiXref()
             pickle.dump(self.chebi_cid,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.chebi_cid = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.chebi_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.chebi_cid
 
     def getInchiKeyCID(self):
         picklename = 'inchikey_cid.pickle.gz'
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             # open the already calculated (normally) mnxm_strc.pickle.gz
             self._inchikeyCID()
-            pickle.dump(self.inchikey_cid, gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.inchikey_cid = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+            pickle.dump(self.inchikey_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.inchikey_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.inchikey_cid
 
     def getCIDname(self):
         picklename = 'cid_name.pickle.gz'
-        if not os.path.isfile(os.path.join(dirname, 'cache', picklename)):
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             pickle.dump(self.cid_name,
-                        gzip.open(os.path.join(dirname, 'cache', picklename), 'wb'))
-        self.cid_name = pickle.load(gzip.open(os.path.join(dirname, 'cache', picklename), 'rb'))
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_name = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.cid_name
 
 
@@ -513,13 +510,13 @@ class rpCache:
                         self.rr_reactions[row['# Rule_ID']] = {}
                     if row['# Rule_ID'] in self.rr_reactions[row['# Rule_ID']]:
                         self.logger.warning('There is already reaction '+str(row['# Rule_ID'])+' in reaction rule '+str(row['# Rule_ID']))
-                    self.rr_reactions[row['# Rule_ID']][row['Reaction_ID']] = {'rule_id': row['# Rule_ID'], 
-                                                                               'rule_score': float(row['Score_normalized']), 
-                                                                               'reac_id': self._checkRIDdeprecated(row['Reaction_ID']), 
-                                                                               'subs_id': self._checkCIDdeprecated(row['Substrate_ID']), 
-                                                                               'rel_direction': int(row['Rule_relative_direction']), 
-                                                                               'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1}, 
-                                                                               'right': products}
+                    self.rr_reactions[row['# Rule_ID']][self._checkRIDdeprecated(row['Reaction_ID'])] = {'rule_id': row['# Rule_ID'], 
+                                                                                                         'rule_score': float(row['Score_normalized']), 
+                                                                                                         'reac_id': self._checkRIDdeprecated(row['Reaction_ID']), 
+                                                                                                         'subs_id': self._checkCIDdeprecated(row['Substrate_ID']), 
+                                                                                                         'rel_direction': int(row['Rule_relative_direction']), 
+                                                                                                         'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1}, 
+                                                                                                         'right': products}
                 except ValueError:
                     self.logger.error('Problem converting rel_direction: '+str(row['Rule_relative_direction']))
                     self.logger.error('Problem converting rule_score: '+str(row['Score_normalized']))
