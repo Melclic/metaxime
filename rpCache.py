@@ -799,5 +799,5 @@ if __name__ == "__main__":
         if not os.path.exists(params.rr_rxn_recipes_path):
             logging.error('The file: '+str(params.rr_rxn_recipes_path)+' does not exist')
             exit(1)
-    rpcache = rpCache(params.rr_compounds_path, params.rr_rules_path, params.rr_rxn_recipes_path, params.fetchInputFiles)
+    rpcache = rpCache(params.rr_compounds_path, params.rr_rules_path, params.rr_rxn_recipes_path, fetchInputFiles)
     rpcache.populateCache()
