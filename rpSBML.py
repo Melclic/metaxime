@@ -13,8 +13,9 @@ import copy
 # The object holds an SBML object and a series of methods to write and access BRSYNTH related annotations
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    #level=logging.DEBUG,
     #level=logging.WARNING,
+    level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -193,6 +194,7 @@ class rpSBML:
     # @sbase_obj libSBML object that may be compartment, reaction or species
     #
     def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None):
+        self.logger.debug('############### '+str(annot_header)+' ################')
         if isList:
             annotation = '''<annotation>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
@@ -263,10 +265,27 @@ class rpSBML:
             toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
             self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
         else:
-            self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(annot_header)),
-                'Removing annotation '+str(annot_header))
-            toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
-            self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
+            #try:
+            self.logger.debug('==============================')
+            found_child = False
+            for i in range(brsynth_annot.getNumChildren()):
+                if annot_header==brsynth_annot.getChild(i).getName():
+                    self.logger.debug('Found the same name to remove: '+str(annot_header))
+                    self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(i)),
+                        'Removing annotation '+str(annot_header))
+                    toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
+                    self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
+                    found_child = True
+                    break
+            #cause by a bbug with string lookup
+            if not found_child:
+                self.logger.warning('Bug with lookup adding it now: '+str(annot_header))
+                toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
+                self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
+            #except OverflowError:
+            #    self.logger.warning('TODO: Overflow error that must be dealt with')
+            #    self.logger.warning(brsynth_annot.getChild(annot_header).toXMLString())
+            #    return False
         return True
 
 
@@ -1093,7 +1112,8 @@ class rpSBML:
     def mergeModels(self,
                     target_rpsbml,
                     species_group_id='central_species',
-                    sink_species_group_id='rp_sink_species'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
+                    sink_species_group_id='rp_sink_species',
+                    pathway_id='rp_pathway'):#, fillOrphanSpecies=False, compartment_id='MNXC3'):
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -1289,6 +1309,7 @@ class rpSBML:
         toAdd_model_reaction_ids = [i.getId() for i in self.model.getListOfReactions()]
         model_reaction_ids = [i.getId() for i in self.model.getListOfReactions()]
         targetModel_reaction_ids = [i.getId() for i in target_rpsbml.model.getListOfReactions()]
+        reac_replace = {}
         for model_reaction in self.model.getListOfReactions():
             if model_reaction.getId() in targetModel_reaction_ids:
                 toAdd_model_reaction_ids.remove(model_reaction.getId())
@@ -1310,7 +1331,9 @@ class rpSBML:
                 targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
                 targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
                 if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logger.debug('The reactions species and products are the same')
+                    self.logger.debug('The reactions species and products are the same: '+str(model_reaction.getId())+' --- '+str(targetModel_reaction.getId()))
+                    #reac_replace[targetModel_reaction.getId()] = model_reaction.getId()
+                    reac_replace[model_reaction.getId()] = targetModel_reaction.getId()
                     toAdd_model_reaction_ids.remove(model_reaction.getId())
                     continue
         #add the new reactions
@@ -1391,6 +1414,8 @@ class rpSBML:
         self._checklibSBML(source_groups, 'fetching the source model groups')
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
+        self.logger.debug('model_species_convert: '+str(model_species_convert))
+        self.logger.debug('reac_replace: '+str(reac_replace))
         #TODO: this will overwrite two groups of the same id, need to change
         for group in source_groups.getListOfGroups():
             #for all the species that need to be converted, replace the ones that are
@@ -1401,6 +1426,14 @@ class rpSBML:
                     for member in group.getListOfMembers():
                         if member.getIdRef()==spe_conv:
                             member.setIdRef(model_species_convert[spe_conv])
+                            foundIt = True
+                            break
+            elif group.getId()==pathway_id:
+                for reac_conv in reac_replace:
+                    foundIt = False
+                    for member in group.getListOfMembers():
+                        if member.getIdRef()==reac_conv:
+                            member.setIdRef(reac_replace[reac_conv])
                             foundIt = True
                             break
                     '''
@@ -1416,6 +1449,7 @@ class rpSBML:
         if fillOrphanSpecies==True:
             self.fillOrphan(target_rpsbml, pathway_id, compartment_id)
         '''
+        return model_species_convert, reac_replace
 
 
     #########################################################################
