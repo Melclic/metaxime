@@ -261,6 +261,39 @@ class rpSBML:
              self.logger.error('Cannot find the BRSynth annotation')
              return False
         #add the annotation and replace if it exists
+        isfound_target = False
+        #self.logger.debug(brsynth_annot.toXMLString())
+        for i in range(brsynth_annot.getNumChildren()):
+            self.logger.debug(annot_header+' -- '+str(brsynth_annot.getChild(i).getName()))
+            self.logger.debug(annot_header==brsynth_annot.getChild(i).getName())
+            if annot_header==brsynth_annot.getChild(i).getName():
+                isfound_target = True
+                self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(i)),
+                    'Removing annotation '+str(annot_header))
+                isfound_source = False
+                source_brsynth_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+                for y in range(source_brsynth_annot.getNumChildren()):
+                    if annot_header==source_brsynth_annot.getChild(y).getName():
+                        isfound_source = True
+                        self._checklibSBML(brsynth_annot.addChild(source_brsynth_annot.getChild(y)), 'Adding annotation to the brsynth annotation')
+                        break
+                if not isfound_source:
+                    self.logger.error('Cannot find '+str(annot_header)+' in source annotation')
+        if not isfound_target:
+            self.logger.debug('Cannot find '+str(annot_header)+' in target annotation') 
+            isfound_source = False
+            source_brsynth_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+            for y in range(source_brsynth_annot.getNumChildren()):
+                if annot_header==source_brsynth_annot.getChild(y).getName():
+                    isfound_source = True
+                    self._checklibSBML(brsynth_annot.addChild(source_brsynth_annot.getChild(y)), 'Adding annotation to the brsynth annotation')
+                    break
+            if not isfound_source:
+                self.logger.error('Cannot find '+str(annot_header)+' in source annotation')
+            #toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
+            #self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
+            return False
+        '''
         if brsynth_annot.getChild(annot_header).toXMLString()=='':
             toWrite_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(annot_header)
             self._checklibSBML(brsynth_annot.addChild(toWrite_annot), 'Adding annotation to the brsynth annotation')
@@ -286,6 +319,7 @@ class rpSBML:
             #    self.logger.warning('TODO: Overflow error that must be dealt with')
             #    self.logger.warning(brsynth_annot.getChild(annot_header).toXMLString())
             #    return False
+        '''
         return True
 
 
