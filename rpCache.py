@@ -256,7 +256,7 @@ class rpCache:
         picklename = 'rr_reactions.pickle.gz'
         filename = 'rules_rall.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename))
+            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename), self.rr_rules_type)
             pickle.dump(self.rr_reactions,
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
@@ -492,6 +492,8 @@ class rpCache:
     def retroReactions(self, rules_rall_path):
         try:
             for row in csv.DictReader(open(rules_rall_path), delimiter='\t'):
+                if not type(row)==dict:
+                    row = dict(row)
                 #NOTE: as of now all the rules are generated using MNX
                 #but it may be that other db are used, we are handling this case
                 #WARNING: can have multiple products so need to seperate them
@@ -522,7 +524,7 @@ class rpCache:
                     self.logger.error('Problem converting rule_score: '+str(row['Score_normalized']))
         except FileNotFoundError as e:
                 self.logger.error('Could not read the rules_rall file ('+str(rules_rall_path)+')')
-                return {}
+        return True
 
 
     ## Generate complete reactions from the rxn_recipes.tsv from RetroRules
