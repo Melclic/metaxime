@@ -1967,12 +1967,12 @@ class rpSBML:
     #
     #
     def genericModel(self, 
-            modelName, 
-            model_id, 
-            compXref, 
-            compartment_id,
-            upper_flux_bound=999999,
-            lower_flux_bound=0):
+                     modelName, 
+                     model_id, 
+                     compXref, 
+                     compartment_id,
+                     upper_flux_bound=999999,
+                     lower_flux_bound=0):
         self.createModel(modelName, model_id)
         # mmol_per_gDW_per_hr -- flux
         unitDef = self.createUnitDefinition('mmol_per_gDW_per_hr')

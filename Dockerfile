@@ -15,6 +15,9 @@ RUN apt-get --quiet update && \
     conda update -n base -c defaults conda && \
     conda install -y -c SBMLTeam python-libsbml
 
+RUN pip install networkx
+
 COPY rpSBML.py /home/
+COPY rpGraph.py /home/
 
 ENV PYTHONPATH="/home"
