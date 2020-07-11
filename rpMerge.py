@@ -181,6 +181,7 @@ class rpMerge:
     # Compare that all the measured species of a reactions are found within sim species to match with a reaction.
     # We assume that there cannot be two reactions that have the same species and reactants. This is maintained by SBML
     # TODO: need to remove from the list reactions simulated reactions that have matched
+    # TODO: Remove. This assumes that reactions can match multiple times, when in fact its impossible
     def compareReactions(self, species_match, target_rpsbml, source_rpsbml):
         ############## compare the reactions #######################
         #construct sim reactions with species
@@ -288,27 +289,27 @@ class rpMerge:
         return reaction_match
 
 
-    ## Compare two reactions
-    # 
-    # TODO: change this
-    # compartment_species_math: {'MNXC3': {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}}
+
+    ## Compare individual reactions and see if the source reaction is contained within the target one
+    #
+    # species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
     # the first keys are the source compartment ids
     # the second key is the source species id
     # the value is the target species id
+    # Note that we assure that the match is 1:1 between species using the species match
     #
-    # -> means you need to lookup the 
-    #
-    def compareCompartmentReaction(self, compartment_species_match, source_reaction, target_reaction):
+    #TODO: change this with a flag so that all the reactants and products are the same
+    def containedReaction(self, species_source_target, source_reaction, target_reaction):
         scores = []
         all_match = True
         ########### reactants #######
         ignore_reactants = []
         for source_reactant in source_reaction.getListOfReactants():
-            if source_reactant.species in species_match:
+            if source_reactant.species in species_source_target:
                 spe_found = False
                 for target_reactiontant in target_reaction.getListOfReactants():
-                    if target_reactiontant.species in species_match[source_reactant.species] and not target_reactiontant.species in ignore_reactants:
-                        scores.append(species_match[source_reactant.species][target_reactiontant.species])
+                    if target_reactiontant.species in species_source_target[source_reactant.species] and not target_reactiontant.species in ignore_reactants:
+                        scores.append(species_source_target[source_reactant.species][target_reactiontant.species])
                         ignore_reactants.append(target_reactiontant.species)
                         spe_found = True
                         break
@@ -316,17 +317,17 @@ class rpMerge:
                     scores.append(0.0)
                     all_match = False
             else:
-                logging.debug('Cannot find the measured species '+str(source_reactant.species)+' in the the matched species: '+str(species_match))
+                logging.debug('Cannot find the source species '+str(source_reactant.species)+' in the target species: '+str(species_source_target))
                 scores.append(0.0)
                 all_match = False
         #products
         ignore_products = []
         for source_product in source_reaction.getListOfProducts():
-            if source_product.species in species_match:
+            if source_product.species in species_source_target:
                 pro_found = False
                 for sim_product in target_reaction.getListOfProducts():
-                    if sim_product.species in species_match[source_product.species] and not sim_product.species in ignore_products:
-                        scores.append(species_match[source_product.species][sim_product.species])
+                    if sim_product.species in species_source_target[source_product.species] and not sim_product.species in ignore_products:
+                        scores.append(species_source_target[source_product.species][sim_product.species])
                         ignore_products.append(sim_product.species)
                         pro_found = True
                         break
@@ -334,58 +335,68 @@ class rpMerge:
                     scores.append(0.0)
                     all_match = False
             else:
-                logging.debug('Cannot find the measured species '+str(source_product.species)+' in the the matched species: '+str(species_match))
+                logging.debug('Cannot find the measured species '+str(source_product.species)+' in the the matched species: '+str(species_source_target))
                 scores.append(0.0)
                 all_match = False
         return np.mean(scores), all_match
 
 
 
-    ## Compare individual reactions and see if the measured pathway is contained within the simulated one
+
+    ## Compare two reactions and elect that they are the same if they have exactly the same reactants and products
     #
+    # species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
+    # the first keys are the source compartment ids
+    # the second key is the source species id
+    # the value is the target species id
     # Note that we assure that the match is 1:1 between species using the species match
     #
     #TODO: change this with a flag so that all the reactants and products are the same
     def compareReaction(self, species_source_target, source_reaction, target_reaction):
         scores = []
-        all_match = True
-        ########### reactants #######
-        ignore_reactants = []
-        for source_reactiontant in source_reaction.getListOfReactants():
-            if source_reactiontant.species in species_source_target:
-                spe_found = False
-                for target_reactiontant in target_reaction.getListOfReactants():
-                    if target_reactiontant.species in species_source_target[source_reactiontant.species] and not target_reactiontant.species in ignore_reactants:
-                        scores.append(species_source_target[source_reactiontant.species][target_reactiontant.species])
-                        ignore_reactants.append(target_reactiontant.species)
-                        spe_found = True
-                        break
-                if not spe_found:
-                    scores.append(0.0)
-                    all_match = False
+        source_reactants = [i.species for i in source_reaction.getListOfReactants()]
+        target_reactants = []
+        for i in target_reaction.getListOfReactants():
+            if i.species in species_source_target:
+                if not species_source_target[i.species]=={}:
+                    #WARNING: Taking the first one arbitrarely
+                    conv_spe = [y for y in species_source_target[i.species]][0]
+                    target_reactants.append(conv_spe)
+                    scores.append(species_source_target[i.species][conv_spe])
+                else:
+                    target_reactants.append(i.species)
+                    scores.append(1.0)
             else:
-                logging.debug('Cannot find the measured species '+str(source_reactiontant.species)+' in the the matched species: '+str(species_source_target))
-                scores.append(0.0)
-                all_match = False
-        #products
-        ignore_products = []
-        for meas_product in source_reaction.getListOfProducts():
-            if meas_product.species in species_source_target:
-                pro_found = False
-                for sim_product in target_reaction.getListOfProducts():
-                    if sim_product.species in species_source_target[meas_product.species] and not sim_product.species in ignore_products:
-                        scores.append(species_source_target[meas_product.species][sim_product.species])
-                        ignore_products.append(sim_product.species)
-                        pro_found = True
-                        break
-                if not pro_found:
-                    scores.append(0.0)
-                    all_match = False
+                target_reactants.append(i.species)
+                scores.append(1.0)
+        source_products = [i.species for i in source_reaction.getListOfProducts()]
+        target_products = []
+        for i in target_reaction.getListOfReactants():
+            if i.species in species_source_target:
+                if not species_source_target[i.species]=={}:
+                    #WARNING: Taking the first one arbitrarely
+                    conv_spe = [y for y in species_source_target[i.species]][0]
+                    target_products.append(conv_spe)
+                    scores.append(species_source_target[i.species][conv_spe])
+                else:
+                    target_products.append(i.species)
+                    scores.append(1.0)
             else:
-                logging.debug('Cannot find the measured species '+str(meas_product.species)+' in the the matched species: '+str(species_source_target))
-                scores.append(0.0)
-                all_match = False
-        return np.mean(scores), all_match
+                target_products.append(i.species)
+                scores.append(1.0)
+        '''
+        self.logger.debug('source_reactants: '+str(source_reactants))
+        self.logger.debug('target_reactants: '+str(target_reactants))
+        self.logger.debug('source_products: '+str(source_products))
+        self.logger.debug('target_products: '+str(target_products))
+        self.logger.debug(set(source_reactants)-set(target_reactants))
+        self.logger.debug(set(source_products)-set(target_products))
+        '''
+
+        if not set(source_reactants)-set(target_reactants) and not set(source_products)-set(target_products):
+            return np.mean(scores), True
+        else:
+            return np.mean(scores), False
 
 
     ##########################################################################################
@@ -796,32 +807,12 @@ class rpMerge:
         self.logger.debug('targetObjectiveID: '+str(targetObjectiveID))
         self.logger.debug('sourceObjectiveID: '+str(sourceObjectiveID))
         ################ SPECIES ####################
-        #Try to detect the current model species
-        ### loop through all the source and the target equivalent compounds and return the matches
-        '''
-        output example: out['MNXM4__64__MNXC3'] = {'M_o2_c': 0.9575}
-        note that it may occur that multiple matches occur, key is the first model entry and value is the second
-        '''
-        #compartment_species_source_target = {}
-        #for source_comp in comp_source_target:
-        #self.logger.debug('Performing species comparison on source compartment '+str(source_comp)+' and target compartment '+str(comp_source_target[source_comp]))
-        #species_source_target = self.compareSpecies(source_rpsbml, target_rpsbml, source_comp, comp_source_target[source_comp])
         species_source_target = self.compareSpecies(comp_source_target, source_rpsbml, target_rpsbml)
-        #compartment_species_source_target[source_comp] = species_source_target
-        '''
-        compartment_species_source_target[source_comp] = {}
-        for source_species in species_source_target:
-            list_species_match = [i for i in species_source_target[source_species]]
-            if len(list_species_match)==1:
-                compartment_species_source_target[source_comp][source_species] = list_species_match[0]
-            elif len(list_species_match)>1:
-                self.logger.warning('Source species '+str(source_species)+' has mutliple matches, taking the first one: '+str(species_match[source_species]))
-                compartment_species_source_target[source_comp][source_species] = list_species_match[0]
-            else:
-                self.logger.warning('No matches '+str(source_species)+': '+str(list_species_match))
-        '''
         self.logger.debug('species_source_target: '+str(species_source_target))
         for source_species in species_source_target:
+            list_target = [i for i in species_source_target[source_species]]
+            if source_species in list_target:
+                self.logger.warning('The source ('+str(source_species)+') and target species ids ('+str(list_target)+') are the same')
             #if no match then add it to the target model
             if species_source_target[source_species]=={}:
                 self.logger.debug('Creating source species '+str(source_species)+' in target rpsbml')
@@ -855,28 +846,6 @@ class rpMerge:
                     self._checklibSBML(targetModel_species.setAnnotation(source_species.getAnnotation()),
                         'setting target annotation')
         ################ REACTIONS ###################
-        #DOES NOT WORK USING THIS FUNCTION
-        #self.logger.debug('species_match: '+str(species_match))
-        #reactions_match = self.compareReactions(species_match, target_rpsbml, source_rpsbml)
-        #self.logger.debug('reactions_match: '+str(reactions_match))
-        '''
-        for reaction_id in reactions_match:
-            if reactions_match[reaction_id]['found']:
-        '''
-
-        #species_match = self.compareSpecies(source_rpsbml, target_rpsbml)
-        '''
-        species_source_target = {}
-        for source_species in species_match:
-            list_species_match = [i for i in species_match[source_species]]
-            if len(list_species_match)==1:
-                species_source_target[source_species] = list_species_match[0]
-            elif len(species_match[source_species])>1:
-                self.logger.warning('Source species '+str(source_species)+' has mutliple matches, taking the first one: '+str(species_match[source_species]))
-                species_source_target[source_species] = list_species_match[0]
-            else:
-                self.logger.warning('No matches '+str(source_species)+': '+str(species_match[source_species]))
-        '''
         #TODO; consider the case where two reactions have the same ID's but are not the same reactions
         reac_replace = {}
         for source_reaction in source_rpsbml.model.getListOfReactions():
@@ -885,15 +854,11 @@ class rpMerge:
                 score, match = self.compareReaction(species_source_target, source_reaction, target_reaction)
                 if match:
                     self.logger.debug('Source reaction '+str(source_reaction)+' matches with target reaction '+str(target_reaction))
+                    source_reaction[source_reaction.getId()] = target_reaction.getId()
                     is_found = True
                     break
             if not is_found:
                 self.logger.debug('Cannot find source reaction: '+str(source_reaction.getId()))
-                '''
-                source_reaction = source_rpsbml.model.getReaction(source_reaction)
-                if not source_reaction:
-                    self.logger.error('Cannot retreive model reaction: '+str(source_reaction))
-                '''
                 self._checklibSBML(source_reaction, 'fetching source reaction')
                 target_reaction = target_rpsbml.model.createReaction()
                 self._checklibSBML(target_reaction, 'create reaction')
@@ -932,6 +897,7 @@ class rpMerge:
                             if len(species_source_target[source_reaction_reactantID])>1:
                                 self.logger.warning('Multiple matches for '+str(source_reaction_reactantID)+': '+str(species_source_target[source_reaction_reactantID]))
                                 self.logger.warninf('Taking one random')
+                            #WARNING: taking the first one arbitrarely 
                             self._checklibSBML(target_reactant.setSpecies(
                                 [i for i in species_source_target[source_reaction_reactantID]][0]), 'assign reactant species')
                         else:
@@ -957,6 +923,7 @@ class rpMerge:
                             if len(species_source_target[source_reaction_reactantID])>1:
                                 self.logger.warning('Multiple matches for '+str(source_reaction_productID)+': '+str(species_source_target[source_reaction_productID]))
                                 self.logger.warninf('Taking one random')
+                            #WARNING: taking the first one arbitrarely 
                             self._checklibSBML(target_product.setSpecies(
                                 [i for i in species_source_target[source_reaction_productID]][0]), 'assign reactant product')
                         else:
@@ -971,166 +938,6 @@ class rpMerge:
                             'set "constant" on product '+str(source_product.getConstant()))
                     self._checklibSBML(target_product.setStoichiometry(source_product.getStoichiometry()),
                             'set stoichiometry ('+str(source_product.getStoichiometry)+')')
-                
-
-
-
-
-
-
-
-        '''
-        species_source_target = {} #this is passed to be used for reaction ID conversion
-        toAdd_model_species_ids = [i.getId() for i in source_rpsbml.model.getListOfSpecies()]
-        model_species_ids = [i.getId() for i in source_rpsbml.model.getListOfSpecies()]
-        targetModel_species_ids = [i.getId() for i in target_rpsbml.model.getListOfSpecies()]
-        for model_species in source_rpsbml.model.getListOfSpecies():
-            if model_species.getId() in targetModel_species_ids:
-                toAdd_model_species_ids.remove(model_species.getId())
-                continue
-            model_species_annotation = model_species.getAnnotation()
-            if not model_species_annotation:
-                self.logger.error('Cannot find annotations for species: '+str(model_species.getId()))
-                continue
-            for targetModel_species in target_rpsbml.model.getListOfSpecies():
-                targetModel_species_annotation = targetModel_species.getAnnotation()
-                if not targetModel_species_annotation:
-                    self.logger.warning('Cannot find annotations for species: '+str(targetModel_species.getId()))
-                    continue
-                ## here we compare perfect matches of MIRIAM annotations
-                if source_rpsbml.compareMIRIAMAnnotations(model_species_annotation, targetModel_species_annotation):
-                    #if we find a match from MIRIAM and not from ID we assume that it supersedes the ID and need to replace it in reactions
-                    species_source_target[model_species.getId()] = targetModel_species.getId()
-                    toAdd_model_species_ids.remove(model_species.getId())
-                    break
-        #add the new species
-        for model_species_id in toAdd_model_species_ids:
-            model_species = source_rpsbml.model.getSpecies(model_species_id)
-            if not model_species:
-                self.logger.error('Cannot retreive model species: '+str(model_species_id))
-            self._checklibSBML(model_species, 'fetching source species')
-            targetModel_species = target_rpsbml.model.createSpecies()
-            self._checklibSBML(targetModel_species, 'creating species')
-            self._checklibSBML(targetModel_species.setMetaId(model_species.getMetaId()),
-                    'setting target metaId')
-            self._checklibSBML(targetModel_species.setId(model_species.getId()),
-                    'setting target id')
-            self._checklibSBML(targetModel_species.setCompartment(comp_source_target[model_species.getCompartment()]),
-                    'setting target compartment')
-            self._checklibSBML(targetModel_species.setInitialConcentration(
-                model_species.getInitialConcentration()),
-                    'setting target initial concentration')
-            self._checklibSBML(targetModel_species.setBoundaryCondition(
-                model_species.getBoundaryCondition()),
-                    'setting target boundary concentration')
-            self._checklibSBML(targetModel_species.setHasOnlySubstanceUnits(
-                model_species.getHasOnlySubstanceUnits()),
-                    'setting target has only substance units')
-            self._checklibSBML(targetModel_species.setBoundaryCondition(
-                model_species.getBoundaryCondition()),
-                    'setting target boundary condition')
-            self._checklibSBML(targetModel_species.setConstant(model_species.getConstant()),
-                'setting target constant')
-            self._checklibSBML(targetModel_species.setAnnotation(model_species.getAnnotation()),
-                'setting target annotation')
-        ################ REACTIONS ###################
-        # Here we go by ID and check if it exists. If it does we need to check the species are the same
-        # and if not, add it changing the ID #species_source_target
-        toAdd_model_reaction_ids = [i.getId() for i in source_rpsbml.model.getListOfReactions()]
-        model_reaction_ids = [i.getId() for i in source_rpsbml.model.getListOfReactions()]
-        targetModel_reaction_ids = [i.getId() for i in target_rpsbml.model.getListOfReactions()]
-        reac_replace = {}
-        for model_reaction in source_rpsbml.model.getListOfReactions():
-            if model_reaction.getId() in targetModel_reaction_ids:
-                toAdd_model_reaction_ids.remove(model_reaction.getId())
-                continue
-            model_reaction_speciesID = []
-            for reactant in model_reaction.getListOfReactants():
-                if reactant.species in species_source_target:
-                    model_reaction_speciesID.append(species_source_target[reactant.species])
-                else:
-                    model_reaction_speciesID.append(reactant.species)
-            model_reaction_productsID = []
-            for product in model_reaction.getListOfProducts():
-                if product.species in species_source_target:
-                    model_reaction_productsID.append(species_source_target[product.species])
-                else:
-                    model_reaction_productsID.append(product.species)
-            for targetModel_reaction in target_rpsbml.model.getListOfReactions():
-                #loop through target model reactions
-                targetModel_reaction_speciesID = [i.species for i in targetModel_reaction.getListOfReactants()]
-                targetModel_reaction_productsID = [i.species for i in targetModel_reaction.getListOfProducts()]
-                if not set(model_reaction_speciesID)-set(targetModel_reaction_speciesID) and not set(model_reaction_productsID)-set(targetModel_reaction_productsID):
-                    self.logger.debug('The reactions species and products are the same: '+str(model_reaction.getId())+' --- '+str(targetModel_reaction.getId()))
-                    #reac_replace[targetModel_reaction.getId()] = model_reaction.getId()
-                    reac_replace[model_reaction.getId()] = targetModel_reaction.getId()
-                    toAdd_model_reaction_ids.remove(model_reaction.getId())
-                    continue
-        #add the new reactions
-        for model_reaction_id in toAdd_model_reaction_ids:
-            model_reaction = source_rpsbml.model.getReaction(model_reaction_id)
-            if not model_reaction:
-                self.logger.error('Cannot retreive model reaction: '+str(model_reaction_id))
-            self._checklibSBML(model_reaction, 'fetching source reaction')
-            target_reaction = target_rpsbml.model.createReaction()
-            self._checklibSBML(target_reaction, 'create reaction')
-            target_fbc = target_reaction.getPlugin('fbc')
-            self._checklibSBML(target_fbc, 'fetching target FBC package')
-            source_fbc = model_reaction.getPlugin('fbc')
-            self._checklibSBML(source_fbc, 'fetching source FBC package')
-            source_upperFluxBound = source_fbc.getUpperFluxBound()
-            self._checklibSBML(source_upperFluxBound, 'fetching upper flux bound')
-            self._checklibSBML(target_fbc.setUpperFluxBound(source_upperFluxBound),
-                    'setting upper flux bound')
-            source_lowerFluxBound = source_fbc.getLowerFluxBound()
-            self._checklibSBML(source_lowerFluxBound, 'fetching lower flux bound')
-            self._checklibSBML(target_fbc.setLowerFluxBound(source_lowerFluxBound),
-                    'setting lower flux bound')
-            self._checklibSBML(target_reaction.setId(model_reaction.getId()), 'set reaction id')
-            self._checklibSBML(target_reaction.setName(model_reaction.getName()), 'set name')
-            self._checklibSBML(target_reaction.setSBOTerm(model_reaction.getSBOTerm()),
-                    'setting the reaction system biology ontology (SBO)') #set as process
-            #TODO: consider having the two parameters as input to the function
-            self._checklibSBML(target_reaction.setReversible(model_reaction.getReversible()),
-                    'set reaction reversibility flag')
-            self._checklibSBML(target_reaction.setFast(model_reaction.getFast()),
-                    'set reaction "fast" attribute')
-            self._checklibSBML(target_reaction.setMetaId(model_reaction.getMetaId()), 'setting species meta_id')
-            self._checklibSBML(target_reaction.setAnnotation(model_reaction.getAnnotation()),
-                    'setting annotation for source reaction')
-            #Reactants
-            for model_reaction_speciesID in [i.species for i in model_reaction.getListOfReactants()]:
-                target_reactant = target_reaction.createReactant()
-                self._checklibSBML(target_reactant, 'create target reactant')
-                if model_reaction_speciesID in species_source_target:
-                    self._checklibSBML(target_reactant.setSpecies(
-                        species_source_target[model_reaction_speciesID]), 'assign reactant species')
-                else:
-                    self._checklibSBML(target_reactant.setSpecies(model_reaction_speciesID),
-                        'assign reactant species')
-                source_reactant = model_reaction.getReactant(model_reaction_speciesID)
-                self._checklibSBML(source_reactant, 'fetch source reactant')
-                self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()),
-                        'set "constant" on species '+str(source_reactant.getConstant()))
-                self._checklibSBML(target_reactant.setStoichiometry(source_reactant.getStoichiometry()),
-                        'set stoichiometry ('+str(source_reactant.getStoichiometry)+')')
-            #Products
-            for model_reaction_productID in [i.species for i in model_reaction.getListOfProducts()]:
-                target_reactant = target_reaction.createProduct()
-                self._checklibSBML(target_reactant, 'create target reactant')
-                if model_reaction_productID in species_source_target:
-                    self._checklibSBML(target_reactant.setSpecies(
-                        species_source_target[model_reaction_productID]), 'assign reactant product')
-                else:
-                    self._checklibSBML(target_reactant.setSpecies(model_reaction_productID),
-                        'assign reactant product')
-                source_reactant = model_reaction.getProduct(model_reaction_productID)
-                self._checklibSBML(source_reactant, 'fetch source reactant')
-                self._checklibSBML(target_reactant.setConstant(source_reactant.getConstant()),
-                        'set "constant" on product '+str(source_reactant.getConstant()))
-                self._checklibSBML(target_reactant.setStoichiometry(source_reactant.getStoichiometry()),
-                        'set stoichiometry ('+str(source_reactant.getStoichiometry)+')')
-        '''
         #### GROUPS #####
         #TODO loop through the groups to add them
         if not target_rpsbml.model.isPackageEnabled('groups'):
@@ -1152,25 +959,23 @@ class rpMerge:
             #for all the species that need to be converted, replace the ones that are
             #if the group is the species group, replace the ones detected from species_source_target
             if group.getId()==species_group_id or group.getId()==sink_species_group_id:
-                for spe_conv in species_source_target:
-                    foundIt = False
-                    for member in group.getListOfMembers():
-                        if member.getIdRef()==spe_conv:
-                            member.setIdRef(species_source_target[spe_conv])
-                            foundIt = True
-                            break
+                for member in group.getListOfMembers():
+                    if member.getIdRef() in species_source_target:
+                        list_species = [i for i in species_source_target[member.getIdRef()]]
+                        self.logger.debug('species_source_target: '+str(species_source_target))
+                        self.logger.debug('list_species: '+str(list_species))
+                        if len(list_species)==0:
+                            self.logger.warning('Source species '+str(member.getIdRef())+' has been created in the target model')
+                        elif len(list_species)>1:
+                            self.logger.warning('There are multiple matches to the species '+str(member.getIdRef())+'... taking the first one: '+str(list_species))
+                            #WARNING: taking the first one arbitrarely 
+                            member.setIdRef(list_species[0])
+                        else:
+                            member.setIdRef(list_species[0])
             elif group.getId()==pathway_id:
-                for reac_conv in reac_replace:
-                    foundIt = False
-                    for member in group.getListOfMembers():
-                        if member.getIdRef()==reac_conv:
-                            member.setIdRef(reac_replace[reac_conv])
-                            foundIt = True
-                            break
-                    '''
-                    if not foundIt:
-                        self.logger.warning('Could not find '+str(spe_conv)+' to replace with '+str(species_source_target[spe_conv]))
-                    '''
+                for member in group.getListOfMembers():
+                    if member.getIdRef() in reac_replace:
+                        member.setIdRef(reac_replace[member.getIdRef()])
             self._checklibSBML(target_groups.addGroup(group),
                     'copy the source groups to the target groups')
         ###### TITLES #####
