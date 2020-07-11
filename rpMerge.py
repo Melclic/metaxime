@@ -172,6 +172,7 @@ class rpMerge:
     def mergeSBMLFiles(self,
                        path_source, 
                        path_target,
+                       path_merge,
                        species_group_id='central_species',
                        sink_species_group_id='rp_sink_species',
                        pathway_id='rp_pathway'):
@@ -188,6 +189,7 @@ class rpMerge:
                          species_group_id,
                          sink_species_group_id,
                          pathway_id)
+        target_rpsbml.writeSBML(path_merge)
         
 
 
