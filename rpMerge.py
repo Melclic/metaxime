@@ -6,18 +6,17 @@ import rpSBML
 import libsbml
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    #level=logging.DEBUG,
     #level=logging.WARNING,
-    #level=logging.ERROR,
+    level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
 
+##TODO: this really does not need to be an object
 class rpMerge:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.target_rpsbml = None
-        self.source_rpsbml = None
 
 
     #######################################################################
@@ -170,7 +169,26 @@ class rpMerge:
     ###################################### INPUT FUNCTIONS ################
     #######################################################################
 
-
+    def mergeSBMLFiles(self,
+                       path_source, 
+                       path_target,
+                       species_group_id='central_species',
+                       sink_species_group_id='rp_sink_species',
+                       pathway_id='rp_pathway'):
+        if not os.path.exists(path_source):
+            self.logger.error('Source SBML file is invalid: '+str(path_source))
+            return False
+        if not os.path.exists(path_target):
+            self.logger.error('Target SBML file is invalid: '+str(path_target))
+            return False
+        source_rpsbml = rpSBML.rpSBML('source', path=path_source)
+        target_rpsbml = rpSBML.rpSBML('target', path=path_target)
+        self.mergeModels(source_rpsbml,
+                         target_rpsbml,
+                         species_group_id,
+                         sink_species_group_id,
+                         pathway_id)
+        
 
 
     ##########################################################################################
@@ -407,7 +425,6 @@ class rpMerge:
     #
     # TODO: for all the measured species compare with the simualted one. Then find the measured and simulated species that match the best and exclude the 
     # simulated species from potentially matching with another
-    #
     def compareSpecies(self, comp_source_target, source_rpsbml, target_rpsbml):
         ############## compare species ###################
         source_target = {}
@@ -494,102 +511,12 @@ class rpMerge:
         return species_match
 
 
-    ## Match all the measured chemical species to the simulated chemical species between two SBML 
-    #
-    # TODO: for all the measured species compare with the simualted one. Then find the measured and simulated species that match the best and exclude the 
-    # simulated species from potentially matching with another
-    #
-    def compareSpecies_OLD(self, source_rpsbml, target_rpsbml, measured_comp_id=None, sim_comp_id=None):
-        ############## compare species ###################
-        source_target = {}
-        target_source = {}
-        species_match = {}
-        for source_species in source_rpsbml.model.getListOfSpecies():
-            #skip the species that are not in the right compartmennt, if specified
-            if measured_comp_id and not source_species.getCompartment()==measured_comp_id:
-                continue
-            self.logger.debug('--- Trying to match chemical species: '+str(source_species.getId())+' ---')
-            source_target[source_species.getId()] = {}
-            species_match[source_species.getId()] = {}
-            #species_match[source_species.getId()] = {'id': None, 'score': 0.0, 'found': False}
-            #TODO: need to exclude from the match if a simulated chemical species is already matched with a higher score to another measured species
-            for target_species in target_rpsbml.model.getListOfSpecies():
-                #skip the species that are not in the right compartmennt, if specified
-                if sim_comp_id and not target_species.getCompartment()==sim_comp_id:
-                    continue
-                source_target[source_species.getId()][target_species.getId()] = {'score': 0.0, 'found': False}
-                if not target_species.getId() in target_source:
-                    target_source[target_species.getId()] = {}
-                target_source[target_species.getId()][source_species.getId()] = {'score': 0.0, 'found': False}
-                measured_brsynth_annot = target_rpsbml.readBRSYNTHAnnotation(source_species.getAnnotation())
-                target_rpsbml_brsynth_annot = target_rpsbml.readBRSYNTHAnnotation(target_species.getAnnotation())
-                measured_miriam_annot = target_rpsbml.readMIRIAMAnnotation(source_species.getAnnotation())
-                sim_miriam_annot = target_rpsbml.readMIRIAMAnnotation(target_species.getAnnotation())
-                #### MIRIAM ####
-                if target_rpsbml.compareMIRIAMAnnotations(source_species.getAnnotation(), target_species.getAnnotation()):
-                    self.logger.debug('--> Matched MIRIAM: '+str(target_species.getId()))
-                    source_target[source_species.getId()][target_species.getId()]['score'] += 0.4
-                    #source_target[source_species.getId()][target_species.getId()]['score'] += 0.2+0.2*jaccardMIRIAM(sim_miriam_annot, measured_miriam_annot)
-                    source_target[source_species.getId()][target_species.getId()]['found'] = True
-                ##### InChIKey ##########
-                #find according to the inchikey -- allow partial matches
-                #compare either inchikey in brsynth annnotation or MIRIAM annotation
-                #NOTE: here we prioritise the BRSynth annotation inchikey over the MIRIAM
-                measured_inchikey_split = None
-                target_rpsbml_inchikey_split = None
-                if 'inchikey' in measured_brsynth_annot: 
-                    measured_inchikey_split = measured_brsynth_annot['inchikey'].split('-')
-                elif 'inchikey' in measured_miriam_annot:
-                    if not len(measured_miriam_annot['inchikey'])==1:
-                        #TODO: handle mutliple inchikey with mutliple compare and the highest comparison value kept
-                        self.logger.warning('There are multiple inchikey values, taking the first one: '+str(measured_miriam_annot['inchikey']))
-                    measured_inchikey_split = measured_miriam_annot['inchikey'][0].split('-')
-                if 'inchikey' in target_rpsbml_brsynth_annot:
-                    target_rpsbml_inchikey_split = target_rpsbml_brsynth_annot['inchikey'].split('-')
-                elif 'inchikey' in sim_miriam_annot:
-                    if not len(sim_miriam_annot['inchikey'])==1:
-                        #TODO: handle mutliple inchikey with mutliple compare and the highest comparison value kept
-                        self.logger.warning('There are multiple inchikey values, taking the first one: '+str(target_rpsbml_brsynth_annot['inchikey']))
-                    target_rpsbml_inchikey_split = sim_miriam_annot['inchikey'][0].split('-')
-                if measured_inchikey_split and target_rpsbml_inchikey_split:
-                    if measured_inchikey_split[0]==target_rpsbml_inchikey_split[0]:
-                        self.logger.debug('Matched first layer InChIkey: ('+str(measured_inchikey_split)+' -- '+str(target_rpsbml_inchikey_split)+')')
-                        source_target[source_species.getId()][target_species.getId()]['score'] += 0.2
-                        if measured_inchikey_split[1]==target_rpsbml_inchikey_split[1]:
-                            self.logger.debug('Matched second layer InChIkey: ('+str(measured_inchikey_split)+' -- '+str(target_rpsbml_inchikey_split)+')')
-                            source_target[source_species.getId()][target_species.getId()]['score'] += 0.2
-                            source_target[source_species.getId()][target_species.getId()]['found'] = True
-                            if measured_inchikey_split[2]==target_rpsbml_inchikey_split[2]:
-                                self.logger.debug('Matched third layer InChIkey: ('+str(measured_inchikey_split)+' -- '+str(target_rpsbml_inchikey_split)+')')
-                                source_target[source_species.getId()][target_species.getId()]['score'] += 0.2
-                                source_target[source_species.getId()][target_species.getId()]['found'] = True
-                target_source[target_species.getId()][source_species.getId()]['score'] = source_target[source_species.getId()][target_species.getId()]['score']
-                target_source[target_species.getId()][source_species.getId()]['found'] = source_target[source_species.getId()][target_species.getId()]['found']
-        #build the matrix to send
-        source_target_mat = {}
-        for i in source_target:
-            source_target_mat[i] = {}
-            for y in source_target[i]:
-                source_target_mat[i][y] = source_target[i][y]['score']
-        unique = self._findUniqueRowColumn(pd.DataFrame(source_target_mat))
-        self.logger.debug('findUniqueRowColumn:')
-        self.logger.debug(unique)
-        for meas in source_target:
-            if meas in unique:
-                species_match[meas] = {}
-                for unique_spe in unique[meas]:
-                    species_match[meas][unique_spe] = round(source_target[meas][unique[meas][0]]['score'], 5)
-            else:
-                self.logger.warning('Cannot find a species match for the measured species: '+str(meas))
-        self.logger.debug('#########################')
-        self.logger.debug('species_match:')
-        self.logger.debug(species_match)
-        self.logger.debug('-----------------------')
-        return species_match
 
     ######################################################################################################################
     ############################################### EC NUMBER ############################################################
     ######################################################################################################################
+
+
 
     def compareEC(meas_reac_miriam, sim_reac_miriam):
         #Warning we only match a single reaction at a time -- assume that there cannot be more than one to match at a given time
@@ -854,7 +781,8 @@ class rpMerge:
                 score, match = self.compareReaction(species_source_target, source_reaction, target_reaction)
                 if match:
                     self.logger.debug('Source reaction '+str(source_reaction)+' matches with target reaction '+str(target_reaction))
-                    source_reaction[source_reaction.getId()] = target_reaction.getId()
+                    #source_reaction[source_reaction.getId()] = target_reaction.getId()
+                    reac_replace[source_reaction.getId()] = target_reaction.getId()
                     is_found = True
                     break
             if not is_found:
