@@ -5,9 +5,6 @@ import logging
 import copy
 
 
-##### external packages ####
-import rpFindPathway
-
 ## @package RetroPath SBML writer
 # Documentation for SBML representation of the different model
 #
