@@ -256,7 +256,7 @@ class rpCache:
         picklename = 'rr_reactions.pickle.gz'
         filename = 'rules_rall.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename), self.rr_rules_type)
+            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename))
             pickle.dump(self.rr_reactions,
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
