@@ -268,8 +268,11 @@ class rpSBML:
             self.logger.debug(annot_header+' -- '+str(brsynth_annot.getChild(i).getName()))
             if annot_header==brsynth_annot.getChild(i).getName():
                 isfound_target = True
+                '''
                 self._checklibSBML(brsynth_annot.removeChild(brsynth_annot.getIndex(i)),
                     'Removing annotation '+str(annot_header))
+                '''
+                self._checklibSBML(brsynth_annot.removeChild(i), 'Removing annotation '+str(annot_header))
                 isfound_source = False
                 source_brsynth_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth')
                 for y in range(source_brsynth_annot.getNumChildren()):
