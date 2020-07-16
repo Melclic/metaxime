@@ -190,6 +190,7 @@ class rpMerge:
                          sink_species_group_id,
                          pathway_id)
         target_rpsbml.writeSBML(path_merge)
+        return True
         
 
 

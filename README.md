@@ -15,7 +15,7 @@ The docker needs to be built locally where the other dockers are to be built
 Build the docker image:
 
 ```
-docker build -t brsynth/rpbase:dev .
+docker build -t brsynth/rpbase .
 ```
 
 ## Running the tests
