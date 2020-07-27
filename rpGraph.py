@@ -71,8 +71,8 @@ class rpGraph:
     #
     def _onlyConsumedSpecies(self):
         only_consumed_species = []
-        for node_name in self.G.nodes.keys():
-            node = self.G.nodes.get(node_name)
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
             if node['type']=='species':
                 if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
                     only_consumed_species.append(node_name)
@@ -84,8 +84,8 @@ class rpGraph:
     #
     def _onlyConsumedCentralSpecies(self):
         only_consumed_species = []
-        for node_name in self.G.nodes.keys():
-            node = self.G.nodes.get(node_name)
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
             if node['type']=='species':
                 if node['central_species']==True:
                     if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
@@ -99,8 +99,8 @@ class rpGraph:
     #
     def _onlyProducedSpecies(self):
         only_produced_species = []
-        for node_name in self.G.nodes.keys():
-            node = self.G.nodes.get(node_name)
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
             if node['type']=='species':
                 if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
                     only_produced_species.append(node_name)
@@ -112,8 +112,8 @@ class rpGraph:
     #
     def _onlyProducedCentralSpecies(self):
         only_produced_species = []
-        for node_name in self.G.nodes.keys():
-            node = self.G.nodes.get(node_name)
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
             if node['type']=='species':
                 if node['central_species']==True:
                     if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
@@ -133,7 +133,7 @@ class rpGraph:
         if pred_node_list==[]:
             return reac_list
         for n_n in pred_node_list:
-            n = self.G.nodes.get(n_n)
+            n = self.G.node.get(n_n)
             if n['type']=='reaction':
                 if n_n in reac_list:
                     return reac_list
@@ -158,10 +158,10 @@ class rpGraph:
             ordered = self._recursiveReacPrecessors(prod_spe, [])
             self.logger.info(ordered)
             if len(ordered)==self.num_reactions:
-                return ordered
+                return [i for i in reversed(ordered)]
         self.logger.error('Could not find the full ordered reactions')
         return []
-            
+
 
     ################################################# BELOW IS DEV ################################
 
