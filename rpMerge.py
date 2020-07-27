@@ -5,13 +5,6 @@ import pandas as pd
 import rpSBML
 import libsbml
 
-logging.basicConfig(
-    #level=logging.DEBUG,
-    #level=logging.WARNING,
-    level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
 
 ##TODO: this really does not need to be an object
 class rpMerge:
@@ -206,7 +199,7 @@ class rpMerge:
     def compareReactions(self, species_match, target_rpsbml, source_rpsbml):
         ############## compare the reactions #######################
         #construct sim reactions with species
-        logging.debug('------ Comparing reactions --------')
+        self.logger.debug('------ Comparing reactions --------')
         #match the reactants and products conversion to sim species
         tmp_reaction_match = {}
         source_target = {}
@@ -221,8 +214,8 @@ class rpMerge:
                     target_source[target_reaction.getId()] = {}
                 target_source[target_reaction.getId()][source_reaction.getId()] = {}
                 source_target[source_reaction.getId()][target_reaction.getId()] = {}
-                logging.debug('\t=========== '+str(target_reaction.getId())+' ==========')
-                logging.debug('\t+++++++ Species match +++++++')
+                self.logger.debug('\t=========== '+str(target_reaction.getId())+' ==========')
+                self.logger.debug('\t+++++++ Species match +++++++')
                 tmp_reaction_match[source_reaction.getId()][target_reaction.getId()] = {'reactants': {},
                                                                              'reactants_score': 0.0,
                                                                              'products': {},
@@ -238,44 +231,44 @@ class rpMerge:
                 sim_reactants_id = [reactant.species for reactant in target_reaction.getListOfReactants()]
                 sim_products_id = [product.species for product in target_reaction.getListOfProducts()]
                 ############ species ############
-                logging.debug('\tspecies_match: '+str(species_match))
-                logging.debug('\tspecies_match: '+str(species_match.keys()))
-                logging.debug('\tsim_reactants_id: '+str(sim_reactants_id))
-                logging.debug('\tmeasured_reactants_id: '+str([i.species for i in source_reaction.getListOfReactants()]))
-                logging.debug('\tsim_products_id: '+str(sim_products_id))
-                logging.debug('\tmeasured_products_id: '+str([i.species for i in source_reaction.getListOfProducts()]))
+                self.logger.debug('\tspecies_match: '+str(species_match))
+                self.logger.debug('\tspecies_match: '+str(species_match.keys()))
+                self.logger.debug('\tsim_reactants_id: '+str(sim_reactants_id))
+                self.logger.debug('\tmeasured_reactants_id: '+str([i.species for i in source_reaction.getListOfReactants()]))
+                self.logger.debug('\tsim_products_id: '+str(sim_products_id))
+                self.logger.debug('\tmeasured_products_id: '+str([i.species for i in source_reaction.getListOfProducts()]))
                 #ensure that the match is 1:1
                 #1)Here we assume that a reaction cannot have twice the same species
                 cannotBeSpecies = []
                 #if there is a match then we loop again since removing it from the list of potential matches would be appropriate
                 keep_going = True
                 while keep_going:
-                    logging.debug('\t\t----------------------------')
+                    self.logger.debug('\t\t----------------------------')
                     keep_going = False
                     for reactant in source_reaction.getListOfReactants():
-                        logging.debug('\t\tReactant: '+str(reactant.species))
+                        self.logger.debug('\t\tReactant: '+str(reactant.species))
                         #if a species match has been found AND if such a match has been found
                         founReaIDs = [tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][i]['id'] for i in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'] if not tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][i]['id']==None]
-                        logging.debug('\t\tfounReaIDs: '+str(founReaIDs))
+                        self.logger.debug('\t\tfounReaIDs: '+str(founReaIDs))
                         if reactant.species and reactant.species in species_match and not list(species_match[reactant.species].keys())==[] and not reactant.species in founReaIDs:
                             best_spe = [k for k, v in sorted(species_match[reactant.species].items(), key=lambda item: item[1], reverse=True)][0]
                             tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][reactant.species] = {'id': best_spe, 'score': species_match[reactant.species][best_spe], 'found': True}
                             cannotBeSpecies.append(best_spe)
                         elif not reactant.species in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants']:
-                            logging.warning('\t\tCould not find the following measured reactant in the matched species: '+str(reactant.species))
+                            self.logger.warning('\t\tCould not find the following measured reactant in the matched species: '+str(reactant.species))
                             tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][reactant.species] = {'id': None, 'score': 0.0, 'found': False}
                     for product in source_reaction.getListOfProducts():
-                        logging.debug('\t\tProduct: '+str(product.species))
+                        self.logger.debug('\t\tProduct: '+str(product.species))
                         foundProIDs = [tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['products'][i]['id'] for i in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['products'] if not tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['products'][i]['id']==None]
-                        logging.debug('\t\tfoundProIDs: '+str(foundProIDs))
+                        self.logger.debug('\t\tfoundProIDs: '+str(foundProIDs))
                         if product.species and product.species in species_match and not list(species_match[product.species].keys())==[] and not product.species in foundProIDs:
                             best_spe = [k for k, v in sorted(species_match[product.species].items(), key=lambda item: item[1], reverse=True)][0]
                             tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][product.species] = {'id': best_spe, 'score': species_match[product.species][best_spe], 'found': True}
                             cannotBeSpecies.append(best_spe)
                         elif not product.species in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['products']:
-                            logging.warning('\t\tCould not find the following measured product in the matched species: '+str(product.species))
+                            self.logger.warning('\t\tCould not find the following measured product in the matched species: '+str(product.species))
                             tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['products'][product.species] = {'id': None, 'score': 0.0, 'found': False}
-                    logging.debug('\t\tcannotBeSpecies: '+str(cannotBeSpecies))
+                    self.logger.debug('\t\tcannotBeSpecies: '+str(cannotBeSpecies))
                 reactants_score = [tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][i]['score'] for i in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants']]
                 reactants_found = [tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants'][i]['found'] for i in tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants']]
                 tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['reactants_score'] = np.mean(reactants_score)
@@ -292,21 +285,21 @@ class rpMerge:
                 source_target[source_reaction.getId()][target_reaction.getId()] = tmp_reaction_match[source_reaction.getId()][target_reaction.getId()]['score']
         ### matrix compare #####
         unique = self._findUniqueRowColumn(pd.DataFrame(source_target))
-        logging.debug('findUniqueRowColumn')
-        logging.debug(unique)
+        self.logger.debug('findUniqueRowColumn')
+        self.logger.debug(unique)
         reaction_match = {}
         for meas in source_target:
             reaction_match[meas] = {'id': None, 'score': 0.0, 'found': False}
             if meas in unique:
                 if len(unique[meas])>1:
-                    logging.debug('Multiple values may match, choosing the first arbitrarily: '+str(unique))
+                    self.logger.debug('Multiple values may match, choosing the first arbitrarily: '+str(unique))
                 reaction_match[meas]['id'] = unique[meas]
                 reaction_match[meas]['score'] = round(tmp_reaction_match[meas][unique[meas][0]]['score'], 5)
                 reaction_match[meas]['found'] = tmp_reaction_match[meas][unique[meas][0]]['found']
         #### compile a reaction score based on the ec and species scores
-        logging.debug(tmp_reaction_match)
-        logging.debug(reaction_match)
-        logging.debug('-------------------------------')
+        self.logger.debug(tmp_reaction_match)
+        self.logger.debug(reaction_match)
+        self.logger.debug('-------------------------------')
         return reaction_match
 
 
@@ -338,7 +331,7 @@ class rpMerge:
                     scores.append(0.0)
                     all_match = False
             else:
-                logging.debug('Cannot find the source species '+str(source_reactant.species)+' in the target species: '+str(species_source_target))
+                self.logger.debug('Cannot find the source species '+str(source_reactant.species)+' in the target species: '+str(species_source_target))
                 scores.append(0.0)
                 all_match = False
         #products
@@ -356,7 +349,7 @@ class rpMerge:
                     scores.append(0.0)
                     all_match = False
             else:
-                logging.debug('Cannot find the measured species '+str(source_product.species)+' in the the matched species: '+str(species_source_target))
+                self.logger.debug('Cannot find the measured species '+str(source_product.species)+' in the the matched species: '+str(species_source_target))
                 scores.append(0.0)
                 all_match = False
         return np.mean(scores), all_match
@@ -533,10 +526,10 @@ class rpMerge:
             for i in range(len(sim_frac_ec)):
                 for y in range(len(sim_frac_ec[i]), 4):
                     sim_frac_ec[i].append(None)
-            logging.debug('Measured: ')
-            logging.debug(measured_frac_ec)
-            logging.debug('Simulated: ')
-            logging.debug(sim_frac_ec)
+            self.logger.debug('Measured: ')
+            self.logger.debug(measured_frac_ec)
+            self.logger.debug('Simulated: ')
+            self.logger.debug(sim_frac_ec)
             best_ec_compare = {'meas_ec': [], 'sim_ec': [], 'score': 0.0, 'found': False}
             for ec_m in measured_frac_ec:
                 for ec_s in sim_frac_ec:
@@ -555,7 +548,7 @@ class rpMerge:
                         best_ec_compare['score'] = tmp_score
             return best_ec_compare['score']
         else:
-            logging.warning('One of the two reactions does not have any EC entries.\nMeasured: '+str(meas_reac_miriam)+' \nSimulated: '+str(sim_reac_miriam))
+            self.logger.warning('One of the two reactions does not have any EC entries.\nMeasured: '+str(meas_reac_miriam)+' \nSimulated: '+str(sim_reac_miriam))
             return 0.0
 
 
@@ -577,6 +570,7 @@ class rpMerge:
     # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
     #
     #TODO: add a confidence in the merge using the score in 
+    #TODO: seperate the different parts so that others may use it
     def mergeModels(self,
                     source_rpsbml,
                     target_rpsbml,
@@ -827,7 +821,7 @@ class rpMerge:
                         if not species_source_target[source_reaction_reactantID]=={}:
                             if len(species_source_target[source_reaction_reactantID])>1:
                                 self.logger.warning('Multiple matches for '+str(source_reaction_reactantID)+': '+str(species_source_target[source_reaction_reactantID]))
-                                self.logger.warninf('Taking one random')
+                                self.logger.warning('Taking one the first one arbitrarely: '+str([i for i in species_source_target[source_reaction_reactantID]][0]))
                             #WARNING: taking the first one arbitrarely 
                             self._checklibSBML(target_reactant.setSpecies(
                                 [i for i in species_source_target[source_reaction_reactantID]][0]), 'assign reactant species')
@@ -853,7 +847,7 @@ class rpMerge:
                         if not species_source_target[source_reaction_productID]=={}:
                             if len(species_source_target[source_reaction_reactantID])>1:
                                 self.logger.warning('Multiple matches for '+str(source_reaction_productID)+': '+str(species_source_target[source_reaction_productID]))
-                                self.logger.warninf('Taking one random')
+                                self.logger.warning('Taking one arbitrarely')
                             #WARNING: taking the first one arbitrarely 
                             self._checklibSBML(target_product.setSpecies(
                                 [i for i in species_source_target[source_reaction_productID]][0]), 'assign reactant product')
