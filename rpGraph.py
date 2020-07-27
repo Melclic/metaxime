@@ -13,7 +13,7 @@ class rpGraph:
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
-        self.logger.info('Started instance of rpGraph')
+        self.logger.debug('Started instance of rpGraph')
         self.pathway_id = pathway_id
         self.species_group_id = species_group_id
         self.G = None
@@ -127,9 +127,9 @@ class rpGraph:
     # if that is the case then the algorithm will return badly ordered reactions
     #
     def _recursiveReacPrecessors(self, node_name, reac_list):
-        self.logger.info('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
+        self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
         pred_node_list = [i for i in self.G.predecessors(node_name)]
-        self.logger.info(pred_node_list)
+        self.logger.debug(pred_node_list)
         if pred_node_list==[]:
             return reac_list
         for n_n in pred_node_list:
@@ -154,9 +154,9 @@ class rpGraph:
     def orderedRetroReactions(self):
         #Note: may be better to loop tho
         for prod_spe in self._onlyProducedSpecies():
-            self.logger.info('Testing '+str(prod_spe))
+            self.logger.debug('Testing '+str(prod_spe))
             ordered = self._recursiveReacPrecessors(prod_spe, [])
-            self.logger.info(ordered)
+            self.logger.debug(ordered)
             if len(ordered)==self.num_reactions:
                 return ordered
         self.logger.error('Could not find the full ordered reactions')
@@ -170,7 +170,7 @@ class rpGraph:
         for node_name in self.G.nodes:
             node = self.G.nodes.get(node_name)
             if node['type']=='reaction':
-                self.logger.info('---> Starting reaction: '+str(node_name))
+                self.logger.debug('---> Starting reaction: '+str(node_name))
                 tmp_retrolist = [node_name]
                 is_not_end_reac = True
                 while is_not_end_reac:
@@ -183,35 +183,35 @@ class rpGraph:
                             continue
                         elif spe_node['type']=='species':
                             if spe_node['central_species']==True:
-                                self.logger.info('\tSpecies: '+str(spe_name))
-                                self.logger.info('\t'+str([i for i in self.G.predecessors(spe_name)]))
+                                self.logger.debug('\tSpecies: '+str(spe_name))
+                                self.logger.debug('\t'+str([i for i in self.G.predecessors(spe_name)]))
                                 tmp_spereacs.append([i for i in self.G.predecessors(spe_name)])
                         else:
                             self.logger.warning('Node type should be either reaction or species: '+str(node['type']))
                     #remove empty lists
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     tmp_spereacs = [i for i in tmp_spereacs if i != []]
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     #return the number of same intersect
                     if tmp_spereacs==[]:
                         is_not_end_reac = False
                         continue
                     tmp_spereacs = list(set.intersection(*map(set, tmp_spereacs)))
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     if len(tmp_spereacs)>1:     
                         self.logger.warning('There are multiple matches: '+str(tmp_spereacs))
                     elif len(tmp_spereacs)==0:
-                        self.logger.info('Found the last reaction')
+                        self.logger.debug('Found the last reaction')
                         is_not_end_reac = False
                     elif len(tmp_spereacs)==1:
-                        self.logger.info('Found the next reaction: '+str(tmp_spereacs[0]))
+                        self.logger.debug('Found the next reaction: '+str(tmp_spereacs[0]))
                         if tmp_spereacs[0] not in tmp_retrolist:
                             tmp_retrolist.append(tmp_spereacs[0])
                         else:
                             self.logger.warning('Trying to add a reaction in the sequence that already exists')
                             is_not_end_reac = False
-                    self.logger.info(tmp_retrolist)
-                self.logger.info('The tmp result is: '+str(tmp_retrolist))
+                    self.logger.debug(tmp_retrolist)
+                self.logger.debug('The tmp result is: '+str(tmp_retrolist))
                 if len(tmp_retrolist)==self.num_reactions:
                     return tmp_retrolist
 
@@ -220,7 +220,7 @@ class rpGraph:
         for node_name in self.G.nodes:
             node = self.G.nodes.get(node_name)
             if node['type']=='reaction':
-                self.logger.info('---> Starting reaction: '+str(node_name))
+                self.logger.debug('---> Starting reaction: '+str(node_name))
                 tmp_retrolist = [node_name]
                 is_not_end_reac = True
                 while is_not_end_reac:
@@ -233,35 +233,35 @@ class rpGraph:
                             continue
                         elif spe_node['type']=='species':
                             if spe_node['central_species']==True:
-                                self.logger.info('\tSpecies: '+str(spe_name))
-                                self.logger.info('\t'+str([i for i in self.G.successors(spe_name)]))
+                                self.logger.debug('\tSpecies: '+str(spe_name))
+                                self.logger.debug('\t'+str([i for i in self.G.successors(spe_name)]))
                                 tmp_spereacs.append([i for i in self.G.successors(spe_name)])
                         else:
                             self.logger.warning('Node type should be either reaction or species: '+str(node['type']))
                     #remove empty lists
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     tmp_spereacs = [i for i in tmp_spereacs if i!=[]]
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     #return the number of same intersect
                     if tmp_spereacs==[]:
                         is_not_end_reac = False
                         continue
                     tmp_spereacs = list(set.intersection(*map(set, tmp_spereacs)))
-                    self.logger.info(tmp_spereacs)
+                    self.logger.debug(tmp_spereacs)
                     if len(tmp_spereacs)>1:     
                         self.logger.warning('There are multiple matches: '+str(tmp_spereacs))
                     elif len(tmp_spereacs)==0:
-                        self.logger.info('Found the last reaction')
+                        self.logger.debug('Found the last reaction')
                         is_not_end_reac = False
                     elif len(tmp_spereacs)==1:
-                        self.logger.info('Found the next reaction: '+str(tmp_spereacs[0]))
+                        self.logger.debug('Found the next reaction: '+str(tmp_spereacs[0]))
                         if tmp_spereacs[0] not in tmp_retrolist:
                             tmp_retrolist.append(tmp_spereacs[0])
                         else:
                             self.logger.warning('Trying to add a reaction in the sequence that already exists')
                             is_not_end_reac = False
-                    self.logger.info(tmp_retrolist)
-                self.logger.info('The tmp result is: '+str(tmp_retrolist))
+                    self.logger.debug(tmp_retrolist)
+                self.logger.debug('The tmp result is: '+str(tmp_retrolist))
                 if len(tmp_retrolist)==self.num_reactions:
                     return tmp_retrolist
 
