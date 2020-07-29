@@ -11,6 +11,7 @@ import drawSvg as draw
 import svgutils.transform as sg
 import math
 import copy
+import os
 import re
 import json
 
@@ -27,7 +28,7 @@ logging.basicConfig(
 )
 
 
-
+#some drawing constants
 ARROWHEAD = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient='auto', id='normal_arrow')
 ARROWHEAD.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
 ARROWHEAD_FLAT = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=0, id='flat_arrow')
@@ -57,7 +58,7 @@ class rpGraph:
         self.pathway_id = pathway_id
         self.num_reactions = 0
         self.num_species = 0
-        self.cid_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
+        self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         self._makeGraph(pathway_id, species_group_id)
 
 
@@ -84,8 +85,8 @@ class rpGraph:
                             miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
                             brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()),
                             central_species=is_central)
-            for reac in self.reactions:
-                self.num_reactions += 1
+        for reac in self.reactions:
+            self.num_reactions += 1
             self.G.add_node(reac.getId(),
                     type='reaction',
                     miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
@@ -194,8 +195,8 @@ class rpGraph:
         for prod_spe in self._onlyProducedSpecies():
             self.logger.debug('Testing '+str(prod_spe))
             ordered = self._recursiveReacPredecessors(prod_spe, [])
-            self.logger.debug(ordered)
             if len(ordered)==self.num_reactions:
+                #return ordered
                 return [i for i in reversed(ordered)]
         self.logger.error('Could not find the full ordered reactions')
         return []
@@ -206,9 +207,12 @@ class rpGraph:
     ########################## DRAW ###########################################
     ###########################################################################
 
-
-    def draw(self, path=None):
+    ##
+    #
+    # TODO: add the conparison by inchikey to determine the cofactors
+    def drawsvg(self, path=None):
         ordered_reactions = self.orderedRetroReactions()
+        self.logger.debug(ordered_reactions)
         pathway_list = []
         for reaction_id in ordered_reactions:
             #edges
@@ -216,35 +220,70 @@ class rpGraph:
                       'products_inchi': [],
                       'cofactor_reactants': [],
                       'cofactor_products': []}
-            for pred_id in rpgraph.G.predecessors(reaction_id):
-                pred = rpgraph.G.node.get(pred_id)
+            for pred_id in self.G.predecessors(reaction_id):
+                pred = self.G.node.get(pred_id)
                 if pred['type']=='species':
                     if pred['central_species']:
-                        if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
-                            to_add['cofactor_reactants'].append(pred['name'])
+                        if 'metanetx' in pred['miriam']:
+                            if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
+                                #double check but lazy
+                                for mnx in pred['miriam']['metanetx']:
+                                    if mnx in self.mnx_cofactors.keys():
+                                        to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
+                                        break
+                                #to_add['cofactor_reactants'].append(pred['name'])
+                            else:
+                                to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
                         else:
                             to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
                     else:
-                        to_add['cofactor_reactants'].append(pred['name'])
+                        is_found = False
+                        if 'metanetx' in pred['miriam']:
+                            for mnx in pred['miriam']['metanetx']:
+                                if mnx in self.mnx_cofactors.keys():
+                                    to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
+                                    is_found = True
+                                    break
+                        if not is_found:
+                            to_add['cofactor_reactants'].append(pred['name'])
                 else:
                     self.logger.warning('The current node is not a species: '+str(pred))
             prev_products = [] #reset the list
-            for succ_id in rpgraph.G.successors(reaction_id):
-                succ = rpgraph.G.node.get(succ_id)
+            for succ_id in self.G.successors(reaction_id):
+                succ = self.G.node.get(succ_id)
                 if succ['type']=='species':
                     if succ['central_species']:
-                        if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
-                            to_add['cofactor_products'].append(succ['name'])
+                        if 'metanetx' in succ['miriam']:
+                            if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
+                                #double check i know but lazy
+                                for mnx in succ['miriam']['metanetx']:
+                                    if mnx in self.mnx_cofactors.keys():
+                                        to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
+                                        break
+                                #to_add['cofactor_products'].append(succ['name'])
+                            else:
+                                to_add['products_inchi'].append(succ['brsynth']['inchi'])
                         else:
                             to_add['products_inchi'].append(succ['brsynth']['inchi'])
                     else:
-                        to_add['cofactor_products'].append(succ['name'])
+                        is_found = False
+                        if 'metanetx' in succ['miriam']:
+                            for mnx in succ['miriam']['metanetx']:
+                                if mnx in self.mnx_cofactors.keys():
+                                    to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
+                                    is_found = True
+                                    break
+                        if not is_found:
+                            to_add['cofactor_products'].append(succ['name'])
                 else:
                     self.logger.warning('The current node is not a species: '+str(succ))
-        svg, len_x, len_y = rpgraph._drawPathway(pathway_list)
+            pathway_list.append(to_add)
+        self.logger.debug('------------------------------------------')
+        self.logger.debug(pathway_list)
+        self.logger.debug('------------------------------------------')
+        svg, len_x, len_y = self._drawPathway(pathway_list)
         if path:
-            if os.path.exists(path):
-                open(path, 'w').write(svg)
+            open(path, 'w').write(svg)
         return svg
 
 
@@ -406,7 +445,7 @@ class rpGraph:
                       y_len=200,
                       rec_size_y=20,
                       font_family='sans-serif',
-                      font_size=20,
+                      font_size=10,
                       font_color='black',
                       stroke_color='black',
                       fill_color='#ddd',
@@ -442,7 +481,6 @@ class rpGraph:
         #reactants
         y_shift = 0
         for react in cofactor_reactants:
-            self.logger.debug(react)
             x = start_line_x
             y = start_line_y-font_size-y_shift-5
             self.logger.debug('x: '+str(x))
@@ -452,7 +490,6 @@ class rpGraph:
         #product
         y_shift = 0
         for pro in cofactor_products:
-            self.logger.debug(react)
             x = end_line_x
             y = end_line_y+y_shift+5
             self.logger.debug('x: '+str(x))
@@ -550,7 +587,6 @@ class rpGraph:
                                         cofactor_products,
                                         x_len=react_arrow_size,
                                         y_len=y_len)
-        self.logger.debug(co_reac_svg)
         f_rect = sg.fromstring(co_reac_svg)
         p_rect = f_rect.getroot()
         #300, 500
@@ -583,18 +619,21 @@ class rpGraph:
         for reaction in pathway_list:
             self.logger.debug('count: '+str(count))
             if count==0: #first reaction
+                self.logger.debug('This is the first one: '+str(count))
                 react_inchi = [i for i in reaction['reactants_inchi']]
                 react_arrow = [True for i in reaction['reactants_inchi']]
                 #combine the current products with the next reactants
-                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['products_inchi']))
-                pro_inchi = prev_inchi
+                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['reactants_inchi']))
+                pro_inchi = [i for i in prev_inchi]
                 pro_arrow = [True if i in reaction['products_inchi'] else False for i in pro_inchi]
             elif count==len(pathway_list)-1: #last reaction
+                self.logger.debug('This is the last one: '+str(count)+' - '+str(len(pathway_list)-1))
                 react_inchi = [i for i in prev_inchi]
                 react_arrow = [True if i in reaction['reactants_inchi'] else False for i in react_inchi]
                 pro_inchi = reaction['products_inchi']
                 pro_arrow = [True for i in reaction['products_inchi']]
             else: #middle
+                self.logger.debug('This is a middle one: '+str(count)+' - '+str(len(pathway_list)-1))
                 react_inchi = [i for i in prev_inchi]
                 ''' this should be unessecary since the previous reaction had all the inchi mashed together
                 for inchi in reaction['reactants_inchi']:
@@ -606,23 +645,24 @@ class rpGraph:
                 prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['products_inchi']))
                 pro_inchi = prev_inchi
                 pro_arrow = [True if i in reaction['products_inchi'] else False for i in pro_inchi]
+            self.logger.debug('prev_inchi: '+str(prev_inchi))
             self.logger.debug('react_inchi: '+str(react_inchi))
             self.logger.debug('react_arrow: '+str(react_arrow))
             self.logger.debug('pro_inchi: '+str(react_inchi))
             self.logger.debug('pro_arrow: '+str(react_arrow))
             svg, x_len, y_len = self._drawReaction([inchi_svg_dict[i] for i in react_inchi],
-                                                  [inchi_svg_dict[i] for i in pro_inchi],
-                                                  react_arrow=react_arrow,
-                                                  pro_arrow=pro_arrow,
-                                                  is_inchi=False,
-                                                  cofactor_reactants=reaction['cofactor_reactants'],
-                                                  cofactor_products=reaction['cofactor_products'],
-                                                  react_arrow_size=react_arrow_size,
-                                                  arrow_gap_size=arrow_gap_size,
-                                                  subplot_size=subplot_size,
-                                                  draw_left_mol=is_first,
-                                                  stroke_color=stroke_color,
-                                                  stroke_width=stroke_width)
+                                                   [inchi_svg_dict[i] for i in pro_inchi],
+                                                   react_arrow=react_arrow,
+                                                   pro_arrow=pro_arrow,
+                                                   is_inchi=False,
+                                                   cofactor_reactants=reaction['cofactor_reactants'],
+                                                   cofactor_products=reaction['cofactor_products'],
+                                                   react_arrow_size=react_arrow_size,
+                                                   arrow_gap_size=arrow_gap_size,
+                                                   subplot_size=subplot_size,
+                                                   draw_left_mol=is_first,
+                                                   stroke_color=stroke_color,
+                                                   stroke_width=stroke_width)
             pathway_svgs.append({'svg': svg, 'x_len': x_len, 'y_len': y_len})
             if is_first:
                 is_first = False
@@ -645,7 +685,7 @@ class rpGraph:
             self.logger.debug('cum_x_len: '+str(cum_x_len))
             cum_x_len += reaction_svg['x_len']
             fig.append(p)
-        return fig.to_str().decode("utf-8"), pathway_svgs, x_len, y_len
+        return fig.to_str().decode("utf-8"), x_len, y_len
 
 
     ################################################# BELOW IS DEV ################################
