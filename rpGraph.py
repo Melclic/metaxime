@@ -12,10 +12,20 @@ import svgutils.transform as sg
 import math
 import copy
 import re
+import json
 
 logging.basicConfig()
 logging.root.setLevel(logging.NOTSET)
 logging.basicConfig(level=logging.NOTSET)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+
 
 
 ARROWHEAD = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient='auto', id='normal_arrow')
@@ -47,6 +57,7 @@ class rpGraph:
         self.pathway_id = pathway_id
         self.num_reactions = 0
         self.num_species = 0
+        self.cid_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         self._makeGraph(pathway_id, species_group_id)
 
 
@@ -79,7 +90,7 @@ class rpGraph:
                     type='reaction',
                     miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
                     brsynth=self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation()))
-            #edges
+        #edges
         for reaction in self.reactions:
             for reac in reaction.getListOfReactants():
                 self.G.add_edge(reac.species,
@@ -193,6 +204,47 @@ class rpGraph:
     ########################## DRAW ###########################################
     ###########################################################################
 
+
+    def getSVG(self):
+        ordered_reactions = self.orderedRetroReactions()
+        pathway_list = []
+        #due to the nature of the drawing algorithm (TODO: change), we need to keep track of the previus central species products
+        #and reproduce the same list dimension and find the same id location and the rest None
+        prev_products = []
+        for reaction_id in ordered_reactions:
+            #edges
+            to_add = {'reactants_inchi': [],
+                      'products_inchi': [],
+                      'cofactor_reactants': [],
+                      'cofactor_products': []}
+            for pred_id in rpgraph.G.predecessors(reaction_id):
+                pred = rpgraph.G.node.get(pred_id)
+                if pred['type']=='species':
+                    if pred['central_species']:
+                        if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
+                            to_add['cofactor_reactants'].append(pred['name'])
+                        else:
+                            to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
+                    else:
+                        to_add['cofactor_reactants'].append(pred['name'])
+                else:
+                    self.logger.warning('The current node is not a species: '+str(pred))
+            prev_products = [] #reset the list
+            for succ_id in rpgraph.G.successors(reaction_id):
+                succ = rpgraph.G.node.get(succ_id)
+                if succ['type']=='species':
+                    if succ['central_species']:
+                        if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
+                            to_add['cofactor_products'].append(succ['name'])
+                        else:
+                            to_add['products_inchi'].append(succ['brsynth']['inchi'])
+                            prev_products.append(succ['brsynth']['inchi'])
+                    else:
+                        to_add['cofactor_products'].append(succ['name'])
+                else:
+                    self.logger.warning('The current node is not a species: '+str(succ))
+
+
     ##
     #
     # We do this to keep the proportions between the different molecules
@@ -258,13 +310,6 @@ class rpGraph:
                         x_species, y_reaction,
                         x_reaction-ARROWHEAD_COMP_X, y_reaction)
                 d.append(p)
-                '''
-                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_end=ARROWHEAD)
-                p.M(x_species, y_spe).C(gap_size+x_species, y_spe,
-                        x_species, y_reaction,
-                        x_reaction-ARROWHEAD_COMP_X, y_reaction)
-                d.append(p)
-                '''
         else:
             x_species = gap_size
             self.logger.debug('x_species: '+str(x_species))
@@ -292,6 +337,7 @@ class rpGraph:
     #
     def drawPartReaction(self,
                          mol_list,
+                         arrow_list,
                          left_to_right=True,
                          gap_size=100,
                          subplot_size=[200, 200],
@@ -300,6 +346,7 @@ class rpGraph:
                          stroke_color='black',
                          stroke_width=2):
         self.logger.debug('---- drawPartReaction ----')
+        assert len(mol_list)==len(arrow_list)
         if draw_mol:
             x_len = subplot_size[0]+gap_size
         else:
@@ -321,18 +368,7 @@ class rpGraph:
                     if draw_mol:
                         fig.append(p)
                 count += 1
-            #Overwrite and draw single line when there is only a single species
-            '''
-            if len(mol_list)==1:
-                d = draw.Drawing(gap_size, y_len, origin=(0,0))
-                d.append(draw.Line(0, y_len/2, gap_size, y_len/2, stroke=stroke_color, stroke_width=stroke_width, fill='none'))
-                line = sg.fromstring(d.asSvg())
-                line_p = line.getroot()
-                line_p.moveto(subplot_size[0], y_len)
-                fig.append(line_p)
-            else:
-            '''
-            lines, arrow_len_x, arrow_len_y = self.drawReactionArrows(mol_list, left_to_right, gap_size, subplot_size)
+            lines, arrow_len_x, arrow_len_y = self.drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size)
             line = sg.fromstring(lines)
             line_p = line.getroot()
             self.logger.debug('Move line x: '+str(subplot_size[0]))
@@ -340,18 +376,7 @@ class rpGraph:
             line_p.moveto(x_len-gap_size, subplot_size[1]*len(mol_list))
             fig.append(line_p)
         else:
-            #Overwrite and draw single line when there is only a single species
-            '''
-            if len(mol_list)==1:
-                d = draw.Drawing(gap_size, y_len, origin=(0,0))
-                d.append(draw.Line(0, y_len/2, gap_size, y_len/2, stroke=stroke_color, stroke_width=stroke_width, fill='none'))
-                line = sg.fromstring(d.asSvg())
-                line_p = line.getroot()
-                line_p.moveto(0, y_len)
-                fig.append(line_p)
-            else:
-            '''
-            lines, arrow_len_x, arrow_len_y = self.drawReactionArrows(mol_list, left_to_right, gap_size, subplot_size)
+            lines, arrow_len_x, arrow_len_y = self.drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size)
             line = sg.fromstring(lines)
             line_p = line.getroot()
             self.logger.debug('Move line y: '+str(subplot_size[1]*len(mol_list)))
@@ -440,6 +465,8 @@ class rpGraph:
     def drawReaction(self,
                      reactants,
                      products,
+                     react_arrow=[],
+                     pro_arrow=[],
                      cofactor_reactants=[],
                      cofactor_products=[],
                      is_inchi=True,
@@ -450,10 +477,15 @@ class rpGraph:
                      stroke_color='black',
                      stroke_width=2):
         self.logger.debug('========= drawReaction =========')
+        if not react_arrow:
+            react_arrow = [True for i in reactants]
+        if not pro_arrow:
+            pro_arrow = [True for i in products]
         if is_inchi:
             #Need to combine them into single request to keep the same proportions
             inchi_svg_dict = self.drawChemicalList([i for i in reactants if i]+[i for i in products if i], subplot_size)
-            svg_left, x_len_left, y_len_left = self.drawPartReaction([inchi_svg_dict[i] if i else None for i in reactants],
+            svg_left, x_len_left, y_len_left = self.drawPartReaction([inchi_svg_dict[i] for i in reactants],
+                                                                     react_arrow,
                                                                      left_to_right=True,
                                                                      gap_size=arrow_gap_size,
                                                                      subplot_size=subplot_size,
@@ -461,7 +493,8 @@ class rpGraph:
                                                                      draw_mol=draw_left_mol,
                                                                      stroke_color=stroke_color,
                                                                      stroke_width=stroke_width)
-            svg_right, x_len_right, y_len_right = self.drawPartReaction([inchi_svg_dict[i] if i else None for i in products],
+            svg_right, x_len_right, y_len_right = self.drawPartReaction([inchi_svg_dict[i] for i in products],
+                                                                        pro_arrow,
                                                                         left_to_right=False,
                                                                         gap_size=arrow_gap_size,
                                                                         subplot_size=subplot_size,
@@ -471,6 +504,7 @@ class rpGraph:
                                                                         stroke_width=stroke_width)
         else:
             svg_left, x_len_left, y_len_left = self.drawPartReaction(reactants,
+                                                                     react_arrow,
                                                                      left_to_right=True,
                                                                      gap_size=arrow_gap_size,
                                                                      subplot_size=subplot_size,
@@ -479,6 +513,7 @@ class rpGraph:
                                                                      stroke_color=stroke_color,
                                                                      stroke_width=stroke_width)
             svg_right, x_len_right, y_len_right = self.drawPartReaction(products,
+                                                                        pro_arrow,
                                                                         left_to_right=False,
                                                                         gap_size=arrow_gap_size,
                                                                         subplot_size=subplot_size,
@@ -508,17 +543,6 @@ class rpGraph:
         p_right = f_right.getroot()
         p_right.moveto(x_len_left+react_arrow_size, (y_len-y_len_right)/2)
         fig.append(p_right)
-        '''
-        #create the reaction rectangle -- TODO replace that with line and the cofactors
-        d = draw.Drawing(0, y_len/5, origin=(0,0))
-        d.append(draw.Rectangle(0,0,react_arrow_size,react_arrow_size/2, fill='#ddd', stroke_width=stroke_width, stroke=stroke_color))
-        reac_rectangle = d.asSvg()
-        f_rect = sg.fromstring(reac_rectangle)
-        p_rect = f_rect.getroot()
-        logging.debug('x_len_left+arrow_gap_size: '+str(x_len_left+arrow_gap_size))
-        p_rect.moveto(x_len_left, y_len/2+react_arrow_size/2/2)
-        fig.append(p_rect)
-        '''
         co_reac_svg = self.drawCofactors(cofactor_reactants,
                                         cofactor_products,
                                         x_len=react_arrow_size,
@@ -555,9 +579,6 @@ pathway = [{'reactants_inchi': ['InChI=1S/C10H13N5O3/c11-9-8-10(13-3-12-9)15(4-1
                     stroke_color='black',
                     stroke_width=2):
         self.logger.debug('________ drawPathway ________')
-        # each len(products_inchi) must be == to the nest len(reactants_inchi) and replace the ones not participating with None
-        for i in range(len(pathway_list)-1):
-            assert len(pathway_list[i]['products_inchi'])==len(pathway_list[i+1]['reactants_inchi'])
         #Need to make single command to keep all in the same proportions
         all_inchis = []
         for reaction in pathway_list:
@@ -567,34 +588,83 @@ pathway = [{'reactants_inchi': ['InChI=1S/C10H13N5O3/c11-9-8-10(13-3-12-9)15(4-1
         inchi_svg_dict = self.drawChemicalList(all_inchis, subplot_size)
         is_first = True
         pathway_svgs = []
+        count = 0
+        prev_inchi = []
         for reaction in pathway_list:
-            svg, x_len, y_len = self.drawReaction([inchi_svg_dict[i] if i else None for i in reaction['reactants_inchi']],
-                                                  [inchi_svg_dict[i] if i else None for i in reaction['products_inchi']],
+            self.logger.debug('count: '+str(count))
+            if count==0: #first reaction
+                react_inchi = [i for i in reaction['reactants_inchi']]
+                react_arrow = [True for i in reaction['reactants_inchi']]
+                #combine the current products with the next reactants
+                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['products_inchi']))
+                pro_inchi = prev_inchi
+                pro_arrow = [True if i in reaction['products_inchi'] else False for i in pro_inchi]
+            elif count==len(pathway_list)-1: #last reaction
+                react_inchi = [i for i in prev_inchi]
+                react_arrow = [True if i in reaction['reactants_inchi'] else False for i in react_inchi]
+                pro_inchi = reaction['products_inchi']
+                pro_arrow = [True for i in reaction['products_inchi']]
+            else: #middle
+                react_inchi = [i for i in prev_inchi]
+                ''' this should be unessecary since the previous reaction had all the inchi mashed together
+                for inchi in reaction['reactants_inchi']:
+                    if not inchi in react_inchi:
+                        react_inchi.append(inchi)
+                '''
+                react_arrow = [True if i in reaction['reactants_inchi'] else False for i in react_inchi]
+                #combine the current products with the next reactants
+                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['products_inchi']))
+                pro_inchi = prev_inchi
+                pro_arrow = [True if i in reaction['products_inchi'] else False for i in pro_inchi]
+            self.logger.debug('react_inchi: '+str(react_inchi))
+            self.logger.debug('react_arrow: '+str(react_arrow))
+            self.logger.debug('pro_inchi: '+str(react_inchi))
+            self.logger.debug('pro_arrow: '+str(react_arrow))
+            svg, x_len, y_len = self.drawReaction([inchi_svg_dict[i] for i in react_inchi],
+                                                  [inchi_svg_dict[i] for i in pro_inchi],
+                                                  react_arrow=react_arrow,
+                                                  pro_arrow=pro_arrow,
                                                   is_inchi=False,
-                                                  cofactor_reactants=[],
-                                                  cofactor_products=[],
+                                                  cofactor_reactants=reaction['cofactor_reactants'],
+                                                  cofactor_products=reaction['cofactor_products'],
                                                   react_arrow_size=react_arrow_size,
                                                   arrow_gap_size=arrow_gap_size,
                                                   subplot_size=subplot_size,
                                                   draw_left_mol=is_first,
                                                   stroke_color=stroke_color,
                                                   stroke_width=stroke_width)
-            '''
-            svg, x_len, y_len = self.drawReaction([inchi_svg_dict[i] if i else None for i in reaction['reactants_inchi']],
-                                                  [inchi_svg_dict[i] if i else None for i in reaction['products_inchi']],
-                                                  is_inchi=False,
-                                                  cofactor_reactants=[],
-                                                  cofactor_products=[],
-                                                  react_arrow_size=react_arrow_size,
-                                                  arrow_gap_size=arrow_gap_size,
-                                                  subplot_size=subplot_size,
-                                                  draw_left_mol=is_first,
-                                                  stroke_color=stroke_color,
-                                                  stroke_width=stroke_width)
-            '''
             pathway_svgs.append({'svg': svg, 'x_len': x_len, 'y_len': y_len})
             if is_first:
                 is_first = False
+            count += 1
+
+
+
+
+        """
+        for reaction in pathway_list:
+            #need to combine the inchis of the products and reactants of 
+            #make the arrows True False list 
+            react_arrow = []
+            if not prev_products:
+                react_inci = [inchi_svg_dict[i] if i else None for i in reaction['reactants_inchi']]
+            pro_arrow = []
+            pro_inchi = []
+            svg, x_len, y_len = self.drawReaction([inchi_svg_dict[i] if i else None for i in reaction['reactants_inchi']],
+                                                  [inchi_svg_dict[i] if i else None for i in reaction['products_inchi']],
+                                                  is_inchi=False,
+                                                  cofactor_reactants=reaction['cofactor_reactants'],
+                                                  cofactor_products=reaction['cofactor_products'],
+                                                  react_arrow_size=react_arrow_size,
+                                                  arrow_gap_size=arrow_gap_size,
+                                                  subplot_size=subplot_size,
+                                                  draw_left_mol=is_first,
+                                                  stroke_color=stroke_color,
+                                                  stroke_width=stroke_width)
+            pathway_svgs.append({'svg': svg, 'x_len': x_len, 'y_len': y_len})
+            if is_first:
+                is_first = False
+            """
         y_len = 0
         x_len = 0
         for reaction_svg in pathway_svgs:
