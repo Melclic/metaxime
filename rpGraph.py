@@ -18,6 +18,14 @@ logging.root.setLevel(logging.NOTSET)
 logging.basicConfig(level=logging.NOTSET)
 
 
+ARROWHEAD = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient='auto', id='normal_arrow')
+ARROWHEAD.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+ARROWHEAD_FLAT = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=0, id='flat_arrow')
+ARROWHEAD_FLAT.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+REV_ARROWHEAD = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=0, id='rev_flat_arrow')
+REV_ARROWHEAD.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+ARROWHEAD_COMP_X = 7.0
+ARROWHEAD_COMP_Y = 7.0
 
 ##
 #
@@ -230,14 +238,14 @@ class rpGraph:
         self.logger.debug('x_len: '+str(x_len))
         self.logger.debug('y_len: '+str(y_len))
         #white rectangle
-        d.draw(draw.Rectangle(0, 0, gap_size+subplot_size[0], len(mol_list)*subplot_size[1], fill='#FFFFFF'))
+        d.append(draw.Rectangle(0, 0, gap_size+subplot_size[0], len(mol_list)*subplot_size[1], fill='#FFFFFF'))
         self.logger.debug('rectangle: '+str(0)+','+str(0))
         self.logger.debug('rectangle: '+str(gap_size+subplot_size[0])+','+str(len(mol_list)*subplot_size[1]))
         #calculate the y starts of the lines
         if left_to_right:
             x_species = 0
             self.logger.debug('x_species: '+str(x_species))
-            y_species = [(i+1)*subplot_size[1]-(subplot_size[1]/2) for i in range(len(mol_list)) if mol_list[i]]
+            y_species = [y_len-(i*subplot_size[1])-(subplot_size[1]/2) for i in range(len(mol_list)) if mol_list[i]]
             #calculate the y end of the lines
             x_reaction = gap_size
             self.logger.debug('x_reaction: '+str(x_reaction))
@@ -245,20 +253,22 @@ class rpGraph:
             self.logger.debug('y_reaction: '+str(y_reaction))
             for y_spe in y_species:
                 self.logger.debug('y_spe: '+str(y_spe))
-                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent')
+                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_end=ARROWHEAD_FLAT)
                 p.M(x_species, y_spe).C(gap_size+x_species, y_spe,
                         x_species, y_reaction,
-                        x_reaction, y_reaction)
+                        x_reaction-ARROWHEAD_COMP_X, y_reaction)
                 d.append(p)
-            '''
-            #TODO: replace with arrow head
-            d.append(draw.Circle(x_reaction, y_reaction, 3,
-                        fill='red', stroke_width=2, stroke='black'))
-            '''
+                '''
+                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_end=ARROWHEAD)
+                p.M(x_species, y_spe).C(gap_size+x_species, y_spe,
+                        x_species, y_reaction,
+                        x_reaction-ARROWHEAD_COMP_X, y_reaction)
+                d.append(p)
+                '''
         else:
             x_species = gap_size
             self.logger.debug('x_species: '+str(x_species))
-            y_species = [(i+1)*subplot_size[1]-(subplot_size[1]/2) for i in range(len(mol_list)) if mol_list[i]]
+            y_species = [y_len-(i*subplot_size[1])-(subplot_size[1]/2) for i in range(len(mol_list)) if mol_list[i]]
             #calculate the y end of the lines
             x_reaction = 0
             self.logger.debug('x_reaction: '+str(x_reaction))
@@ -266,16 +276,11 @@ class rpGraph:
             self.logger.debug('y_reaction: '+str(y_reaction))
             for y_spe in y_species:
                 self.logger.debug('y_spe: '+str(y_spe))
-                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent')
-                p.M(x_species, y_spe).C(gap_size-x_species, y_spe,
+                p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_start=REV_ARROWHEAD)
+                p.M(x_species-ARROWHEAD_COMP_X, y_spe).C(gap_size-x_species, y_spe,
                         x_species, y_reaction,
                         x_reaction, y_reaction)
                 d.append(p)
-            #TODO: replace with arrow head
-            '''
-            d.append(draw.Circle(x_reaction, y_reaction, 3,
-                        fill='red', stroke_width=2, stroke='black'))
-            '''
         #d.saveSvg('test_arrow.svg')
         return d.asSvg(), x_len, y_len
 
@@ -346,7 +351,7 @@ class rpGraph:
                 fig.append(line_p)
             else:
             '''
-            lines, arrao_len_x, arrow_len_y = self.drawReactionArrows(mol_list, left_to_right, gap_size, subplot_size)
+            lines, arrow_len_x, arrow_len_y = self.drawReactionArrows(mol_list, left_to_right, gap_size, subplot_size)
             line = sg.fromstring(lines)
             line_p = line.getroot()
             self.logger.debug('Move line y: '+str(subplot_size[1]*len(mol_list)))
@@ -363,8 +368,70 @@ class rpGraph:
         return fig.to_str().decode("utf-8"), x_len, y_len
 
 
-    def drawCofactors(self):
-        pass
+    ## draw the cofactors with a box and a line going through
+    #
+    #
+    def drawCofactors(self,
+                      cofactor_reactants,
+                      cofactor_products,
+                      x_len=100,
+                      y_len=200,
+                      rec_size_y=20,
+                      font_family='sans-serif',
+                      font_size=20,
+                      font_color='black',
+                      stroke_color='black',
+                      fill_color='#ddd',
+                      stroke_width=2):
+        d = draw.Drawing(x_len, y_len, origin=(0,0))
+        d.append(draw.Rectangle(0, 0, x_len, y_len, fill='#FFFFFF'))
+        #draw the cofactors arrow
+        start_line_x = x_len/2
+        start_line_y = (y_len/2-rec_size_y)-rec_size_y
+        end_line_x = x_len/2
+        end_line_y = (y_len/2+rec_size_y)+rec_size_y
+        self.logger.debug('start_line_x: '+str(start_line_x))
+        self.logger.debug('start_line_y: '+str(start_line_y))
+        self.logger.debug('end_line_x: '+str(end_line_x))
+        self.logger.debug('end_line_y: '+str(end_line_y))
+        if cofactor_reactants or cofactor_products:
+            #d.append(draw.Line(start_line_x, start_line_y, end_line_x, end_line_y,
+            #                    stroke=stroke_color, stroke_width=stroke_width, fill='none'))
+            ### arrowhead ##
+            p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_end=ARROWHEAD)
+            p.M(start_line_x, start_line_y).Q(start_line_x-rec_size_y/1.5, y_len/2,
+                    end_line_x, end_line_y-ARROWHEAD_COMP_Y)
+            d.append(p)
+        #Draw the reaction rectangle
+        self.logger.debug('react_x1: '+str(0))
+        self.logger.debug('react_y1: '+str(y_len/2+rec_size_y))
+        react_width = x_len
+        react_height = rec_size_y
+        self.logger.debug('react_width: '+str(react_width))
+        self.logger.debug('react_height: '+str(react_height))
+        d.append(draw.Rectangle(0, y_len/2-rec_size_y/2, react_width, react_height, fill=fill_color, stroke_width=stroke_width, stroke=stroke_color))
+        #draw the text
+        #reactants
+        y_shift = 0
+        for react in cofactor_reactants:
+            self.logger.debug(react)
+            x = start_line_x
+            y = start_line_y-font_size-y_shift-5
+            self.logger.debug('x: '+str(x))
+            self.logger.debug('y: '+str(y))
+            d.append(draw.Text(react, font_size, x, y, font_family=font_family, center=0, fill=font_color))
+            y_shift += font_size
+        #product
+        y_shift = 0
+        for pro in cofactor_products:
+            self.logger.debug(react)
+            x = end_line_x
+            y = end_line_y+y_shift+5
+            self.logger.debug('x: '+str(x))
+            self.logger.debug('y: '+str(y))
+            d.append(draw.Text(pro, font_size, x, y, font_family=font_family, center=0, fill=font_color))
+            y_shift += font_size
+        return d.asSvg()
 
 
     ## Draw a reaction 
@@ -376,7 +443,7 @@ class rpGraph:
                      cofactor_reactants=[],
                      cofactor_products=[],
                      is_inchi=True,
-                     react_arrow_size=50,
+                     react_arrow_size=100,
                      arrow_gap_size=100,
                      subplot_size=[200, 200],
                      draw_left_mol=True,
@@ -385,7 +452,7 @@ class rpGraph:
         self.logger.debug('========= drawReaction =========')
         if is_inchi:
             #Need to combine them into single request to keep the same proportions
-            inchi_svg_dict = self.drawChemicalList(reactants+products, subplot_size)
+            inchi_svg_dict = self.drawChemicalList([i for i in reactants if i]+[i for i in products if i], subplot_size)
             svg_left, x_len_left, y_len_left = self.drawPartReaction([inchi_svg_dict[i] if i else None for i in reactants],
                                                                      left_to_right=True,
                                                                      gap_size=arrow_gap_size,
@@ -430,6 +497,7 @@ class rpGraph:
             y_len = y_len_right
         x_len = x_len_left+x_len_right+react_arrow_size
         self.logger.debug('x_len: '+str(x_len))
+        self.logger.debug('y_len: '+str(y_len))
         #create the final svg
         fig = sg.SVGFigure(str(x_len), str(y_len))
         f_left = sg.fromstring(svg_left)
@@ -440,6 +508,7 @@ class rpGraph:
         p_right = f_right.getroot()
         p_right.moveto(x_len_left+react_arrow_size, (y_len-y_len_right)/2)
         fig.append(p_right)
+        '''
         #create the reaction rectangle -- TODO replace that with line and the cofactors
         d = draw.Drawing(0, y_len/5, origin=(0,0))
         d.append(draw.Rectangle(0,0,react_arrow_size,react_arrow_size/2, fill='#ddd', stroke_width=stroke_width, stroke=stroke_color))
@@ -449,20 +518,38 @@ class rpGraph:
         logging.debug('x_len_left+arrow_gap_size: '+str(x_len_left+arrow_gap_size))
         p_rect.moveto(x_len_left, y_len/2+react_arrow_size/2/2)
         fig.append(p_rect)
+        '''
+        co_reac_svg = self.drawCofactors(cofactor_reactants,
+                                        cofactor_products,
+                                        x_len=react_arrow_size,
+                                        y_len=y_len)
+        self.logger.debug(co_reac_svg)
+        f_rect = sg.fromstring(co_reac_svg)
+        p_rect = f_rect.getroot()
+        #300, 500
+        p_rect.moveto(x_len_left, y_len)
+        fig.append(p_rect)
         return fig.to_str().decode("utf-8"), x_len, y_len
 
     ##
     #
     # pathway_list: List of dict where each entry contains a list of reaction inchi, with None for positions and
     """
-    [{'reactants_inchi': ['InChI=1S/C10H13N5O3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(17)6(2-16)18-7/h3-7,16-17H,1-2H2,(H2,11,12,13)/t5-,6+,7+/m0/s1'],
-      'products_inchi': ['InChI=1S/C6H6O2/c7-5-3-1-2-4-6(5)8/h1-4,7-8H', 'InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)/b3-1+,4-2+', 'InChI=1S/C3H6O/c1-3(2)4/h1-2H3']},
-      {'reactants_inchi': [None, 'InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)/b3-1+,4-2+', None],
-      'products_inchi': ['InChI=1S/C3H6O/c1-3(2)4/h1-2H3']}]
+    EXAMPLE:
+pathway = [{'reactants_inchi': ['InChI=1S/C10H13N5O3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(17)6(2-16)18-7/h3-7,16-17H,1-2H2,(H2,11,12,13)/t5-,6+,7+/m0/s1'],
+            'products_inchi': ['InChI=1S/C6H6O2/c7-5-3-1-2-4-6(5)8/h1-4,7-8H', 'InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)/b3-1+,4-2+', 'InChI=1S/C3H6O/c1-3(2)4/h1-2H3']
+           },
+           {'reactants_inchi': ['InChI=1S/C6H6O2/c7-5-3-1-2-4-6(5)8/h1-4,7-8H', None, 'InChI=1S/C3H6O/c1-3(2)4/h1-2H3'],
+            'products_inchi': ['InChI=1S/C3H6O/c1-3(2)4/h1-2H3']
+           },
+           {'reactants_inchi': ['InChI=1S/C3H6O/c1-3(2)4/h1-2H3'],
+            'products_inchi': ['InChI=1S/C3H6O/c1-3(2)4/h1-2H3/i1+1,2+1', 'InChI=1S/C3H5O.Zn/c1-3(2)4;/h1H2,2H3;/q-1;']
+           }
+          ]
     """
     def drawPathway(self,
                     pathway_list,
-                    react_arrow_size=50,
+                    react_arrow_size=100,
                     arrow_gap_size=100,
                     subplot_size=[200, 200],
                     stroke_color='black',
@@ -492,6 +579,19 @@ class rpGraph:
                                                   draw_left_mol=is_first,
                                                   stroke_color=stroke_color,
                                                   stroke_width=stroke_width)
+            '''
+            svg, x_len, y_len = self.drawReaction([inchi_svg_dict[i] if i else None for i in reaction['reactants_inchi']],
+                                                  [inchi_svg_dict[i] if i else None for i in reaction['products_inchi']],
+                                                  is_inchi=False,
+                                                  cofactor_reactants=[],
+                                                  cofactor_products=[],
+                                                  react_arrow_size=react_arrow_size,
+                                                  arrow_gap_size=arrow_gap_size,
+                                                  subplot_size=subplot_size,
+                                                  draw_left_mol=is_first,
+                                                  stroke_color=stroke_color,
+                                                  stroke_width=stroke_width)
+            '''
             pathway_svgs.append({'svg': svg, 'x_len': x_len, 'y_len': y_len})
             if is_first:
                 is_first = False
