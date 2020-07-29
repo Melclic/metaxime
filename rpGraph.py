@@ -210,7 +210,13 @@ class rpGraph:
     ##
     #
     # TODO: add the conparison by inchikey to determine the cofactors
-    def drawsvg(self, path=None):
+    def drawsvg(self,
+                path=None,
+                react_arrow_size=100,
+                arrow_gap_size=100,
+                subplot_size=[200,200],
+                stroke_color='black',
+                stroke_width=2):
         ordered_reactions = self.orderedRetroReactions()
         self.logger.debug(ordered_reactions)
         pathway_list = []
@@ -281,7 +287,12 @@ class rpGraph:
         self.logger.debug('------------------------------------------')
         self.logger.debug(pathway_list)
         self.logger.debug('------------------------------------------')
-        svg, len_x, len_y = self._drawPathway(pathway_list)
+        svg, len_x, len_y = self._drawPathway(pathway_list,
+                                              react_arrow_size=react_arrow_size,
+                                              arrow_gap_size=arrow_gap_size,
+                                              subplot_size=subplot_size,
+                                              stroke_color=stroke_color,
+                                              stroke_width=stroke_width)
         if path:
             open(path, 'w').write(svg)
         return svg
@@ -410,7 +421,7 @@ class rpGraph:
                     if draw_mol:
                         fig.append(p)
                 count += 1
-            lines, arrow_len_x, arrow_len_y = self._drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size)
+            lines, arrow_len_x, arrow_len_y = self._drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size, stroke_color=stroke_color, stroke_width=stroke_width)
             line = sg.fromstring(lines)
             line_p = line.getroot()
             self.logger.debug('Move line x: '+str(subplot_size[0]))
@@ -418,7 +429,7 @@ class rpGraph:
             line_p.moveto(x_len-gap_size, subplot_size[1]*len(mol_list))
             fig.append(line_p)
         else:
-            lines, arrow_len_x, arrow_len_y = self._drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size)
+            lines, arrow_len_x, arrow_len_y = self._drawReactionArrows(arrow_list, left_to_right, gap_size, subplot_size, stroke_color=stroke_color, stroke_width=stroke_width)
             line = sg.fromstring(lines)
             line_p = line.getroot()
             self.logger.debug('Move line y: '+str(subplot_size[1]*len(mol_list)))
@@ -612,6 +623,22 @@ class rpGraph:
                 if inchi:
                     all_inchis.append(inchi)
         inchi_svg_dict = self._drawChemicalList(all_inchis, subplot_size)
+        ###### if there is only one sinply return the reaction 
+        if len(pathway_list)==1:
+            svg, x_len, y_len = self._drawReaction([inchi_svg_dict[i] for i in pathway_list[0]['reactants_inchi']],
+                                                   [inchi_svg_dict[i] for i in pathway_list[0]['products_inchi']],
+                                                   react_arrow=[],
+                                                   pro_arrow=[],
+                                                   is_inchi=False,
+                                                   cofactor_reactants=reaction['cofactor_reactants'],
+                                                   cofactor_products=reaction['cofactor_products'],
+                                                   react_arrow_size=react_arrow_size,
+                                                   arrow_gap_size=arrow_gap_size,
+                                                   subplot_size=subplot_size,
+                                                   draw_left_mol=True,
+                                                   stroke_color=stroke_color,
+                                                   stroke_width=stroke_width)
+            return svg, x_len, y_len
         is_first = True
         pathway_svgs = []
         count = 0
@@ -642,7 +669,7 @@ class rpGraph:
                 '''
                 react_arrow = [True if i in reaction['reactants_inchi'] else False for i in react_inchi]
                 #combine the current products with the next reactants
-                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['products_inchi']))
+                prev_inchi = list(set([i for i in reaction['products_inchi']]+pathway_list[count+1]['reactants_inchi']))
                 pro_inchi = prev_inchi
                 pro_arrow = [True if i in reaction['products_inchi'] else False for i in pro_inchi]
             self.logger.debug('prev_inchi: '+str(prev_inchi))
