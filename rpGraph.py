@@ -57,6 +57,7 @@ class rpGraph:
         self.reactions = None
         self.pathway_id = pathway_id
         self.num_reactions = 0
+        self.central_species = []
         self.num_species = 0
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         self._makeGraph(pathway_id, species_group_id)
@@ -68,8 +69,8 @@ class rpGraph:
     def _makeGraph(self, pathway_id='rp_pathway', species_group_id='central_species'):
         self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
         groups = self.rpsbml.model.getPlugin('groups')
-        central_species = groups.getGroup(species_group_id)
-        central_species = [i.getIdRef() for i in central_species.getListOfMembers()]
+        c_s = groups.getGroup(species_group_id)
+        self.central_species = [i.getIdRef() for i in c_s.getListOfMembers()]
         rp_pathway = groups.getGroup(pathway_id)
         self.reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
         self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
@@ -77,7 +78,7 @@ class rpGraph:
         for spe in self.species:
             self.num_species += 1
             is_central = False
-            if spe.getId() in central_species:
+            if spe.getId() in self.central_species:
                 is_central = True
             self.G.add_node(spe.getId(),
                             type='species',
@@ -88,19 +89,19 @@ class rpGraph:
         for reac in self.reactions:
             self.num_reactions += 1
             self.G.add_node(reac.getId(),
-                    type='reaction',
-                    miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
-                    brsynth=self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation()))
+                            type='reaction',
+                            miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
+                            brsynth=self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation()))
         #edges
         for reaction in self.reactions:
             for reac in reaction.getListOfReactants():
                 self.G.add_edge(reac.species,
-                        reaction.getId(),
-                        stoichio=reac.stoichiometry)
-                for prod in reaction.getListOfProducts():
-                    self.G.add_edge(reaction.getId(),
-                            prod.species,
-                            stoichio=reac.stoichiometry)
+                                reaction.getId(),
+                                stoichio=reac.stoichiometry)
+            for prod in reaction.getListOfProducts():
+                self.G.add_edge(reaction.getId(),
+                                prod.species,
+                                stoichio=reac.stoichiometry)
 
 
     ##
@@ -160,31 +161,85 @@ class rpGraph:
         return only_produced_species
 
 
-    ## 
-    #
-    # Better than before, however bases itself on the fact that central species do not have multiple predesessors
-    # if that is the case then the algorithm will return badly ordered reactions
-    #
-    def _recursiveReacPredecessors(self, node_name, reac_list):
+
+
+    def _recursiveReacSuccessors(self, node_name, reac_list, all_res, num_reactions):
+        current_reac_list = [i for i in reac_list]
+        self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
+        succ_node_list = [i for i in self.G.successors(node_name)]
+        flat_reac_list = [i for sublist in reac_list for i in sublist]
+        self.logger.debug('flat_reac_list: '+str(flat_reac_list))
+        self.logger.debug('current_reac_list: '+str(current_reac_list))
+        if len(flat_reac_list)==num_reactions:
+            self.logger.debug('Returning')
+            #return current_reac_list
+            all_res.append(current_reac_list)
+            return all_res
+        self.logger.debug('succ_node_list: '+str(succ_node_list))
+        if not succ_node_list==[]:
+            #can be multiple reactions at a given step
+            multi_reac = []
+            for n_n in succ_node_list:
+                n = self.G.node.get(n_n)
+                if n['type']=='reaction':
+                    if not n_n in flat_reac_list:
+                        multi_reac.append(n_n)
+            #remove the ones that already exist
+            self.logger.debug('multi_reac: '+str(multi_reac))
+            multi_reac = [x for x in multi_reac if x not in flat_reac_list]
+            self.logger.debug('multi_reac: '+str(multi_reac))
+            if multi_reac:
+                current_reac_list.append(multi_reac)
+            self.logger.debug('current_reac_list: '+str(current_reac_list))
+            #loop through all the possibilities
+            for n_n in succ_node_list:
+                n = self.G.node.get(n_n)
+                if n['type']=='reaction':
+                    if n_n in multi_reac:
+                        self._recursiveReacSuccessors(n_n, current_reac_list, all_res, num_reactions)
+                elif n['type']=='species':
+                    if n['central_species']==True:
+                        self._recursiveReacSuccessors(n_n, current_reac_list, all_res, num_reactions)
+        return all_res
+
+    def _recursiveReacPredecessors(self, node_name, reac_list, all_res, num_reactions):
+        current_reac_list = [i for i in reac_list]
         self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
         pred_node_list = [i for i in self.G.predecessors(node_name)]
-        self.logger.debug(pred_node_list)
-        if pred_node_list==[]:
-            return reac_list
-        for n_n in pred_node_list:
-            n = self.G.node.get(n_n)
-            if n['type']=='reaction':
-                if n_n in reac_list:
-                    return reac_list
-                else:
-                    reac_list.append(n_n)
-                    self._recursiveReacPredecessors(n_n, reac_list)
-            elif n['type']=='species':
-                if n['central_species']==True:
-                    self._recursiveReacPredecessors(n_n, reac_list)
-                else:
-                    return reac_list
-        return reac_list
+        flat_reac_list = [i for sublist in reac_list for i in sublist]
+        self.logger.debug('flat_reac_list: '+str(flat_reac_list))
+        self.logger.debug('current_reac_list: '+str(current_reac_list))
+        if len(flat_reac_list)==num_reactions:
+            self.logger.debug('Returning')
+            #return current_reac_list
+            all_res.append(current_reac_list)
+            return all_res
+        self.logger.debug('pred_node_list: '+str(pred_node_list))
+        if not pred_node_list==[]:
+            #can be multiple reactions at a given step
+            multi_reac = []
+            for n_n in pred_node_list:
+                n = self.G.node.get(n_n)
+                if n['type']=='reaction':
+                    if not n_n in flat_reac_list:
+                        multi_reac.append(n_n)
+            #remove the ones that already exist
+            self.logger.debug('multi_reac: '+str(multi_reac))
+            multi_reac = [x for x in multi_reac if x not in flat_reac_list]
+            self.logger.debug('multi_reac: '+str(multi_reac))
+            if multi_reac:
+                current_reac_list.append(multi_reac)
+            self.logger.debug('current_reac_list: '+str(current_reac_list))
+            #loop through all the possibilities
+            for n_n in pred_node_list:
+                n = self.G.node.get(n_n)
+                if n['type']=='reaction':
+                    if n_n in multi_reac:
+                        self._recursiveReacPredecessors(n_n, current_reac_list, all_res, num_reactions)
+                elif n['type']=='species':
+                    if n['central_species']==True:
+                        self._recursiveReacPredecessors(n_n, current_reac_list, all_res, num_reactions)
+        return all_res
 
 
     ## Warning that this search algorithm only works for mono-component reactions
@@ -192,12 +247,28 @@ class rpGraph:
     #
     def orderedRetroReactions(self):
         #Note: may be better to loop tho
-        for prod_spe in self._onlyProducedSpecies():
-            self.logger.debug('Testing '+str(prod_spe))
-            ordered = self._recursiveReacPredecessors(prod_spe, [])
-            if len(ordered)==self.num_reactions:
-                #return ordered
-                return [i for i in reversed(ordered)]
+        for prod_cent_spe in self._onlyProducedCentralSpecies():
+            res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
+            if res:
+                self.logger.debug(res)
+                if len(res)==1:
+                    return res[0]
+                else:
+                    self.logger.warning('Mutliple results: '+str(res))
+                    return res
+            else:
+                self.logger.warning('No results')
+        for cons_cent_spe in self._onlyConsumedCentralSpecies():
+            res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
+            if res:
+                self.logger.debug(res)
+                if len(res)==1:
+                    return res[0]
+                else:
+                    self.logger.warning('Multiple results: '+str(res))
+                    return res
+            else:
+                self.logger.warning('No results')
         self.logger.error('Could not find the full ordered reactions')
         return []
 
