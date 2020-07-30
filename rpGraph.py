@@ -153,6 +153,7 @@ class rpGraph:
     def _onlyProducedCentralSpecies(self):
         only_produced_species = []
         for node_name in self.G.nodes():
+            self.logger.debug('node_name: '+str(node_name))
             node = self.G.node.get(node_name)
             if node['type']=='species':
                 if node['central_species']==True:
@@ -242,34 +243,41 @@ class rpGraph:
         return all_res
 
 
-    ## Warning that this search algorithm only works for mono-component reactions
+    ## Warning that this search algorithm only works for mono-component that are not networks (i.e where reactions follow each other)
     #
     #
     def orderedRetroReactions(self):
         #Note: may be better to loop tho
-        for prod_cent_spe in self._onlyProducedCentralSpecies():
-            res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
-            if res:
-                self.logger.debug(res)
-                if len(res)==1:
-                    return res[0]
-                else:
-                    self.logger.warning('Mutliple results: '+str(res))
-                    return res
-            else:
-                self.logger.warning('No results')
+        succ_res = []
         for cons_cent_spe in self._onlyConsumedCentralSpecies():
             res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
             if res:
                 self.logger.debug(res)
                 if len(res)==1:
-                    return res[0]
+                    succ_res = res[0]
                 else:
-                    self.logger.warning('Multiple results: '+str(res))
-                    return res
+                    self.logger.error('Multiple successors results: '+str(res))
             else:
-                self.logger.warning('No results')
-        self.logger.error('Could not find the full ordered reactions')
+                self.logger.warning('Successors no results')
+        prod_res = []
+        for prod_cent_spe in self._onlyProducedCentralSpecies():
+            res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
+            if res:
+                self.logger.debug(res)
+                if len(res)==1:
+                    prod_res = [i for i in reversed(res[0])]
+                else:
+                    self.logger.error('Mutliple predecessors results: '+str(res))
+            else:
+                self.logger.warning('Predecessors no results')
+        if succ_res and prod_res:
+            if not succ_res==prod_res:
+                self.logger.warning('Both produce results and are not the same')
+                self.logger.warning('succ_res: '+str(succ_res))
+                self.logger.warning('prod_res: '+str(prod_res))
+            else:
+                self.logger.debug('Found solution: '+str(succ_res))
+                return succ_res
         return []
 
 
@@ -289,9 +297,20 @@ class rpGraph:
                 stroke_color='black',
                 stroke_width=2):
         ordered_reactions = self.orderedRetroReactions()
-        self.logger.debug(ordered_reactions)
+        if not ordered_reactions:
+            self.logger.error('Ordered reaction returned emtpy results')
+            return ''
+        self.logger.debug('ordered_reactions: '+str(ordered_reactions))
+        flat_ordered_reactions = []
+        for i in ordered_reactions:
+            if len(i)==1:
+                flat_ordered_reactions.append(i[0])
+            else:
+                self.logger.error('This pathway contains steps with multiple reactions')
+                return ''
+        self.logger.debug('flat_ordered_reactions: '+str(flat_ordered_reactions))
         pathway_list = []
-        for reaction_id in ordered_reactions:
+        for reaction_id in flat_ordered_reactions:
             #edges
             to_add = {'reactants_inchi': [],
                       'products_inchi': [],
