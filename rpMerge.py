@@ -7,6 +7,7 @@ import libsbml
 
 
 ##TODO: this really does not need to be an object
+##TODO: add the native cobrapy method to merge models
 class rpMerge:
     def __init__(self):
         self.logger = logging.getLogger(__name__)

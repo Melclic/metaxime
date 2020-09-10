@@ -15,6 +15,32 @@ import os
 import re
 import json
 
+'''
+
+import rpGraph
+import rpSBML
+import gmatch4py as gm
+import matplotlib.pyplot as plt
+import networkx as nx
+
+rpsbml = rpSBML.rpSBML('rp_10_1', path='rpthermo_21/rp_10_1.sbml.xml')
+rpgraph = rpGraph.rpGraph(rpsbml)
+g1 = rpgraph._makeInChiKeyGraph(2)
+
+rpsbml_same = rpSBML.rpSBML('rp_10_1', path='rpthermo_21/rp_10_1.sbml.xml')
+rpgraph_same = rpGraph.rpGraph(rpsbml_same)
+g2 = rpgraph_same._makeInChiKeyGraph(2)
+
+rpsbml_bis = rpSBML.rpSBML('rp_1_1', path='rpthermo_21/rp_1_1.sbml.xml')
+rpgraph_bis = rpGraph.rpGraph(rpsbml_bis)
+g3 = rpgraph_bis._makeInChiKeyGraph(2)
+
+#ged=gm.GreedyEditDistance(1,1,1,1)
+ged=gm.GraphEditDistance(1,1,1,1)
+ged.compare([rpgraph.G,rpgraph_bis.G],None)
+ged.compare([g1,g3],None)
+'''
+
 logging.basicConfig()
 logging.root.setLevel(logging.NOTSET)
 logging.basicConfig(level=logging.NOTSET)
@@ -38,7 +64,7 @@ REV_ARROWHEAD.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', clo
 ARROWHEAD_COMP_X = 7.0
 ARROWHEAD_COMP_Y = 7.0
 
-##
+## Create hypergraphs using networkx and perform different types of operations on it, including drawing it
 #
 #
 class rpGraph:
@@ -61,6 +87,83 @@ class rpGraph:
         self.num_species = 0
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         self._makeGraph(pathway_id, species_group_id)
+
+    ####################################################################################################
+    ############################################# Private Functions ####################################
+    ####################################################################################################
+
+
+    ################################# Analyse and make graph #####################
+
+    ## Compare two rpgraph hypergraphs and return a score using a simple walk
+    #
+    #
+    @staticmethod
+    def compare(source_rpgraph, target_rpgraph):
+        #use the GMatch4py algorithm -- to compare using structures, you can name the species nodes by inchhikeys and
+        # outputs a similarity/distance matrix (Note always 2d array, with first list == number of graphs input and the values are the raw data. To view the distance matrix do: ged.distance(result)
+        #1) make a new graph using the ID that you want to inspect as 
+        pass
+
+
+
+    ## Make a special graph for comparison where the ID's of the species are their InChiKey
+    #
+    # No need to add all the species annotations since it won't be used
+    # #WARNING: Testing
+    #
+    def _makeInChiKeyGraph(self, inchikey_layers=3, pathway_id='rp_pathway', species_group_id='central_species'):
+        if inchikey_layers>3 or inchikey_layers<=1:
+            self.logger.error('inchikey_layers must be between 1 and 3')
+            return False
+        species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
+        groups = self.rpsbml.model.getPlugin('groups')
+        c_s = groups.getGroup(species_group_id)
+        rp_pathway = groups.getGroup(pathway_id)
+        reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
+        G = nx.DiGraph()
+        speid_inchikey = {}
+        #nodes
+        for spe in species:
+            miriam = self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation())
+            brsynth = self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation())
+            spe_id = None
+            if 'inchikey' in miriam:
+                if not len(miriam['inchikey'])==1:
+                    self.logger.warning('There are multiple inchikeys: '+str(miriam['inchikey']))
+                    self.logger.warning('Taking the first one...')
+                spe_id = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inchikey_layers])
+            else:
+                if 'inchikey' in brsynth:
+                    if not len(brsynth['inchikey'])==1:
+                        self.logger.warning('There are multiple inchikeys: '+str(brsynth['inchikey']))
+                        self.logger.warning('Taking the first one...')
+                    spe_id = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inchikey_layers])
+                else:
+                    self.logger.warning('There is no inchikey associated with species: '+str(spe.getId()))
+                    self.logger.warning('Setting species ID as the node id')
+                    spe_id = spe.getId()
+            self.logger.debug('spe_id: '+str(spe_id)+' --> '+str(spe.getId()))
+            speid_inchikey[spe.getId()] = spe_id
+            G.add_node(spe_id)
+        for reac in reactions:
+            brsynth = self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation())
+            if 'smiles' in brsynth:
+                self.logger.debug('reac_id: '+str(brsynth['smiles'].upper()))
+                G.add_node(brsynth['smiles'].upper())
+            else:
+                self.logger.warning('Cannot find the reaction rule for: '+str(reac.getId()))
+                self.logger.warning('Setting reaction ID as id')
+                G.add_node(reac.getId())
+        #edges
+        for reaction in reactions:
+            for reac in reaction.getListOfReactants():
+                G.add_edge(speid_inchikey[reac.species],
+                                reaction.getId())
+            for prod in reaction.getListOfProducts():
+                G.add_edge(reaction.getId(),
+                                speid_inchikey[prod.species])
+        return G
 
 
     ##
@@ -119,7 +222,7 @@ class rpGraph:
 
     ##
     #
-    #
+    # TODO: remove this function and add a parameter as a flag to determine if the central species or all species should be considered
     def _onlyConsumedCentralSpecies(self):
         only_consumed_species = []
         for node_name in self.G.nodes():
@@ -129,7 +232,6 @@ class rpGraph:
                     if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
                         only_consumed_species.append(node_name)
         return only_consumed_species
-
 
 
     ##
@@ -150,6 +252,7 @@ class rpGraph:
     ##
     #
     #
+    # TODO: remove this function and add a parameter as a flag to determine if the central species or all species should be considered
     def _onlyProducedCentralSpecies(self):
         only_produced_species = []
         for node_name in self.G.nodes():
@@ -162,8 +265,10 @@ class rpGraph:
         return only_produced_species
 
 
-
-
+    ## Recursive function that finds the order of the reactions in the graph 
+    #
+    # NOTE: only works for linear pathways... need to find a better way
+    #
     def _recursiveReacSuccessors(self, node_name, reac_list, all_res, num_reactions):
         current_reac_list = [i for i in reac_list]
         self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
@@ -203,6 +308,10 @@ class rpGraph:
                         self._recursiveReacSuccessors(n_n, current_reac_list, all_res, num_reactions)
         return all_res
 
+
+    ##
+    #
+    #
     def _recursiveReacPredecessors(self, node_name, reac_list, all_res, num_reactions):
         current_reac_list = [i for i in reac_list]
         self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
@@ -243,149 +352,7 @@ class rpGraph:
         return all_res
 
 
-    ## Warning that this search algorithm only works for mono-component that are not networks (i.e where reactions follow each other)
-    #
-    #
-    def orderedRetroReactions(self):
-        #Note: may be better to loop tho
-        succ_res = []
-        for cons_cent_spe in self._onlyConsumedCentralSpecies():
-            res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
-            if res:
-                self.logger.debug(res)
-                if len(res)==1:
-                    succ_res = res[0]
-                else:
-                    self.logger.error('Multiple successors results: '+str(res))
-            else:
-                self.logger.warning('Successors no results')
-        prod_res = []
-        for prod_cent_spe in self._onlyProducedCentralSpecies():
-            res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
-            if res:
-                self.logger.debug(res)
-                if len(res)==1:
-                    prod_res = [i for i in reversed(res[0])]
-                else:
-                    self.logger.error('Mutliple predecessors results: '+str(res))
-            else:
-                self.logger.warning('Predecessors no results')
-        if succ_res and prod_res:
-            if not succ_res==prod_res:
-                self.logger.warning('Both produce results and are not the same')
-                self.logger.warning('succ_res: '+str(succ_res))
-                self.logger.warning('prod_res: '+str(prod_res))
-            else:
-                self.logger.debug('Found solution: '+str(succ_res))
-                return succ_res
-        return []
-
-
-
-    ###########################################################################
-    ########################## DRAW ###########################################
-    ###########################################################################
-
-    ##
-    #
-    # TODO: add the conparison by inchikey to determine the cofactors
-    def drawsvg(self,
-                path=None,
-                react_arrow_size=100,
-                arrow_gap_size=100,
-                subplot_size=[200,200],
-                stroke_color='black',
-                stroke_width=2):
-        ordered_reactions = self.orderedRetroReactions()
-        if not ordered_reactions:
-            self.logger.error('Ordered reaction returned emtpy results')
-            return ''
-        self.logger.debug('ordered_reactions: '+str(ordered_reactions))
-        flat_ordered_reactions = []
-        for i in ordered_reactions:
-            if len(i)==1:
-                flat_ordered_reactions.append(i[0])
-            else:
-                self.logger.error('This pathway contains steps with multiple reactions')
-                return ''
-        self.logger.debug('flat_ordered_reactions: '+str(flat_ordered_reactions))
-        pathway_list = []
-        for reaction_id in flat_ordered_reactions:
-            #edges
-            to_add = {'reactants_inchi': [],
-                      'products_inchi': [],
-                      'cofactor_reactants': [],
-                      'cofactor_products': []}
-            for pred_id in self.G.predecessors(reaction_id):
-                pred = self.G.node.get(pred_id)
-                if pred['type']=='species':
-                    if pred['central_species']:
-                        if 'metanetx' in pred['miriam']:
-                            if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
-                                #double check but lazy
-                                for mnx in pred['miriam']['metanetx']:
-                                    if mnx in self.mnx_cofactors.keys():
-                                        to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
-                                        break
-                                #to_add['cofactor_reactants'].append(pred['name'])
-                            else:
-                                to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
-                        else:
-                            to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
-                    else:
-                        is_found = False
-                        if 'metanetx' in pred['miriam']:
-                            for mnx in pred['miriam']['metanetx']:
-                                if mnx in self.mnx_cofactors.keys():
-                                    to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
-                                    is_found = True
-                                    break
-                        if not is_found:
-                            to_add['cofactor_reactants'].append(pred['name'])
-                else:
-                    self.logger.warning('The current node is not a species: '+str(pred))
-            prev_products = [] #reset the list
-            for succ_id in self.G.successors(reaction_id):
-                succ = self.G.node.get(succ_id)
-                if succ['type']=='species':
-                    if succ['central_species']:
-                        if 'metanetx' in succ['miriam']:
-                            if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
-                                #double check i know but lazy
-                                for mnx in succ['miriam']['metanetx']:
-                                    if mnx in self.mnx_cofactors.keys():
-                                        to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
-                                        break
-                                #to_add['cofactor_products'].append(succ['name'])
-                            else:
-                                to_add['products_inchi'].append(succ['brsynth']['inchi'])
-                        else:
-                            to_add['products_inchi'].append(succ['brsynth']['inchi'])
-                    else:
-                        is_found = False
-                        if 'metanetx' in succ['miriam']:
-                            for mnx in succ['miriam']['metanetx']:
-                                if mnx in self.mnx_cofactors.keys():
-                                    to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
-                                    is_found = True
-                                    break
-                        if not is_found:
-                            to_add['cofactor_products'].append(succ['name'])
-                else:
-                    self.logger.warning('The current node is not a species: '+str(succ))
-            pathway_list.append(to_add)
-        self.logger.debug('------------------------------------------')
-        self.logger.debug(pathway_list)
-        self.logger.debug('------------------------------------------')
-        svg, len_x, len_y = self._drawPathway(pathway_list,
-                                              react_arrow_size=react_arrow_size,
-                                              arrow_gap_size=arrow_gap_size,
-                                              subplot_size=subplot_size,
-                                              stroke_color=stroke_color,
-                                              stroke_width=stroke_width)
-        if path:
-            open(path, 'w').write(svg)
-        return svg
+    ########################################## Draw ########################################
 
 
     ##
@@ -479,15 +446,15 @@ class rpGraph:
     #
     #
     def _drawPartReaction(self,
-                         mol_list,
-                         arrow_list,
-                         left_to_right=True,
-                         gap_size=100,
-                         subplot_size=[200, 200],
-                         is_inchi=True,
-                         draw_mol=True,
-                         stroke_color='black',
-                         stroke_width=2):
+                          mol_list,
+                          arrow_list,
+                          left_to_right=True,
+                          gap_size=100,
+                          subplot_size=[200, 200],
+                          is_inchi=True,
+                          draw_mol=True,
+                          stroke_color='black',
+                          stroke_width=2):
         self.logger.debug('---- _drawPartReaction ----')
         assert len(mol_list)==len(arrow_list)
         if draw_mol:
@@ -540,17 +507,17 @@ class rpGraph:
     #
     #
     def _drawCofactors(self,
-                      cofactor_reactants,
-                      cofactor_products,
-                      x_len=100,
-                      y_len=200,
-                      rec_size_y=20,
-                      font_family='sans-serif',
-                      font_size=10,
-                      font_color='black',
-                      stroke_color='black',
-                      fill_color='#ddd',
-                      stroke_width=2):
+                       cofactor_reactants,
+                       cofactor_products,
+                       x_len=100,
+                       y_len=200,
+                       rec_size_y=20,
+                       font_family='sans-serif',
+                       font_size=10,
+                       font_color='black',
+                       stroke_color='black',
+                       fill_color='#ddd',
+                       stroke_width=2):
         d = draw.Drawing(x_len, y_len, origin=(0,0))
         d.append(draw.Rectangle(0, 0, x_len, y_len, fill='#FFFFFF'))
         #draw the cofactors arrow
@@ -695,6 +662,7 @@ class rpGraph:
         fig.append(p_rect)
         return fig.to_str().decode("utf-8"), x_len, y_len
 
+
     ##
     #
     # pathway_list: List of dict where each entry contains a list of reaction inchi, with None for positions and
@@ -803,6 +771,157 @@ class rpGraph:
             cum_x_len += reaction_svg['x_len']
             fig.append(p)
         return fig.to_str().decode("utf-8"), x_len, y_len
+
+    
+    ######################################################################################################
+    ########################################## Public Function ###########################################
+    ######################################################################################################
+
+
+    ############################# graph analysis ################################
+
+
+    ## Warning that this search algorithm only works for mono-component that are not networks (i.e where reactions follow each other)
+    #
+    #
+    def orderedRetroReactions(self):
+        #Note: may be better to loop tho
+        succ_res = []
+        for cons_cent_spe in self._onlyConsumedCentralSpecies():
+            res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
+            if res:
+                self.logger.debug(res)
+                if len(res)==1:
+                    succ_res = res[0]
+                else:
+                    self.logger.error('Multiple successors results: '+str(res))
+            else:
+                self.logger.warning('Successors no results')
+        prod_res = []
+        for prod_cent_spe in self._onlyProducedCentralSpecies():
+            res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
+            if res:
+                self.logger.debug(res)
+                if len(res)==1:
+                    prod_res = [i for i in reversed(res[0])]
+                else:
+                    self.logger.error('Mutliple predecessors results: '+str(res))
+            else:
+                self.logger.warning('Predecessors no results')
+        if succ_res and prod_res:
+            if not succ_res==prod_res:
+                self.logger.warning('Both produce results and are not the same')
+                self.logger.warning('succ_res: '+str(succ_res))
+                self.logger.warning('prod_res: '+str(prod_res))
+            else:
+                self.logger.debug('Found solution: '+str(succ_res))
+                return succ_res
+        return []
+
+
+    ############################### draw ####################################
+
+
+    ##
+    #
+    # TODO: add the conparison by inchikey to determine the cofactors
+    def drawsvg(self,
+                path=None,
+                react_arrow_size=100,
+                arrow_gap_size=100,
+                subplot_size=[200,200],
+                stroke_color='black',
+                stroke_width=2):
+        ordered_reactions = self.orderedRetroReactions()
+        if not ordered_reactions:
+            self.logger.error('Ordered reaction returned emtpy results')
+            return ''
+        self.logger.debug('ordered_reactions: '+str(ordered_reactions))
+        flat_ordered_reactions = []
+        for i in ordered_reactions:
+            if len(i)==1:
+                flat_ordered_reactions.append(i[0])
+            else:
+                self.logger.error('This pathway contains steps with multiple reactions')
+                return ''
+        self.logger.debug('flat_ordered_reactions: '+str(flat_ordered_reactions))
+        pathway_list = []
+        for reaction_id in flat_ordered_reactions:
+            #edges
+            to_add = {'reactants_inchi': [],
+                      'products_inchi': [],
+                      'cofactor_reactants': [],
+                      'cofactor_products': []}
+            for pred_id in self.G.predecessors(reaction_id):
+                pred = self.G.node.get(pred_id)
+                if pred['type']=='species':
+                    if pred['central_species']:
+                        if 'metanetx' in pred['miriam']:
+                            if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
+                                #double check but lazy
+                                for mnx in pred['miriam']['metanetx']:
+                                    if mnx in self.mnx_cofactors.keys():
+                                        to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
+                                        break
+                                #to_add['cofactor_reactants'].append(pred['name'])
+                            else:
+                                to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
+                        else:
+                            to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
+                    else:
+                        is_found = False
+                        if 'metanetx' in pred['miriam']:
+                            for mnx in pred['miriam']['metanetx']:
+                                if mnx in self.mnx_cofactors.keys():
+                                    to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
+                                    is_found = True
+                                    break
+                        if not is_found:
+                            to_add['cofactor_reactants'].append(pred['name'])
+                else:
+                    self.logger.warning('The current node is not a species: '+str(pred))
+            prev_products = [] #reset the list
+            for succ_id in self.G.successors(reaction_id):
+                succ = self.G.node.get(succ_id)
+                if succ['type']=='species':
+                    if succ['central_species']:
+                        if 'metanetx' in succ['miriam']:
+                            if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
+                                #double check i know but lazy
+                                for mnx in succ['miriam']['metanetx']:
+                                    if mnx in self.mnx_cofactors.keys():
+                                        to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
+                                        break
+                                #to_add['cofactor_products'].append(succ['name'])
+                            else:
+                                to_add['products_inchi'].append(succ['brsynth']['inchi'])
+                        else:
+                            to_add['products_inchi'].append(succ['brsynth']['inchi'])
+                    else:
+                        is_found = False
+                        if 'metanetx' in succ['miriam']:
+                            for mnx in succ['miriam']['metanetx']:
+                                if mnx in self.mnx_cofactors.keys():
+                                    to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
+                                    is_found = True
+                                    break
+                        if not is_found:
+                            to_add['cofactor_products'].append(succ['name'])
+                else:
+                    self.logger.warning('The current node is not a species: '+str(succ))
+            pathway_list.append(to_add)
+        self.logger.debug('------------------------------------------')
+        self.logger.debug(pathway_list)
+        self.logger.debug('------------------------------------------')
+        svg, len_x, len_y = self._drawPathway(pathway_list,
+                                              react_arrow_size=react_arrow_size,
+                                              arrow_gap_size=arrow_gap_size,
+                                              subplot_size=subplot_size,
+                                              stroke_color=stroke_color,
+                                              stroke_width=stroke_width)
+        if path:
+            open(path, 'w').write(svg)
+        return svg
 
 
     ################################################# BELOW IS DEV ################################
