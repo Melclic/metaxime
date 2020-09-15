@@ -14,6 +14,8 @@ import copy
 import os
 import re
 import json
+import itertools
+import numpy as np
 
 '''
 
@@ -88,83 +90,176 @@ class rpGraph:
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         self._makeGraph(pathway_id, species_group_id)
 
-    ####################################################################################################
-    ############################################# Private Functions ####################################
-    ####################################################################################################
+
+    ################################ Compare graphs ##############################
 
 
-    ################################# Analyse and make graph #####################
+    @staticmethod
+    def similarityScore(source_rpsbml, target_rpsbml, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        source_rpsbml = rpGraph.rpGraph(source_rpsbml)
+        target_rpsbml = rpGraph.rpGraph(target_rpsbml)
+        source_graphs = source_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        target_graphs = target_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        return rpGraph._compare(source_graphs, target_graphs)
+
 
     ## Compare two rpgraph hypergraphs and return a score using a simple walk
     #
     #
-    @staticmethod
-    def compare(source_rpgraph, target_rpgraph):
-        #use the GMatch4py algorithm -- to compare using structures, you can name the species nodes by inchhikeys and
-        # outputs a similarity/distance matrix (Note always 2d array, with first list == number of graphs input and the values are the raw data. To view the distance matrix do: ged.distance(result)
-        #1) make a new graph using the ID that you want to inspect as 
-        pass
+    def _compare(self, source_compare_graph, target_compare_graph):
+        import gmatch4py as gm
+        #NOTE: here we use the greedy edit distance method but others may be used... 
+        ged = gm.GreedyEditDistance(1,1,1,1)
+        #ged = gm.GraphEditDistance(1,1,1,1)
+        result = ged.compare([i[0] for i in source_compare_graph]+[i[0] for i in target_compare_graph], None)
+        self.logger.debug('result: \n'+str([list(i) for i in result]))
+        weights = np.array([sum(i[1])/7.0 for i in source_compare_graph]+[sum(i[1])/7.0 for i in target_compare_graph])
+        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
+        self.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
+        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
+        #self.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
+        filtered_weighted_similarity =  []
+        source_pos = [i for i in range(len(source_compare_graph))]
+        for i in range(len(weighted_similarity)):
+            tmp = []
+            for y in range(len(weighted_similarity[i])):
+                if i in source_pos and not y in source_pos:
+                    tmp.append(weighted_similarity[i][y])
+                elif i not in source_pos and y in source_pos:        
+                    tmp.append(weighted_similarity[i][y])
+                else:
+                    tmp.append(0.0)
+            filtered_weighted_similarity.append(tmp)
+        self.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
+        return max(map(max, filtered_weighted_similarity))
 
 
-
-    ## Make a special graph for comparison where the ID's of the species are their InChiKey
+    ## Make a special graphs for comparison whit the ID's being unique to the nodes
     #
-    # No need to add all the species annotations since it won't be used
-    # #WARNING: Testing
+    # Because comparisong of networkx graphs cannot use the attributes of the nodes, we create graphs based on the EC number 
+    # of the reactions and the InChiKeys of the species
     #
-    def _makeInChiKeyGraph(self, inchikey_layers=3, pathway_id='rp_pathway', species_group_id='central_species'):
-        if inchikey_layers>3 or inchikey_layers<=1:
-            self.logger.error('inchikey_layers must be between 1 and 3')
-            return False
+    # TODO: if there are multiple EC number and multiple inchikeys, then you should construct all the alternative graphs and
+    # compare the, with your target, and return the one that has the highest score. Only then can you 
+    def _makeCompareGraphs(self, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        #retreive the pathway species and reactions
         species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
         groups = self.rpsbml.model.getPlugin('groups')
-        c_s = groups.getGroup(species_group_id)
         rp_pathway = groups.getGroup(pathway_id)
         reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
-        G = nx.DiGraph()
-        speid_inchikey = {}
-        #nodes
-        for spe in species:
-            miriam = self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation())
-            brsynth = self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation())
-            spe_id = None
-            if 'inchikey' in miriam:
-                if not len(miriam['inchikey'])==1:
-                    self.logger.warning('There are multiple inchikeys: '+str(miriam['inchikey']))
-                    self.logger.warning('Taking the first one...')
-                spe_id = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inchikey_layers])
-            else:
-                if 'inchikey' in brsynth:
-                    if not len(brsynth['inchikey'])==1:
-                        self.logger.warning('There are multiple inchikeys: '+str(brsynth['inchikey']))
-                        self.logger.warning('Taking the first one...')
-                    spe_id = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inchikey_layers])
-                else:
-                    self.logger.warning('There is no inchikey associated with species: '+str(spe.getId()))
-                    self.logger.warning('Setting species ID as the node id')
-                    spe_id = spe.getId()
-            self.logger.debug('spe_id: '+str(spe_id)+' --> '+str(spe.getId()))
-            speid_inchikey[spe.getId()] = spe_id
-            G.add_node(spe_id)
-        for reac in reactions:
-            brsynth = self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation())
-            if 'smiles' in brsynth:
-                self.logger.debug('reac_id: '+str(brsynth['smiles'].upper()))
-                G.add_node(brsynth['smiles'].upper())
-            else:
-                self.logger.warning('Cannot find the reaction rule for: '+str(reac.getId()))
-                self.logger.warning('Setting reaction ID as id')
-                G.add_node(reac.getId())
-        #edges
-        for reaction in reactions:
-            for reac in reaction.getListOfReactants():
-                G.add_edge(speid_inchikey[reac.species],
-                                reaction.getId())
-            for prod in reaction.getListOfProducts():
-                G.add_edge(reaction.getId(),
-                                speid_inchikey[prod.species])
-        return G
+        Gs = []
+        #what you want to do is build a series of graphs that have the most info to the least 
+        #WARNING: Probably need to checkt that there are no 2 species that have the same inchi_keys at a particular layer
+        ###################### Species #######################
+        # The species either have their inchikey's or their id's used as name of nodes. If smaller layers are input
+        # then the full inchikey and their lower layers are input to build the graphs
+        spe_comb = []
+        spe_comb_info = []
+        if inchikey_layers in [1,2,3]: 
+            for inch_lay in reversed(range(inchikey_layers, 4)):
+                speid_newid = {}
+                ############# InChiKey ###############
+                for spe in species:
+                    miriam = self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation())
+                    brsynth = self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation())
+                    #loop through all the different layers of the inchikey and calculate the graph
+                    if 'inchikey' in miriam:
+                        if len(miriam['inchikey'])>1:
+                            self.logger.warning('There are multiple inchikeys for '+str(spe.id)+': '+str(miriam['inchikey']))
+                            self.logger.warning('Using the first one')
+                        speid_newid[spe.getId()] = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inch_lay])
+                    else:
+                        if 'inchikey' in brsynth:
+                            if len(brsynth['inchikey'])>1:
+                                self.logger.warning('There are multiple inchikeys for '+str(spe.id)+': '+str(brsynth['inchikey']))
+                                self.logger.warning('Using the first one')
+                            speid_newid[spe.getId()] = '-'.join(i for i in miriam['inchikey'][0].split('-')[:inch_lay])
+                        else:
+                            self.logger.warning('There is no inchikey associated with species: '+str(spe.getId()))
+                            self.logger.warning('Setting species ID as the node id')
+                            speid_newid[spe.getId()] = spe.getId()
+                spe_comb.append(speid_newid)
+                spe_comb_info.append(inch_lay)
+        elif inchikey_layers==0:    
+            speid_newid = {}
+            for spe in species:
+                speid_newid[spe.getId()] = spe.getId()
+            spe_comb.append(speid_newid)
+            spe_comb_info.append(3) # ie. full info
+        else:
+            self.logger.error('Cannot recognise the inchi_layers input: '+str(inchikey_layers))
+            return False
+        ######################## Reactions ########################
+        reac_comb = []
+        reac_comb_info = []
+        if ec_layers in [1,2,3,4]:
+            for ec_lay in reversed(range(ec_layers, 5)):
+                reacid_newid = {}
+                ############### EC number ################
+                for reac in reactions:
+                    brsynth = self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation())
+                    miriam = self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation())
+                    reacid_newid[reac.getId()] = []
+                    if 'ec-code' in miriam:
+                        #WARNING: need to deal with multiple ec numbers....
+                        for ec_n in miriam['ec-code']:
+                            reacid_newid[reac.getId()].append('.'.join(i for i in ec_n.split('.')[:ec_lay] if not i=='-')) #remove the layers that have '-' characters
+                    else:
+                        self.logger.warning('There is no EC number associated with reaction: '+str(reac.getId()))
+                        self.logger.warning('Setting the id as node name')
+                        reacid_newid[reac.getId()] = [reac.getId()] #consider random assignement of reaction id's since these may skew the comparison results
+                reac_comb.append(reacid_newid)
+                reac_comb_info.append(ec_lay)
+        elif ec_layers==0:
+            reacid_newid = {}
+            reacid_newid[reac.getId()] = [reac.getId()]
+            reac_comb.append(reacid_newid)
+            reac_comb_info.append(4) #ie. full info
+        elif ec_layers==-1:
+            reacid_newid = {}
+            reacid_newid[reac.getId()] = [brsynth['smiles'].upper()]
+            reac_comb.append(reacid_newid)
+            reac_comb_info.append(4) # ie. full info
+        else:
+            self.logger.error('Cannot interpret the ec_layers input: '+str(ec_layers))
+            return False
+        ###### make the graphs #####
+        #remove the duplicates
+        for rea in reac_comb:
+            for rpx in rea:
+                rea[rpx] = list(set(rea[rpx]))
+        Gs = []
+        #combine the different EC numbers per reaction
+        #NOTE: These are ordered lists where the first values have the most info and the other have decreasing amounts
+        self.logger.debug('spe_comb: '+str(spe_comb))
+        self.logger.debug('spe_comb_info: '+str(spe_comb_info))
+        self.logger.debug('reac_comb: '+str(reac_comb))
+        self.logger.debug('reac_comb_info: '+str(reac_comb_info))
+        self.logger.debug('----------------------------------------')
+        for comb, comb_info in zip(list(itertools.product(spe_comb, reac_comb)), list(itertools.product(spe_comb_info, reac_comb_info))):
+            self.logger.debug('comb: '+str(comb))
+            self.logger.debug('comb_info: '+str(comb_info))
+            ids = list(comb[1].keys())
+            list_list = [comb[1][i] for i in ids]
+            for r in list(itertools.product(*list_list)):
+                tmp_reac = {key: value for (key, value) in zip(ids, r)}
+                G = nx.DiGraph()
+                for spe in species:
+                    G.add_node(comb[0][spe.getId()])
+                for rea in reactions:
+                    G.add_node(tmp_reac[rea.getId()])
+                for reaction in reactions:
+                    for reac in reaction.getListOfReactants():
+                        G.add_edge(comb[0][reac.species],
+                                   tmp_reac[reaction.getId()])
+                    for prod in reaction.getListOfProducts():
+                        G.add_edge(tmp_reac[reaction.getId()],
+                                   comb[0][prod.species])
+                Gs.append((G, comb_info))
+        return Gs
 
+
+    ################################# Analyse and make graph #####################
 
     ##
     #
