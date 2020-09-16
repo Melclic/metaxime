@@ -18,31 +18,6 @@ import itertools
 import numpy as np
 
 '''
-
-import rpGraph
-import rpSBML
-import gmatch4py as gm
-import matplotlib.pyplot as plt
-import networkx as nx
-
-rpsbml = rpSBML.rpSBML('rp_10_1', path='rpthermo_21/rp_10_1.sbml.xml')
-rpgraph = rpGraph.rpGraph(rpsbml)
-g1 = rpgraph._makeInChiKeyGraph(2)
-
-rpsbml_same = rpSBML.rpSBML('rp_10_1', path='rpthermo_21/rp_10_1.sbml.xml')
-rpgraph_same = rpGraph.rpGraph(rpsbml_same)
-g2 = rpgraph_same._makeInChiKeyGraph(2)
-
-rpsbml_bis = rpSBML.rpSBML('rp_1_1', path='rpthermo_21/rp_1_1.sbml.xml')
-rpgraph_bis = rpGraph.rpGraph(rpsbml_bis)
-g3 = rpgraph_bis._makeInChiKeyGraph(2)
-
-#ged=gm.GreedyEditDistance(1,1,1,1)
-ged=gm.GraphEditDistance(1,1,1,1)
-ged.compare([rpgraph.G,rpgraph_bis.G],None)
-ged.compare([g1,g3],None)
-'''
-
 logging.basicConfig()
 logging.root.setLevel(logging.NOTSET)
 logging.basicConfig(level=logging.NOTSET)
@@ -54,7 +29,7 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-
+'''
 
 #some drawing constants
 ARROWHEAD = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient='auto', id='normal_arrow')
