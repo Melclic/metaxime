@@ -17,8 +17,13 @@ RUN apt-get --quiet update && \
 
 RUN pip install networkx==2.3 numpy pandas
 
+RUN git clone https://gitlab.irstea.fr/jacques.fize/GMatch4py.git
+RUN cd GMatch4py && pip install . && cd ..
+
 COPY rpSBML.py /home/
 COPY rpGraph.py /home/
 COPY rpMerge.py /home/
+COPY rpDraw.py /home/
+COPY data/ /home/
 
 ENV PYTHONPATH="/home"
