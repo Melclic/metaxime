@@ -284,7 +284,7 @@ class rpGraph:
 
 	## Recursive function that finds the order of the reactions in the graph 
 	#
-	# NOTE: only works for linear pathways... need to find a better way
+	# NOTE: only works for linear pathways... need to find a better way ie. Tree's
 	#
 	def _recursiveReacSuccessors(self, node_name, reac_list, all_res, num_reactions):
 		current_reac_list = [i for i in reac_list]
@@ -395,7 +395,7 @@ class rpGraph:
 	def orderedRetroReactions(self):
 		#Note: may be better to loop tho
 		succ_res = []
-		for cons_cent_spe in self._onlyConsumedCentralSpecies():
+		for cons_cent_spe in self._onlyConsumedSpecies():
 			res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
 			if res:
 				self.logger.debug(res)
@@ -406,7 +406,7 @@ class rpGraph:
 			else:
 				self.logger.warning('Successors no results')
 		prod_res = []
-		for prod_cent_spe in self._onlyProducedCentralSpecies():
+		for prod_cent_spe in self._onlyProducedSpecies():
 			res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
 			if res:
 				self.logger.debug(res)
