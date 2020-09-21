@@ -449,6 +449,101 @@ class rpDraw:
         return fig.to_str().decode("utf-8"), x_len, y_len
 
 
+
+    ##
+    #
+    #
+    def _hierarchy_pos(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False):
+        def h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, 
+                      pos=None, parent=None, parsed=[], saw_first=[], parent_neighbors=[]):
+            self.logger.debug('####################### '+str(root)+' #######################')
+            self.logger.debug('parsed:\t\t'+str(parsed))
+            self.logger.debug('saw_first:\t'+str(saw_first))#G.node.get('MNXM4__64__MNXC3')['central_species']
+            if root not in parsed and root not in saw_first:
+                parsed.append(root)
+                if pos==None:
+                    self.logger.debug('x --> '+str(xcenter))
+                    self.logger.debug('y --> '+str(vert_loc))
+                    pos = {root:(xcenter,vert_loc)}
+                else:
+                    self.logger.debug('x --> '+str(xcenter))
+                    self.logger.debug('y --> '+str(vert_loc))
+                    pos[root] = (xcenter, vert_loc)
+                #if you plot_only_central then remove non central
+                neighbors = []
+                for i in list(G.predecessors(root))+list(G.successors(root)):
+                    if not i in saw_first:
+                        if G.node.get(i)['type']=='species':
+                            if plot_only_central:
+                                self.logger.debug('\tcentral_species: '+str(i)+' --> '+str(G.node.get(i)['central_species']))
+                                if G.node.get(i)['central_species']:
+                                    neighbors.append(i)
+                            else:
+                                neighbors.append(i)
+                        else:
+                            neighbors.append(i)
+                #neighbors = [i for i in list(G.predecessors(root))+list(G.successors(root)) if i not in saw_first]
+                self.logger.debug('neighbors:\t\t'+str(neighbors))
+                if parent!=None:
+                    try:
+                        neighbors.remove(parent)
+                    except ValueError:
+                        pass
+                if len(neighbors)!=0:
+                    #remove the species that have been already added
+                    layer_neighbors = [i for i in neighbors]
+                    for nh in list(set([i for i in saw_first]))+[root]:
+                        try:
+                            layer_neighbors.remove(nh)
+                        except ValueError:
+                            pass
+                    #if you want to plot only the central species
+                    self.logger.debug('layer_neighbors:\t'+str(layer_neighbors))
+                    self.logger.debug('parent_neighbors:\t'+str(parent_neighbors))
+                    #dx = width/len(neighbors)
+                    try:
+                        dx = width/len(layer_neighbors)
+                    except ZeroDivisionError:
+                        dx = width
+                    self.logger.debug('dx: '+str(dx))
+                    self.logger.debug(G.node.get(root))
+                    if len(layer_neighbors)==1:
+                        try:
+                            xcenter = width/len(parent_neighbors)
+                        except ZeroDivisionError:
+                            pass
+                    #nextx = xcenter - width/2 - dx/2
+                    self.logger.debug('xcenter: '+str(xcenter))
+                    self.logger.debug('width: '+str(width))
+                    nextx = xcenter - width/2 - dx/2
+                    self.logger.debug('nextx: '+str(nextx))
+                    for neighbor in neighbors:
+                        self.logger.debug('\tneighbor -> '+str(neighbor))
+                        pass_saw_first = list(set([i for i in neighbors]+saw_first))
+                        #self.logger.debug('\tpass_saw_first: '+str(pass_saw_first))
+                        pass_saw_first.remove(neighbor)
+                        nextx += dx
+                        #self.logger.debug('\tpass_saw_first: '+str(pass_saw_first))
+                        #overwrite to have the reactions center
+                        if G.node.get(neighbor)['type']=='reaction' or len(neighbors)==1:
+                            nextx = 0.5
+                        self.logger.debug('\twidth: '+str(dx))
+                        self.logger.debug('\tvert_gap: '+str(vert_gap))
+                        self.logger.debug('\txcenter: '+str(nextx))                 
+                        self.logger.debug('\tvert_loc: '+str(vert_loc-vert_gap))
+                        self.logger.debug('==============================================')
+                        pos = h_recur(G, neighbor, width=width, vert_gap=vert_gap, 
+                                            vert_loc=vert_loc-vert_gap, xcenter=nextx, pos=pos, 
+                                            parent=root, parsed=parsed, saw_first=pass_saw_first,
+                                            parent_neighbors=layer_neighbors)
+            return pos
+        return h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5)
+
+
+
+
+
+
     ######################################################################################################
     ########################################## Public Function ###########################################
     ######################################################################################################
