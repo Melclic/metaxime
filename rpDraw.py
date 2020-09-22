@@ -450,10 +450,12 @@ class rpDraw:
 
 
 
-    ##
+    ## Organise the heterologous pathway in a tree like structure
     #
-    #
+    # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
+    # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
     def _hierarchy_pos(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False):
+        global_xcenter = xcenter
         def h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, 
                       pos=None, parent=None, parsed=[], saw_first=[], parent_neighbors=[]):
             self.logger.debug('####################### '+str(root)+' #######################')
@@ -525,8 +527,8 @@ class rpDraw:
                         nextx += dx
                         #self.logger.debug('\tpass_saw_first: '+str(pass_saw_first))
                         #overwrite to have the reactions center
-                        if G.node.get(neighbor)['type']=='reaction' or len(neighbors)==1:
-                            nextx = 0.5
+                        if len(neighbors)==1:
+                            nextx = global_xcenter
                         self.logger.debug('\twidth: '+str(dx))
                         self.logger.debug('\tvert_gap: '+str(vert_gap))
                         self.logger.debug('\txcenter: '+str(nextx))                 
@@ -537,7 +539,16 @@ class rpDraw:
                                             parent=root, parsed=parsed, saw_first=pass_saw_first,
                                             parent_neighbors=layer_neighbors)
             return pos
-        return h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5)
+		#if we plot only the center species then we must remove the non-central species
+		if plot_only_central
+			centralG = rpgraph.G.copy()
+			for n_s in [i for i in centralG]:
+				if centralG.node.get(n_s)['type']=='species':
+					if not centralG.node.get(n_s)['central_species']:
+						centralG.remove_node(n_s)
+			return centralG, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5)
+		else:
+			return G, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5) 
 
 
 
