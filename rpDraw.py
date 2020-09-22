@@ -454,9 +454,9 @@ class rpDraw:
     #
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
-    def _hierarchy_pos(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False):
+    def _hierarchy_pos(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False, filter_cofactors=True):
         global_xcenter = xcenter
-        def h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, 
+        def h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5,
                       pos=None, parent=None, parsed=[], saw_first=[], parent_neighbors=[]):
             self.logger.debug('####################### '+str(root)+' #######################')
             self.logger.debug('parsed:\t\t'+str(parsed))
@@ -473,17 +473,22 @@ class rpDraw:
                     pos[root] = (xcenter, vert_loc)
                 #if you plot_only_central then remove non central
                 neighbors = []
-                for i in list(G.predecessors(root))+list(G.successors(root)):
-                    if not i in saw_first:
-                        if G.node.get(i)['type']=='species':
-                            if plot_only_central:
-                                self.logger.debug('\tcentral_species: '+str(i)+' --> '+str(G.node.get(i)['central_species']))
-                                if G.node.get(i)['central_species']:
-                                    neighbors.append(i)
-                            else:
-                                neighbors.append(i)
+                for nei in list(G.predecessors(root))+list(G.successors(root)):
+                    if not nei in saw_first:
+                        node_obj = G.node.get(nei)
+                        #filters only apply to species
+                        if node_obj['type']=='species':
+                            if plot_only_central and not node_obj['central_species']:
+                                self.logger.debug('\t'+str(nei)+' is not a central species')
+                                continue
+                            if filter_cofactors:
+                                if 'metanetx' in node_obj['miriam']:
+                                    if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
+                                        self.logger.debug('\t'+str(nei)+' is a list cofactor')
+                                        continue
+                            neighbors.append(nei)
                         else:
-                            neighbors.append(i)
+                            neighbors.append(nei)
                 #neighbors = [i for i in list(G.predecessors(root))+list(G.successors(root)) if i not in saw_first]
                 self.logger.debug('neighbors:\t\t'+str(neighbors))
                 if parent!=None:
@@ -531,24 +536,22 @@ class rpDraw:
                             nextx = global_xcenter
                         self.logger.debug('\twidth: '+str(dx))
                         self.logger.debug('\tvert_gap: '+str(vert_gap))
-                        self.logger.debug('\txcenter: '+str(nextx))                 
+                        self.logger.debug('\txcenter: '+str(nextx))
                         self.logger.debug('\tvert_loc: '+str(vert_loc-vert_gap))
                         self.logger.debug('==============================================')
-                        pos = h_recur(G, neighbor, width=width, vert_gap=vert_gap, 
-                                            vert_loc=vert_loc-vert_gap, xcenter=nextx, pos=pos, 
+                        pos = h_recur(G, neighbor, width=width, vert_gap=vert_gap,
+                                            vert_loc=vert_loc-vert_gap, xcenter=nextx, pos=pos,
                                             parent=root, parsed=parsed, saw_first=pass_saw_first,
                                             parent_neighbors=layer_neighbors)
             return pos
-		#if we plot only the center species then we must remove the non-central species
-		if plot_only_central
-			centralG = rpgraph.G.copy()
-			for n_s in [i for i in centralG]:
-				if centralG.node.get(n_s)['type']=='species':
-					if not centralG.node.get(n_s)['central_species']:
-						centralG.remove_node(n_s)
-			return centralG, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5)
-		else:
-			return G, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5) 
+        #if we plot only the center species then we must remove the non-central species
+        plotG = G.copy()
+        pos = h_recur(plotG, root, width=width, vert_gap=vert_gap, vert_loc=vert_loc, xcenter=xcenter)
+        for node_id in list(plotG.nodes):
+            if node_id not in list(pos.keys()):
+                plotG.remove_node(node_id)
+        return plotG, pos
+        #return G, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5)
 
 
 
@@ -559,11 +562,40 @@ class rpDraw:
     ########################################## Public Function ###########################################
     ######################################################################################################
 
-    
+    def drawsvg(self,
+                G,
+                path=None,
+                plot_only_central=True,
+                filter_cofactors=True,
+                react_arrow_size=100,
+                arrow_gap_size=100,
+                subplot_size=[200,200],
+                stroke_color='black',
+                stroke_width=2):
+        #TODO: need to find a better way to find the root node without name
+        root_node = [i for i in list(rpgraph.G.nodes) if 'TARGET' in i]
+        if not len(root_node)==1:
+            self.logger.debug('There are multiple nodes with TARGET')
+            return False
+        pathway_list = []
+        drawG, pos = self._hierarchy_pos(G, root_node[0], plot_only_central=plot_only_central, filter_cofactors=filter_cofactors)
+        #order the layers on the y-axis and then order the layers on the x-axis
+
+        svg, len_x, len_y = self._drawPathway(pathway_list,
+                                              react_arrow_size=react_arrow_size,
+                                              arrow_gap_size=arrow_gap_size,
+                                              subplot_size=subplot_size,
+                                              stroke_color=stroke_color,
+                                              stroke_width=stroke_width)
+        if path:
+            open(path, 'w').write(svg)
+        return svg
+
+    '''
     ##
     #
     # TODO: add the conparison by inchikey to determine the cofactors
-    def drawsvg(self,
+    def OLD_drawsvg(self,
                 G,
                 path=None,
                 react_arrow_size=100,
@@ -661,3 +693,4 @@ class rpDraw:
         if path:
             open(path, 'w').write(svg)
         return svg
+    '''
