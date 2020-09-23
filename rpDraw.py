@@ -450,11 +450,11 @@ class rpDraw:
 
 
 
-    ## Organise the heterologous pathway in a tree like structure
-    #
+    ## Organise the heterologous pathway in a tree like structure using recursive function
+    # #DEPRECATED? this function works well but the other works better for drawing
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
-    def _hierarchy_pos(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False, filter_cofactors=True):
+    def _hierarchy_pos_recursive(self, G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5, plot_only_central=False, filter_cofactors=True):
         global_xcenter = xcenter
         def h_recur(G, root, width=1.0, vert_gap=0.2, vert_loc=0, xcenter=0.5,
                       pos=None, parent=None, parsed=[], saw_first=[], parent_neighbors=[]):
@@ -514,11 +514,14 @@ class rpDraw:
                         dx = width
                     self.logger.debug('dx: '+str(dx))
                     self.logger.debug(G.node.get(root))
+                    '''
                     if len(layer_neighbors)==1:
                         try:
                             xcenter = width/len(parent_neighbors)
                         except ZeroDivisionError:
                             pass
+                    '''
+                    xcenter = 0.5
                     #nextx = xcenter - width/2 - dx/2
                     self.logger.debug('xcenter: '+str(xcenter))
                     self.logger.debug('width: '+str(width))
@@ -555,6 +558,96 @@ class rpDraw:
 
 
 
+    ## Organise the heterologous pathway in a tree like structure
+    #
+    # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
+    # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
+    def _hierarchy_pos(self, G, root, width=1.0, y_gap=0.2, xcenter=0.5, plot_only_central=False, filter_cofactors=True):
+        #### find all the nodes that are in a layer ###########
+        def _make_layer(parent_nodes):
+            layer = []
+            for current_node in parent_nodes:
+                self.logger.debug('\t'+str(current_node)+' --> '+str(list(G.predecessors(current_node))+list(G.successors(current_node))))
+                for nei in list(G.predecessors(current_node))+list(G.successors(current_node)):
+                #self.logger.debug('\t'+str(current_node)+' --> '+str(list(G.predecessors(current_node))))
+                #for nei in list(G.predecessors(current_node)):
+                    if nei in toadd_nodes and nei not in layer:
+                        self.logger.debug('\tAdding node: '+str(nei))
+                        layer.append(nei)
+                        #now check that the predeceessor of that node is a reaction and if yes add its successors to the current layer
+                        self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(G.predecessors(nei))))
+                        for nei_pre in list(G.predecessors(nei)):
+                            self.logger.debug('\t\t'+str(nei_pre)+' type: '+str(G.node.get(nei_pre)['type']))
+                            if G.node.get(nei_pre)['type']=='reaction':
+                                self.logger.debug('\t\t'+str(nei_pre)+' successors: '+str(list(G.successors(nei_pre))))
+                                for reac_nei_suc in list(G.successors(nei_pre)):
+                                    if reac_nei_suc in toadd_nodes and reac_nei_suc not in layer:
+                                        self.logger.debug('\tAdding node: '+str(reac_nei_suc))
+                                        layer.append(reac_nei_suc)
+            return layer
+        ##### filter the nodes that will not be used #######
+        toadd_nodes = list(G.nodes)
+        for node in list(G.nodes):
+            node_obj = G.node.get(node)
+            if node_obj['type']=='species':
+                if plot_only_central and not node_obj['central_species']:
+                    self.logger.debug(str(node)+' is not a central species and is filtered')
+                    toadd_nodes.remove(node)
+                if filter_cofactors:
+                    if 'metanetx' in node_obj['miriam']:
+                        if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
+                            self.logger.debug(str(node)+' is a list cofactor and is filtered')
+                            toadd_nodes.remove(node)
+        pos = {}
+        #############  Add the parent nodes first
+        parent_layer = [root]
+        y_layer = 0.0
+        self.logger.debug('\t'+str(root)+' --> '+str(list(G.predecessors(root))+list(G.successors(root))))
+        for nei in list(G.predecessors(root))+list(G.successors(root)):
+            self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(G.predecessors(nei))))
+            if G.node.get(nei)['type']=='reaction':
+                for reac_nei_suc in list(G.successors(nei)):
+                    if reac_nei_suc in toadd_nodes and reac_nei_suc not in parent_layer:
+                        parent_layer.append(reac_nei_suc)
+        self.logger.debug('parent_layer: '+str(parent_layer))
+        if parent_layer==[]:
+            self.logger.warning('parent_layer is empty')
+            return False
+        dx = width/len(parent_layer)
+        nextx = xcenter-width/2-dx/2
+        for l in parent_layer:
+            nextx += dx
+            pos[l] = (nextx, y_layer)
+            toadd_nodes.remove(l)
+        #toadd_nodes.remove(root)
+        y_layer = -y_gap
+        layer_num = 1
+        while not len(toadd_nodes)==0:
+            self.logger.debug('==================================')
+            self.logger.debug('toadd_nodes: '+str(toadd_nodes))
+            self.logger.debug('parent_layer: '+str(parent_layer))
+            layer = _make_layer(parent_layer)
+            #layer = list(set(layer))
+            self.logger.debug('layer: '+str(layer))
+            if layer==[]:
+                self.logger.warning('layer is empty')
+                break
+            dx = width/len(layer)
+            nextx = xcenter-width/2-dx/2
+            for l in layer:
+                nextx += dx
+                pos[l] = (nextx, y_layer)
+                toadd_nodes.remove(l)
+            #set for next loop
+            self.logger.debug('pos: '+str(pos))
+            layer_num += 1
+            y_layer -= y_gap
+            parent_layer = layer
+        plotG = G.copy()
+        for node_id in list(plotG.nodes):
+            if node_id not in list(pos.keys()):
+                plotG.remove_node(node_id)
+        return plotG, pos
 
 
 
