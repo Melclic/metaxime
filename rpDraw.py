@@ -450,6 +450,10 @@ class rpDraw:
 
 
 
+
+
+
+    """
     ## Organise the heterologous pathway in a tree like structure using recursive function
     # #DEPRECATED? this function works well but the other works better for drawing
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
@@ -555,14 +559,89 @@ class rpDraw:
                 plotG.remove_node(node_id)
         return plotG, pos
         #return G, h_recur(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5)
+    """
 
+
+
+    ## draw the cofactors with a box and a line going through
+    #
+    #
+    def _drawReaction(self,
+                      reaction_name,
+                      cofactor_reactants,
+                      cofactor_products,
+                      x_len=100,
+                      y_len=200,
+                      rec_size_y=20,
+                      font_family='sans-serif',
+                      font_size=10,
+                      font_color='black',
+                      stroke_color='black',
+                      fill_color='#ddd',
+                      stroke_width=2):
+        d = draw.Drawing(x_len, y_len, origin=(0,0))
+        d.append(draw.Rectangle(0, 0, x_len, y_len, fill='#FFFFFF'))
+        d.append(draw.Text(reaction_name, font_size, x_len/2, 0, font_family=font_family, center=0, fill=font_color))
+        #draw the cofactors arrow
+        start_line_x = x_len/2
+        start_line_y = (y_len/2-rec_size_y)-rec_size_y
+        end_line_x = x_len/2
+        end_line_y = (y_len/2+rec_size_y)+rec_size_y
+        self.logger.debug('start_line_x: '+str(start_line_x))
+        self.logger.debug('start_line_y: '+str(start_line_y))
+        self.logger.debug('end_line_x: '+str(end_line_x))
+        self.logger.debug('end_line_y: '+str(end_line_y))
+        if cofactor_reactants or cofactor_products:
+            ### arrowhead ##
+            p = draw.Path(stroke=stroke_color, stroke_width=stroke_width, fill='transparent', marker_end=self.arrowhead)
+            p.M(start_line_x, start_line_y).Q(start_line_x-rec_size_y/1.5, y_len/2,
+                    end_line_x, end_line_y-self.arrowhead_comp_y)
+            d.append(p)
+        #Draw the reaction rectangle
+        self.logger.debug('react_x1: '+str(0))
+        self.logger.debug('react_y1: '+str(y_len/2+rec_size_y))
+        react_width = x_len
+        react_height = rec_size_y
+        self.logger.debug('react_width: '+str(react_width))
+        self.logger.debug('react_height: '+str(react_height))
+        d.append(draw.Rectangle(0, y_len/2-rec_size_y/2, react_width, react_height, fill=fill_color, stroke_width=stroke_width, stroke=stroke_color))
+        #draw the text
+        #reactants
+        y_shift = 0
+        for react in cofactor_reactants:
+            x = start_line_x
+            y = start_line_y-font_size-y_shift-5
+            self.logger.debug('x: '+str(x))
+            self.logger.debug('y: '+str(y))
+            d.append(draw.Text(react, font_size, x, y, font_family=font_family, center=0, fill=font_color))
+            y_shift += font_size
+        #product
+        y_shift = 0
+        for pro in cofactor_products:
+            x = end_line_x
+            y = end_line_y+y_shift+5
+            self.logger.debug('x: '+str(x))
+            self.logger.debug('y: '+str(y))
+            d.append(draw.Text(pro, font_size, x, y, font_family=font_family, center=0, fill=font_color))
+            y_shift += font_size
+        return d.asSvg()
 
 
     ## Organise the heterologous pathway in a tree like structure
     #
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
-    def _hierarchy_pos(self, G, root, width=1.0, y_gap=0.2, xcenter=0.5, plot_only_central=False, filter_cofactors=True):
+    def _hierarchy_pos(self,
+                       G,
+                       root,
+                       width=1.0,
+                       y_gap=0.2,
+                       xcenter=0.5,
+                       plot_only_central=False,
+                       filter_cofactors=True,
+                       filter_sink_species=False,
+                       central_species_group_id='central_species',
+                       sink_species_group_id='rp_sink_species'):
         #### find all the nodes that are in a layer ###########
         def _make_layer(parent_nodes):
             layer = []
@@ -586,18 +665,22 @@ class rpDraw:
                                         layer.append(reac_nei_suc)
             return layer
         ##### filter the nodes that will not be used #######
-        toadd_nodes = list(G.nodes)
-        for node in list(G.nodes):
+        toadd_nodes = list(set(list(G.nodes)))
+        for node in list(set(list(G.nodes))):
             node_obj = G.node.get(node)
             if node_obj['type']=='species':
-                if plot_only_central and not node_obj['central_species']:
+                if not filter_sink_species and node_obj[sink_species_group_id]:
+                    continue
+                if plot_only_central and not node_obj[central_species_group_id]:
                     self.logger.debug(str(node)+' is not a central species and is filtered')
                     toadd_nodes.remove(node)
+                    continue
                 if filter_cofactors:
                     if 'metanetx' in node_obj['miriam']:
                         if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
                             self.logger.debug(str(node)+' is a list cofactor and is filtered')
                             toadd_nodes.remove(node)
+                            continue
         pos = {}
         #############  Add the parent nodes first
         parent_layer = [root]
@@ -684,106 +767,3 @@ class rpDraw:
             open(path, 'w').write(svg)
         return svg
 
-    '''
-    ##
-    #
-    # TODO: add the conparison by inchikey to determine the cofactors
-    def OLD_drawsvg(self,
-                G,
-                path=None,
-                react_arrow_size=100,
-                arrow_gap_size=100,
-                subplot_size=[200,200],
-                stroke_color='black',
-                stroke_width=2):
-        ordered_reactions = self.orderedRetroReactions()
-        if not ordered_reactions:
-            self.logger.error('Ordered reaction returned emtpy results')
-            return ''
-        self.logger.debug('ordered_reactions: '+str(ordered_reactions))
-        flat_ordered_reactions = []
-        for i in ordered_reactions:
-            if len(i)==1:
-                flat_ordered_reactions.append(i[0])
-            else:
-                self.logger.error('This pathway contains steps with multiple reactions')
-                return ''
-        self.logger.debug('flat_ordered_reactions: '+str(flat_ordered_reactions))
-        pathway_list = []
-        for reaction_id in flat_ordered_reactions:
-            #edges
-            to_add = {'reactants_inchi': [],
-                      'products_inchi': [],
-                      'cofactor_reactants': [],
-                      'cofactor_products': []}
-            for pred_id in G.predecessors(reaction_id):
-                pred = G.node.get(pred_id)
-                if pred['type']=='species':
-                    if pred['central_species']:
-                        if 'metanetx' in pred['miriam']:
-                            if any([i in list(self.mnx_cofactors.keys()) for i in pred['miriam']['metanetx']]):
-                                #double check but lazy
-                                for mnx in pred['miriam']['metanetx']:
-                                    if mnx in self.mnx_cofactors.keys():
-                                        to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
-                                        break
-                                #to_add['cofactor_reactants'].append(pred['name'])
-                            else:
-                                to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
-                        else:
-                            to_add['reactants_inchi'].append(pred['brsynth']['inchi'])
-                    else:
-                        is_found = False
-                        if 'metanetx' in pred['miriam']:
-                            for mnx in pred['miriam']['metanetx']:
-                                if mnx in self.mnx_cofactors.keys():
-                                    to_add['cofactor_reactants'].append(self.mnx_cofactors[mnx]['name'])
-                                    is_found = True
-                                    break
-                        if not is_found:
-                            to_add['cofactor_reactants'].append(pred['name'])
-                else:
-                    self.logger.warning('The current node is not a species: '+str(pred))
-            prev_products = [] #reset the list
-            for succ_id in G.successors(reaction_id):
-                succ = G.node.get(succ_id)
-                if succ['type']=='species':
-                    if succ['central_species']:
-                        if 'metanetx' in succ['miriam']:
-                            if any([i in list(self.mnx_cofactors.keys()) for i in succ['miriam']['metanetx']]):
-                                #double check i know but lazy
-                                for mnx in succ['miriam']['metanetx']:
-                                    if mnx in self.mnx_cofactors.keys():
-                                        to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
-                                        break
-                                #to_add['cofactor_products'].append(succ['name'])
-                            else:
-                                to_add['products_inchi'].append(succ['brsynth']['inchi'])
-                        else:
-                            to_add['products_inchi'].append(succ['brsynth']['inchi'])
-                    else:
-                        is_found = False
-                        if 'metanetx' in succ['miriam']:
-                            for mnx in succ['miriam']['metanetx']:
-                                if mnx in self.mnx_cofactors.keys():
-                                    to_add['cofactor_products'].append(self.mnx_cofactors[mnx]['name'])
-                                    is_found = True
-                                    break
-                        if not is_found:
-                            to_add['cofactor_products'].append(succ['name'])
-                else:
-                    self.logger.warning('The current node is not a species: '+str(succ))
-            pathway_list.append(to_add)
-        self.logger.debug('------------------------------------------')
-        self.logger.debug(pathway_list)
-        self.logger.debug('------------------------------------------')
-        svg, len_x, len_y = self._drawPathway(pathway_list,
-                                              react_arrow_size=react_arrow_size,
-                                              arrow_gap_size=arrow_gap_size,
-                                              subplot_size=subplot_size,
-                                              stroke_color=stroke_color,
-                                              stroke_width=stroke_width)
-        if path:
-            open(path, 'w').write(svg)
-        return svg
-    '''

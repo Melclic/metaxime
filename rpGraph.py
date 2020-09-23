@@ -27,21 +27,23 @@ class rpGraph:
     ##
     #
     #
-    def __init__(self, rpsbml, pathway_id='rp_pathway', species_group_id='central_species'):
+    def __init__(self, rpsbml, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')
         self.pathway_id = pathway_id
-        self.species_group_id = species_group_id
+        self.central_species_group_id = central_species_group_id
+        self.sink_species_group_id = sink_species_group_id
         self.G = None
         self.species = None
         self.reactions = None
         self.pathway_id = pathway_id
         self.num_reactions = 0
         self.central_species = []
+        self.sink_species = []
         self.num_species = 0
-        self._makeGraph(pathway_id, species_group_id)
+        self._makeGraph(pathway_id, central_species_group_id, sink_species_group_id)
 
 
     ######################################################################################################
@@ -206,11 +208,13 @@ class rpGraph:
     ## Function that converts the object rpSBML to a networkx, with all the MIRIAM and BRSynth annotations passed as attributes
     #
     #
-    def _makeGraph(self, pathway_id='rp_pathway', species_group_id='central_species'):
+    def _makeGraph(self, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
         self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
         groups = self.rpsbml.model.getPlugin('groups')
-        c_s = groups.getGroup(species_group_id)
+        c_s = groups.getGroup(central_species_group_id)
         self.central_species = [i.getIdRef() for i in c_s.getListOfMembers()]
+        s_s = groups.getGroup(sink_species_group_id)
+        self.sink_species = [i.getIdRef() for i in s_s.getListOfMembers()]
         rp_pathway = groups.getGroup(pathway_id)
         self.reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
         self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
@@ -218,14 +222,18 @@ class rpGraph:
         for spe in self.species:
             self.num_species += 1
             is_central = False
+            is_sink = False
             if spe.getId() in self.central_species:
                 is_central = True
+            if spe.getId() in self.sink_species:
+                is_sinl = True
             self.G.add_node(spe.getId(),
                             type='species',
                             name=spe.getName(),
                             miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
                             brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()),
-                            central_species=is_central)
+                            central_species=is_central,
+                            sink_species_group_id=is_sink)
         for reac in self.reactions:
             self.num_reactions += 1
             self.G.add_node(reac.getId(),
@@ -247,7 +255,7 @@ class rpGraph:
     ## Return the species ID's that are only consumed in the heterologous pathway
     #
     #
-    def _onlyConsumedSpecies(self, only_central=False, central_species_id='central_species'):
+    def _onlyConsumedSpecies(self, only_central=False):
         only_consumed_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
@@ -265,7 +273,7 @@ class rpGraph:
     ## Return the species ID's that are only produced in the heterologous pathway
     #
     #
-    def _onlyProducedSpecies(self, only_central=False, central_species_id='central_species'):
+    def _onlyProducedSpecies(self, only_central=False):
         only_produced_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
@@ -395,7 +403,7 @@ class rpGraph:
 
 
     ## Warning that this search algorithm only works for mono-component that are not networks (i.e where reactions follow each other)
-    #
+    # DEPRECATED: this is linear
     # NOTE: only works for linear pathways... need to find a better way
     #
     def orderedRetroReactions(self):
