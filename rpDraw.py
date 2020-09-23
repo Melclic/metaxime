@@ -566,7 +566,7 @@ class rpDraw:
     ## draw the cofactors with a box and a line going through
     #
     #
-    def _drawReaction(self,
+    def _YYdrawReaction(self,
                       reaction_name,
                       cofactor_reactants,
                       cofactor_products,
@@ -641,7 +641,7 @@ class rpDraw:
                        filter_cofactors=True,
                        filter_sink_species=False,
                        central_species_group_id='central_species',
-                       sink_species_group_id='rp_sink_species'):
+                       sink_species_group_id='sink_species'):
         #### find all the nodes that are in a layer ###########
         def _make_layer(parent_nodes):
             layer = []

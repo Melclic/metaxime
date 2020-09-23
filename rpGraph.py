@@ -72,7 +72,7 @@ class rpGraph:
             for y in range(len(weighted_similarity[i])):
                 if i in source_pos and not y in source_pos:
                     tmp.append(weighted_similarity[i][y])
-                elif i not in source_pos and y in source_pos:        
+                elif i not in source_pos and y in source_pos:
                     tmp.append(weighted_similarity[i][y])
                 else:
                     tmp.append(0.0)
@@ -102,7 +102,7 @@ class rpGraph:
         # then the full inchikey and their lower layers are input to build the graphs
         spe_comb = []
         spe_comb_info = []
-        if inchikey_layers in [1,2,3]: 
+        if inchikey_layers in [1,2,3]:
             for inch_lay in reversed(range(inchikey_layers, 4)):
                 speid_newid = {}
                 ############# InChiKey ###############
@@ -124,7 +124,7 @@ class rpGraph:
                             speid_newid[spe.getId()] = spe.getId()
                 spe_comb.append(speid_newid)
                 spe_comb_info.append(inch_lay)
-        elif inchikey_layers==0:    
+        elif inchikey_layers==0:
             speid_newid = {}
             for spe in species:
                 speid_newid[spe.getId()] = spe.getId()
@@ -226,14 +226,14 @@ class rpGraph:
             if spe.getId() in self.central_species:
                 is_central = True
             if spe.getId() in self.sink_species:
-                is_sinl = True
+                is_sink = True
             self.G.add_node(spe.getId(),
                             type='species',
                             name=spe.getName(),
                             miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
                             brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()),
                             central_species=is_central,
-                            sink_species_group_id=is_sink)
+                            sink_species=is_sink)
         for reac in self.reactions:
             self.num_reactions += 1
             self.G.add_node(reac.getId(),
