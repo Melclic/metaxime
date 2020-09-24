@@ -397,7 +397,7 @@ class rpGraph:
         target_graphs = target_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         return rpGraph._compare(source_graphs, target_graphs)
 
-    
+
     def exportJSON(self):
         return json_graph.node_link_data(self.G)
 

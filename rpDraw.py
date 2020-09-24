@@ -667,9 +667,11 @@ class rpDraw:
         ##### filter the nodes that will not be used #######
         toadd_nodes = list(set(list(G.nodes)))
         for node in list(set(list(G.nodes))):
+            self.logger.debug('--------- '+str(node)+' ---------')
             node_obj = G.node.get(node)
             if node_obj['type']=='species':
                 if not filter_sink_species and node_obj[sink_species_group_id]:
+                    self.logger.debug(str(node)+' is a sink species and will not be filtered')
                     continue
                 if plot_only_central and not node_obj[central_species_group_id]:
                     self.logger.debug(str(node)+' is not a central species and is filtered')
@@ -677,6 +679,9 @@ class rpDraw:
                     continue
                 if filter_cofactors:
                     if 'metanetx' in node_obj['miriam']:
+                        self.logger.debug(node_obj['miriam'])
+                        self.logger.debug([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']])
+                        self.logger.debug(self.mnx_cofactors.keys())
                         if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
                             self.logger.debug(str(node)+' is a list cofactor and is filtered')
                             toadd_nodes.remove(node)
