@@ -1,4 +1,284 @@
 {
+    "MNXM127148": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM127148"
+    }, 
+    "MNXM447": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM447"
+    }, 
+    "MNXM145526": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM145526"
+    }, 
+    "MNXM269": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM269"
+    }, 
+    "MNXM201": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM201"
+    }, 
+    "MNXM101192": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM101192"
+    }, 
+    "MNXM96082": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM96082"
+    }, 
+    "MNXM32127": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM32127"
+    }, 
+    "MNXM221": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM221"
+    }, 
+    "MNXM381": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM381"
+    }, 
+    "MNXM248": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM248"
+    }, 
+    "MNXM110": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM110"
+    }, 
+    "MNXM145527": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM145527"
+    }, 
+    "MNXM106856": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM106856"
+    }, 
+    "MNXM59427": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM59427"
+    }, 
+    "MNXM94381": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM94381"
+    }, 
+    "MNXM115": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM115"
+    }, 
+    "MNXM180": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM180"
+    }, 
+    "MNXM96054": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM96054"
+    }, 
+    "MNXM277": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM277"
+    }, 
+    "MNXM265": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM265"
+    }, 
+    "MNXM96425": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM96425"
+    }, 
+    "MNXM62": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM62"
+    }, 
+    "MNXM44": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM44"
+    }, 
+    "MNXM72": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM72"
+    }, 
+    "MNXM59": {
+        "name": "R_group",
+        "inchi": "",
+        "mnx": "MNXM59"
+    }, 
+    "MNXM588022": {
+        "name": "NADP+",
+        "inchi": "",
+        "mnx": "MNXM588022"
+    }, 
+    "MNXM57425": {
+        "name": "ATP",
+        "inchi": "",
+        "mnx": "MNXM57425"
+    }, 
+    "MNXM145523": {
+        "name": "ATP",
+        "inchi": "",
+        "mnx": "MNXM145523"
+    }, 
+    "MNXM114062": {
+        "name": "ATP",
+        "inchi": "",
+        "mnx": "MNXM114062"
+    }, 
+    "MNXM96410": {
+        "name": "AMP",
+        "inchi": "",
+        "mnx": "MNXM96410"
+    }, 
+    "MNXM84": {
+        "name": "NH4(+)",
+        "inchi": "",
+        "mnx": "MNXM84"
+    }, 
+    "MNXM128788": {
+        "name": "O-(pantetheine-4'-phosphoryl)-L-serine residue",
+        "inchi": "",
+        "mnx": "MNXM128788"
+    }, 
+    "MNXM1848": {
+        "name": "Octadecenoyl-CoA",
+        "inchi": "",
+        "mnx": "MNXM1848"
+    },  
+    "MNXM1776": {
+        "name": "p-Hydroquinone",
+        "inchi": "",
+        "mnx": "MNXM1776"
+    },  
+    "MNXM2499": {
+        "name": "p-Hydroquinone",
+        "inchi": "",
+        "mnx": "MNXM2499"
+    },  
+    "MNXM4100": {
+        "name": "p-Hydroquinone",
+        "inchi": "",
+        "mnx": "MNXM4100"
+    },   
+    "MNXM162252": {
+        "name": "ETR Quinols",
+        "inchi": "",
+        "mnx": "MNXM162252"
+    },   
+    "MNXM2824": {
+        "name": "ETR Quinones",
+        "inchi": "",
+        "mnx": "MNXM2824"
+    },   
+    "MNXM1195": {
+        "name": "Reduced adrenodoxin",
+        "inchi": "",
+        "mnx": "MNXM1195"
+    },   
+    "MNXM804": {
+        "name": "Oxidized adrenodoxin",
+        "inchi": "",
+        "mnx": "MNXM804"
+    },   
+    "MNXM96993": {
+        "name": "Reduced thioredoxin",
+        "inchi": "",
+        "mnx": "MNXM96993"
+    },   
+    "MNXM148": {
+        "name": "Oxidised thioredoxin",
+        "inchi": "",
+        "mnx": "MNXM148"
+    },   
+    "MNXM148": {
+        "name": "Reduced thioredoxin",
+        "inchi": "",
+        "mnx": "MNXM148"
+    },     
+    "MNXM148067": {
+        "name": "Oxidized NADPH-hemoprotein reductase",
+        "inchi": "",
+        "mnx": "MNXM148067"
+    },     
+    "MNXM148013": {
+        "name": "Reduced NADPH-hemoprotein reductase",
+        "inchi": "",
+        "mnx": "MNXM148013"
+    },     
+    "MNXM2154": {
+        "name": "Oxidized flavoprotein",
+        "inchi": "",
+        "mnx": "MNXM2154"
+    },     
+    "MNXM2146": {
+        "name": "Reduced flavoprotein",
+        "inchi": "",
+        "mnx": "MNXM2146"
+    },     
+    "MNXM91192": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM91192"
+    },     
+    "MNXM89776": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM89776"
+    },     
+    "MNXM746": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM746"
+    },     
+    "MNXM5749": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM5749"
+    },     
+    "MNXM1084": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM1084"
+    },     
+    "MNXM1083": {
+        "name": "ferr(i/o)cytochromes",
+        "inchi": "",
+        "mnx": "MNXM1083"
+    },     
+    "MNXM145542": {
+        "name": "reduced/oxidized ferredoxin",
+        "inchi": "",
+        "mnx": "MNXM145542"
+    },  
+    "MNXM145541": {
+        "name": "reduced/oxidized ferredoxin",
+        "inchi": "",
+        "mnx": "MNXM145541"
+    },
     "MNXM96467": {
         "name": "e-",
         "inchi": "",

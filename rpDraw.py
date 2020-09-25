@@ -627,6 +627,18 @@ class rpDraw:
         return d.asSvg()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
     ## Organise the heterologous pathway in a tree like structure
     #
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
@@ -671,18 +683,24 @@ class rpDraw:
             node_obj = G.node.get(node)
             if node_obj['type']=='species':
                 if not filter_sink_species and node_obj[sink_species_group_id]:
+                    self.logger.debug('filter_sink_species: '+str(filter_sink_species))
+                    self.logger.debug('node_obj['+str(sink_species_group_id)+']: '+str(node_obj[sink_species_group_id]))
                     self.logger.debug(str(node)+' is a sink species and will not be filtered')
                     continue
                 if plot_only_central and not node_obj[central_species_group_id]:
+                    self.logger.debug('plot_only_central: '+str(plot_only_central))
+                    self.logger.debug('node_obj['+str(central_species_group_id)+']: '+str(node_obj[central_species_group_id]))
                     self.logger.debug(str(node)+' is not a central species and is filtered')
                     toadd_nodes.remove(node)
                     continue
                 if filter_cofactors:
                     if 'metanetx' in node_obj['miriam']:
-                        self.logger.debug(node_obj['miriam'])
-                        self.logger.debug([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']])
-                        self.logger.debug(self.mnx_cofactors.keys())
+                        #self.logger.debug(node_obj['miriam'])
+                        #self.logger.debug([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']])
+                        #self.logger.debug(self.mnx_cofactors.keys())
                         if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
+                            self.logger.debug('filter_cofactors: '+str(filter_cofactors))
+
                             self.logger.debug(str(node)+' is a list cofactor and is filtered')
                             toadd_nodes.remove(node)
                             continue
@@ -735,7 +753,222 @@ class rpDraw:
         for node_id in list(plotG.nodes):
             if node_id not in list(pos.keys()):
                 plotG.remove_node(node_id)
+        #normalise the values to between 0 and 1
+        #round the pos since we can have division errors
+        all_x = []
+        all_y = []
+        for node in pos:
+            all_x.append(pos[node][0])
+            all_y.append(pos[node][1])
+        for node in pos:
+            #convert from up/down to right/left
+            #reverse the x and y locations
+            pos[node] = (round((pos[node][1]-min(all_y))/(max(all_y)-min(all_y)), 5),
+                         round((pos[node][0]-min(all_x))/(max(all_x)-min(all_x)), 5))
         return plotG, pos
+
+
+
+    ##
+    #
+    #
+    def drawChemicalList(self, id_inchi, subplot_size=[200, 200]):
+        toRet = {}
+        inchi_list = list(set([id_inchi[i] for i in id_inchi]))
+        list_mol = [MolFromInchi(inchi) for inchi in inchi_list]
+        for i in range(len(list_mol)):
+            cp_list_mol = copy.deepcopy(list_mol)
+            cp_list_mol.pop(i)
+            tmp_list_mol = [list_mol[i]]+cp_list_mol
+            img = Draw.MolsToGridImage(tmp_list_mol, molsPerRow=1, subImgSize=(subplot_size[0], subplot_size[1]), useSVG=True)
+            #add the groups tag with the id's of the reactions -- should have be size width=subplot_size[0] height=subplot_size[1]*len(list_mol)
+            bond_0_count = 0
+            svg_str = ''
+            for line in img.splitlines():
+                add_line = True
+                m0 = re.findall("(\d+\.\d+)", line)
+                if m0:
+                    for y in m0:
+                        if float(y)>subplot_size[1]:
+                            add_line = False
+                m1 = re.findall("height=\'\d+", line)
+                if m1:
+                    line = re.sub(r"height=\'\d+", "height=\'"+str(subplot_size[1]), line)
+                    #line.replace(str(subplot_size[i]*len(list_mol)), str(subplot_size[1]))
+                if add_line:
+                    svg_str += line+'\n'
+            for y in id_inchi:
+                if id_inchi[y]==inchi_list[i]:
+                    toRet[y] = svg_str
+        return toRet
+
+
+    ##
+    #
+    #
+    def graph_svg(self, G,
+                  target,
+                  subplot_size=[200,200],
+                  reac_size=[20,60],
+                  reac_fill_color='#ddd',
+                  reac_stroke_color='black',
+                  reac_stroke_width=2,
+                  arrow_gap_size=100,
+                  arrow_stroke_color='black',
+                  arrow_stroke_width=2,
+                  plot_only_central=False,
+                  filter_cofactors=True,
+                  filter_sink_species=True):
+        #gather all the inchis and convert to svg
+        resG, pos = rpdraw._hierarchy_pos(G, 
+                                          target, 
+                                          plot_only_central=plot_only_central, 
+                                          filter_cofactors=filter_cofactors,
+                                          filter_sink_species=filter_sink_species)
+        id_inchi = {}
+        #first stack the 
+        self.logger.debug('============================')
+        pathway_layers = []
+        ordered_y = sorted(list(set([pos[i][1] for i in pos])))
+        for layer_y_loc in ordered_y:
+            ordered_x = sorted(list(set([pos[i][0] for i in pos if pos[i][1]==layer_y_loc])))
+            reaction = []
+            for layer_x_loc in ordered_x:
+                for node_id in pos:
+                    if pos[node_id][1]==layer_y_loc and pos[node_id][0]==layer_x_loc:
+                        n = resG.nodes.get(node_id)
+                        reaction.append(node_id)
+                        break
+            pathway_layers.append(reaction)
+        self.logger.debug('pathway_layers: '+str(pathway_layers))
+        self.logger.debug('============================')
+        x_len = subplot_size[0]*len(pathway_layers)
+        len_max_y = max([len(i) for i in pathway_layers])
+        y_len = subplot_size[1]*len_max_y
+        #make the fig white
+        fig = sg.SVGFigure(str(x_len), str(y_len))
+        #add a white background to the full image
+        background = draw.Drawing(x_len, y_len, origin=(0,0))
+        #######################
+        x_move = 0
+        self.logger.debug('############ Chem/Reac ###############')
+        self.logger.debug('len_max_y: '+str(len_max_y))
+        self.logger.debug('x_len: '+str(x_len))
+        self.logger.debug('y_len: '+str(y_len))
+        nodes_attach_locs = {}
+        for layer in pathway_layers:
+            y_move = 0
+            y_shift = (y_len-subplot_size[1]*len(layer))/2
+            self.logger.debug('====== y_shift: '+str(y_shift)+' =====')
+            for cid in layer:
+                node = G.node.get(cid)
+                if node['type']=='species':
+                    self.logger.debug('\tSpecies: '+str(cid))
+                    self.logger.debug('\tx: '+str(x_move))
+                    self.logger.debug('\ty: '+str(y_move+y_shift))
+                    self.logger.debug('\tleft: '+str((x_move, y_len/len(layer)/2)))
+                    self.logger.debug('\tright: '+str((x_move+subplot_size[0], y_len/len(layer)/2)))
+                    self.logger.debug('\t-------------------------------')
+                    f = sg.fromstring(id_svg[cid])
+                    p = f.getroot()
+                    p.moveto(x_move, y_move+y_shift)
+                    fig.append(p)
+                    nodes_attach_locs[cid] = {'left': (x_move, y_len/len(layer)/2), 
+                                              'right': (x_move+subplot_size[0], y_len/len(layer)/2)}
+                if node['type']=='reaction':
+                    #draw the reaction rectangle
+                    self.logger.debug('\tReaction: '+str(cid))
+                    d = draw.Drawing(subplot_size[0], subplot_size[1], origin=(0,0))
+                    d.append(draw.Rectangle(0, 0, subplot_size[0], subplot_size[1], fill='#FFFFFF'))
+                    #add white backgroung TODO perhaps add blurry
+                    reac_x = subplot_size[0]/2-reac_size[0]*len_max_y/2
+                    self.logger.debug('\tx: '+str(reac_x))
+                    reac_y = subplot_size[1]/2-reac_size[1]/2
+                    self.logger.debug('\ty: '+str(reac_y))
+                    edge_x = subplot_size[0]/2-reac_size[1]/2                
+                    edge_y = subplot_size[1]/2-reac_size[0]/2
+                    self.logger.debug('\tedge_x: '+str(edge_x))
+                    self.logger.debug('\tedge_y: '+str(edge_y))
+                    self.logger.debug('\treac_x: '+str(reac_x))
+                    self.logger.debug('\treac_y: '+str(reac_y))
+                    #left = (x_move+edge_x, y_shift+reac_y)
+                    left = (x_move+edge_x, y_shift+subplot_size[1]/2)
+                    self.logger.debug('\tleft: '+str(left))
+                    #right = (x_move+edge_x+reac_size[1], y_shift+reac_y)
+                    right = (x_move+edge_x+reac_size[1], y_shift+subplot_size[1]/2)
+                    self.logger.debug('\tright: '+str(right))
+                    self.logger.debug('\t-------------------------------')
+                    d.append(draw.Rectangle(edge_x,
+                                            edge_y,
+                                            reac_size[1],
+                                            reac_size[0],
+                                            fill=reac_fill_color,
+                                            stroke_width=reac_stroke_width,
+                                            stroke=reac_stroke_color))
+                    a = sg.fromstring(d.asSvg())
+                    a_r = a.getroot()
+                    a_r.moveto(x_move, y_move+y_shift+subplot_size[1]) #WARNING: not sure why I have to + subpot
+                    fig.append(a_r)
+                    self.logger.debug('edge_y: '+str(edge_y))
+                    self.logger.debug('y_move: '+str(y_move))
+                    self.logger.debug('y_shift: '+str(y_shift))
+                    self.logger.debug('subplot_size[1]: '+str(subplot_size[1]))
+                    self.logger.debug(subplot_size[1]-y_shift)
+                    self.logger.debug(subplot_size[1]*len_max_y/2)
+                    nodes_attach_locs[cid] = {'left': left,
+                                              'right': right}
+                y_move += subplot_size[1]
+                #layer_num += 1
+            x_move += subplot_size[0]
+        self.logger.debug('nodes_attach_locs: '+str(nodes_attach_locs))
+        ######## draw the lines #############
+        self.logger.debug('############ Arrows ###############')
+        for edge in list(resG.edges):
+            self.logger.debug('\t---------- edge: '+str(edge)+' -----------')
+            source_x = nodes_attach_locs[edge[0]]['right'][0]
+            self.logger.debug('\tsource_x: '+str(source_x))
+            source_y = nodes_attach_locs[edge[0]]['right'][1]
+            self.logger.debug('\tsource_y: '+str(source_y))
+            target_x = nodes_attach_locs[edge[1]]['left'][0]
+            self.logger.debug('\ttarget_x: '+str(target_x))
+            target_y = nodes_attach_locs[edge[1]]['left'][1]
+            self.logger.debug('\ttarget_y: '+str(target_y))
+            line_x = max([source_x, target_x])-min([source_x, target_x])
+            self.logger.debug('\tline_x: '+str(line_x))
+            line_y = max([source_y, target_y])-min([source_y, target_y])
+            self.logger.debug('\tline_y: '+str(line_y))
+            background.append(draw.Line(source_x,
+                               source_y,
+                               target_x,
+                               target_y,
+                               stroke='red',
+                               stroke_width=2,
+                               fill='none',
+                               marker_end=arrowhead))  # Add an arrow to the end of a line
+        #background.append(draw.Rectangle(0, 0, x_len, y_len, fill='#FFFFFF'))
+        white_back = sg.fromstring(background.asSvg())
+        w_b = white_back.getroot()
+        w_b.moveto(0, y_len) #not sure why I have to move this
+        fig.append(w_b)
+        svg = fig.to_str().decode("utf-8")
+        open('test.svg', 'w').write(svg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
