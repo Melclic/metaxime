@@ -20,8 +20,12 @@ class rpDraw:
         self.arrowhead.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
         self.arrowhead_flat = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=0, id='flat_arrow')
         self.arrowhead_flat.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+        self.rev_arrowhead_flat = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=180, id='rev_flat_arrow')
+        self.rev_arrowhead_flat.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+        '''
         self.rev_arrowhead = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient=0, id='rev_flat_arrow')
         self.rev_arrowhead.append(draw.Lines(-0.1, -0.5, -0.1, 0.5, 0.9, 0, fill='black', close=True))
+        '''
         self.arrowhead_comp_x = 7.0
         self.arrowhead_comp_y = 7.0
 
@@ -683,24 +687,13 @@ class rpDraw:
         for node in list(set(list(G.nodes))):
             self.logger.debug('--------- '+str(node)+' ---------')
             node_obj = G.node.get(node)
+            self.logger.debug(node_obj)
             if node_obj['type']=='reaction':
                 reac_cofactors_id[node] = {'substrates': [], 'products': []}
             elif node_obj['type']=='species':
                 #above all else, if there are no InChI structuures then filter
                 if not 'inchi' in node_obj['brsynth']:
-                    self.logger.warning(str(node)+': has not InChI structure associated with it, adding as cofactor')
-                    toadd_nodes.remove(node)
-                    filtered_species.append(node)
-                    continue
-                if not filter_sink_species and node_obj[sink_species_group_id]:
-                    self.logger.debug('filter_sink_species: '+str(filter_sink_species))
-                    self.logger.debug('node_obj['+str(sink_species_group_id)+']: '+str(node_obj[sink_species_group_id]))
-                    self.logger.warning(str(node)+' is a sink species and will not be filtered')
-                    continue
-                if plot_only_central and not node_obj[central_species_group_id]:
-                    self.logger.debug('plot_only_central: '+str(plot_only_central))
-                    self.logger.debug('node_obj['+str(central_species_group_id)+']: '+str(node_obj[central_species_group_id]))
-                    self.logger.warning(str(node)+' is not a central species and is filtered')
+                    self.logger.warning(str(node)+': has no InChI structure associated with it, adding as cofactor')
                     toadd_nodes.remove(node)
                     filtered_species.append(node)
                     continue
@@ -713,6 +706,18 @@ class rpDraw:
                             toadd_nodes.remove(node)
                             filtered_species.append(node)
                             continue
+                if not filter_sink_species and node_obj[sink_species_group_id]:
+                    self.logger.debug('filter_sink_species: '+str(filter_sink_species))
+                    self.logger.debug('node_obj['+str(sink_species_group_id)+']: '+str(node_obj[sink_species_group_id]))
+                    self.logger.warning(str(node)+' is a sink species and will not be filtered')
+                    continue
+                if plot_only_central and not node_obj[central_species_group_id]:
+                    self.logger.debug('plot_only_central: '+str(plot_only_central))
+                    self.logger.debug('node_obj['+str(central_species_group_id)+']: '+str(node_obj[central_species_group_id]))
+                    self.logger.warning(str(node)+' is not a central species and is filtered')
+                    toadd_nodes.remove(node)
+                    filtered_species.append(node)
+                    continue
         ###### create the cofactor list based on the ones you are removing
         for edge in list(G.edges):
             node_obj_source = G.node.get(edge[0])
@@ -774,6 +779,8 @@ class rpDraw:
                 plotG.remove_node(node_id)
         #normalise the values to between 0 and 1
         #round the pos since we can have division errors
+        self.logger.debug('----------------------------')
+        self.logger.debug('pos: '+str(pos))
         all_x = []
         all_y = []
         for node in pos:
@@ -782,8 +789,16 @@ class rpDraw:
         for node in pos:
             #convert from up/down to right/left
             #reverse the x and y locations
-            pos[node] = (round((pos[node][1]-min(all_y))/(max(all_y)-min(all_y)), 5),
-                         round((pos[node][0]-min(all_x))/(max(all_x)-min(all_x)), 5))
+            try:
+                x = round((pos[node][1]-min(all_y))/(max(all_y)-min(all_y)), 5)
+            except ZeroDivisionError:
+                x = 0
+            try:
+                y = round((pos[node][0]-min(all_x))/(max(all_x)-min(all_x)), 5)
+            except ZeroDivisionError:
+                y = 0
+            pos[node] = (x, y)
+        self.logger.debug('pos: '+str(pos))
         return plotG, pos, reac_cofactors_id
 
 
@@ -823,56 +838,58 @@ class rpDraw:
 
 
 
-
-
-
-
-
+    ##
+    #
+    #
     def drawsvg(self, G,
                 target,
                 subplot_size=[200,200],
-                reac_size=[20,60],
+                #reac_size=[20,60],
                 reac_fill_color='#ddd',
                 reac_stroke_color='black',
                 reac_stroke_width=2,
                 arrow_stroke_color='black',
                 arrow_stroke_width=2,
+                font_family='sans-serif',
+                font_size=10,
+                font_color='black',
                 plot_only_central=True,
                 filter_cofactors=True,
-                filter_sink_species=True):
+                filter_sink_species=False):
+        reac_size = [subplot_size[0]/8, subplot_size[1]/2]
         #gather all the inchis and convert to svg
-        resG, pos, reac_cofactors_id = self._hierarchy_pos(G, 
-                                                           target, 
-                                                           plot_only_central=plot_only_central, 
+        resG, pos, reac_cofactors_id = self._hierarchy_pos(G,
+                                                           target,
+                                                           plot_only_central=plot_only_central,
                                                            filter_cofactors=filter_cofactors,
                                                            filter_sink_species=filter_sink_species)
+        self.logger.debug('+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=')
         ######## convert the id's to string name #####
         reac_cofactors_name = {}
         for reac_id in reac_cofactors_id:
-            if not reac_id in reac_cofactors_id:
-                reac_cofactors_name[node] = {'substrates': [], 'products': []}
-            for sub in reac_cofactors_id['substrates']:
+            if not reac_id in reac_cofactors_name:
+                reac_cofactors_name[reac_id] = {'substrates': [], 'products': []}
+            for sub in reac_cofactors_id[reac_id]['substrates']:
                 try:
                     name = G.node.get(sub)['name']
                 except KeyError:
                     name = sub
                 if name=='':
                     name = sub
-                reac_cofactors_name[node]['substrate'].append(name)
-            for pro in reac_cofactors_id['products']:
+                reac_cofactors_name[reac_id]['substrates'].append(name)
+            for pro in reac_cofactors_id[reac_id]['products']:
                 try:
                     name = G.node.get(pro)['name']
                 except KeyError:
                     name = pro
                 if name=='':
                     name = pro
-                reac_cofactors_name[node]['products'].append(name)
+                reac_cofactors_name[reac_id]['products'].append(name)
         ############# Calculate the size of the image ##### 
         id_inchi = {}
-        self.logger.debug('pos: '+str(pos))
+        self.logger.debug('positions: '+str(pos))
         for node in list(resG.nodes):
             if resG.node.get(node)['type']=='species':
-                self.logger.debug(resG.node.get(node))
                 id_inchi[node] = resG.node.get(node)['brsynth']['inchi']
         id_svg = self.drawChemicalList(id_inchi, subplot_size)
         self.logger.debug('============================')
@@ -881,37 +898,98 @@ class rpDraw:
             if not pos[n][0] in a:
                 a[pos[n][0]] = []
             a[pos[n][0]].append(pos[n][1])
+        self.logger.debug('a: '+str(a))
         largest_y = 0
         for i in a:
             if len(a[i])>largest_y:
                 largest_y = len(a[i])
-        u_x_layers = list(set([pos[i][0] for i in pos]))
-        u_y_layers = list(set([pos[i][1] for i in pos]))
+        if largest_y==0:
+            largest_y = 1
+        self.logger.debug('largest_y: '+str(largest_y))
+        '''
+        a = {}
+        for n in pos:
+            if not pos[n][1] in a:
+                a[pos[n][1]] = []
+            a[pos[n][1]].append(pos[n][0])
+        self.logger.debug('a: '+str(a))
+        largest_x = 0
+        for i in a:
+            if len(a[i])>largest_x:
+                largest_x = len(a[i])
+        if largest_x==0:
+            largest_x = 1
+        '''
+        u_x_layers = sorted(list(set([pos[i][0] for i in pos])))
+        u_y_layers = sorted(list(set([pos[i][1] for i in pos])))
+
+
+
+        '''
+        layer_x_conv = {}
+        count = 1
+        for i in u_x_layers:
+            if count==1:
+                layer_x_conv[i] = 0.0
+            else:
+                layer_x_conv[i] = count/len(u_x_layers)
+            count += 1
+        layer_y_conv = {}
+        count = 1
+        for i in u_y_layers:
+            layer_y_conv[i] = count
+            count += 1
+        '''
         self.logger.debug('u_x_layers: '+str(u_x_layers))
         self.logger.debug('u_y_layers: '+str(u_y_layers))
+        #background_len_x = subplot_size[0]*largest_x
         background_len_x = subplot_size[0]*len(u_x_layers)
+        #background_len_y = subplot_size[1]*len(u_y_layers)
         background_len_y = subplot_size[1]*largest_y
         self.logger.debug('background_len_x: '+str(background_len_x))
         self.logger.debug('background_len_y: '+str(background_len_y))
         mod_pos = {}
+        #adjust the x axis lications for the boxes to be close to each other
+        '''
+        u_x_layers.remove(1.0)
+        adjust_x = min(u_x_layers)
+        '''
         for node in pos:
-            mod_pos[node] = (pos[node][0]*background_len_x*(200/225), #not sure why I have to correct that
+            mod_pos[node] = (pos[node][0]*(subplot_size[0]*(len(u_x_layers)-1)), #not sure why I have to correct that
                              (pos[node][1]*background_len_y))
+            '''
+            mod_pos[node] = (pos[node][0]*background_len_x*adjust_x, #not sure why I have to correct that
+                             (pos[node][1]*background_len_y))
+            '''
+            '''
+            mod_pos[node] = (pos[node][0]/(1/len(u_x_layers))*background_len_x, #not sure why I have to correct that
+                             (pos[node][1]/(1/len(u_y_layers))*background_len_y))
+            '''
+            '''
+            mod_pos[node] = (pos[node][0]*background_len_x*adjust_x, #not sure why I have to correct that
+                             (pos[node][1]*background_len_y))
+            '''
         self.logger.debug('============================')
         self.logger.debug('mod_pos: '+str(mod_pos))
         ########### draw the background #############
-        len_fig_x = (background_len_x+subplot_size[0])*(200/225) #not sure why I have to correct that
-        len_fig_y = background_len_y+subplot_size[1]
+        #len_fig_x = (background_len_x+subplot_size[0])*adjust_x #not sure why I have to correct that
+        #len_fig_x = background_len_x+subplot_size[0]
+        len_fig_x = background_len_x
+        #len_fig_y = background_len_y+subplot_size[1]
+        len_fig_y = background_len_y
         self.logger.debug('len_fig_x: '+str(len_fig_x))
         self.logger.debug('len_fig_y: '+str(len_fig_y))
         fig = sg.SVGFigure(str(len_fig_x),
                            str(len_fig_y))
-        background = draw.Drawing(len_fig_x, len_fig_y, origin=(0,0))
         background_white = draw.Drawing(len_fig_x, len_fig_y, origin=(0,0))
+        '''
         background_white.append(draw.Rectangle(0, 0, len_fig_x, len_fig_y, fill='#FFFFFF'))
+        '''
+        background_white.append(draw.Rectangle(0, 0, len_fig_x, len_fig_y, fill='#e0d7d7'))
         a = sg.fromstring(background_white.asSvg())
         b_w = a.getroot()
-        b_w.moveto(0, background_len_y+subplot_size[1])#WARNING: not sure why I have to + subpot
+        #b_w.moveto(0, background_len_y+subplot_size[1])#WARNING: not sure why I have to + subpot
+        b_w.moveto(0, background_len_y)#WARNING: not sure why I have to + subpot
         fig.append(b_w)
         nodes_attach_locs = {}
         for node_id in mod_pos:
@@ -921,72 +999,284 @@ class rpDraw:
                 self.logger.debug('\tNode pos: '+str(mod_pos[node_id]))
                 self.logger.debug('\tx: '+str(mod_pos[node_id][0]))
                 self.logger.debug('\ty: '+str(mod_pos[node_id][1]))
+                move_x = mod_pos[node_id][0]
+                #move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]/2
+                # because of the nature of the x y locations, need to reverse them here
+                if mod_pos[node_id][1]==0.0:
+                    y_coord = mod_pos[node_id][1]+subplot_size[1]/2
+                    move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]
+                    #move_y = len_fig_y-mod_pos[node_id][1]
+                elif mod_pos[node_id][1]==len_fig_y:
+                    y_coord = mod_pos[node_id][1]-subplot_size[1]/2
+                    move_y = len_fig_y-mod_pos[node_id][1]
+                    #move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]
+                else:
+                    y_coord = mod_pos[node_id][1]
+                    move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]/2
+                self.logger.debug('\tmove_x: '+str(move_x))
+                self.logger.debug('\tmove_y: '+str(move_y))
                 f = sg.fromstring(id_svg[node_id])
                 p = f.getroot()
+                #Rememeber that you are moving the object on the x and y axis while the coordinates are coordinates so its reversed
+                '''
                 p.moveto(mod_pos[node_id][0],
                          mod_pos[node_id][1])
+                '''
+                p.moveto(move_x, move_y)
                 fig.append(p)
-                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0], 
-                                                       mod_pos[node_id][1]-subplot_size[1]/2), 
+                #if mod_pos[node_id][1]==0:
+                '''
+                if mod_pos[node_id][1]-subplot_size[1]/2==-100:
+                    newy = 100
+                else:
+                    newy = mod_pos[node_id][1]-subplot_size[1]/2
+                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0],
+                                                       newy),
+                                              'right': (mod_pos[node_id][0]+subplot_size[0],
+                                                        newy)}
+                '''
+                '''
+                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0],
+                                                       mod_pos[node_id][1]-subplot_size[1]/2),
                                               'right': (mod_pos[node_id][0]+subplot_size[0],
                                                         mod_pos[node_id][1]-subplot_size[1]/2)}
+                '''
+                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0], y_coord),
+                                              'right': (mod_pos[node_id][0]+subplot_size[0], y_coord)}
+                '''
+                nodes_attach_locs[node_id] = {'left': (move_x,
+                                                       move_y+subplot_size[1]-subplot_size[1]/2),
+                                              'right': (move_x+subplot_size[0],
+                                                        move_y+subplot_size[1]-subplot_size[1]/2)}
+                '''
             elif node['type']=='reaction':
                 d = draw.Drawing(subplot_size[0], subplot_size[1], origin=(0,0))
                 d.append(draw.Rectangle(0, 0, subplot_size[0], subplot_size[1], fill='#FFFFFF'))
-                edge_x = subplot_size[0]/2-reac_size[1]/2                
+                edge_x = subplot_size[0]/2-reac_size[1]/2
                 edge_y = subplot_size[1]/2-reac_size[0]/2
                 self.logger.debug('\tedge_x: '+str(edge_x))
                 self.logger.debug('\tedge_y: '+str(edge_y))
                 self.logger.debug('\tx: '+str(mod_pos[node_id][0]))
                 self.logger.debug('\ty: '+str(mod_pos[node_id][1]+subplot_size[1]))
-                d.append(draw.Rectangle(edge_x,
-                                    edge_y,
-                                    reac_size[1],
-                                    reac_size[0],
-                                    fill=reac_fill_color,
-                                    stroke_width=reac_stroke_width,
-                                    stroke=reac_stroke_color))
+                '''
+                d.append(draw.Line(subplot_size[0]/2, (subplot_size[1]/2)-reac_size[1]/3,
+                                   subplot_size[0]/2, (subplot_size[1]/2)+reac_size[1]/3,
+                                   stroke=arrow_stroke_color, stroke_width=arrow_stroke_width, fill='none', marker_end=self.arrowhead))
+                '''
+                if reac_cofactors_name[node_id]['substrates']:
+                    d.append(draw.Line(subplot_size[0]/2, edge_y-reac_size[0],
+                                       subplot_size[0]/2, edge_y-self.arrowhead_comp_x,
+                                       stroke=arrow_stroke_color, stroke_width=arrow_stroke_width, fill='none', marker_end=self.arrowhead))
+                if reac_cofactors_name[node_id]['products']:
+                    d.append(draw.Line(subplot_size[0]/2, edge_y+reac_size[0],
+                                       subplot_size[0]/2, (subplot_size[1]/2)+reac_size[1]/3,
+                                       stroke=arrow_stroke_color, stroke_width=arrow_stroke_width, fill='none', marker_end=self.arrowhead))
+                #y_shift = (subplot_size[1]/2)-reac_size[1]
+                y_shift = 0.0
+                for sub in reac_cofactors_name[node_id]['substrates']:
+                    self.logger.debug(sub)
+                    d.append(draw.Text(sub, font_size,
+                                       subplot_size[0]/2, ((subplot_size[1]/2)-reac_size[1]/3)-y_shift-font_size,
+                                       font_family=font_family, center=True, fill=font_color))
+                    y_shift += font_size
+                #y_shift = (subplot_size[1]/2)+reac_size[1]
+                y_shift = 0.0
+                for pro in reac_cofactors_name[node_id]['products']:
+                    self.logger.debug(pro)
+                    d.append(draw.Text(pro, font_size,
+                                       subplot_size[0]/2, ((subplot_size[1]/2)+reac_size[1]/3)+y_shift+font_size+self.arrowhead_comp_x,
+                                       font_family=font_family, center=True, fill=font_color))
+                    y_shift += font_size
+                d.append(draw.Rectangle(edge_x, edge_y,
+                                        reac_size[1], reac_size[0],
+                                        fill=reac_fill_color,
+                                        stroke_width=reac_stroke_width,
+                                        stroke=reac_stroke_color))
                 a = sg.fromstring(d.asSvg())
                 a_r = a.getroot()
-                a_r.moveto(mod_pos[node_id][0], 
+                move_x = mod_pos[node_id][0]
+                #move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]/2
+                if mod_pos[node_id][1]==0.0:
+                    move_y = len_fig_y-mod_pos[node_id][1]
+                elif mod_pos[node_id][1]==len_fig_y:
+                    move_y = len_fig_y-mod_pos[node_id][1]+subplot_size[1]
+                else:
+                    move_y = len_fig_y-mod_pos[node_id][1]-subplot_size[1]/2+subplot_size[1]
+                self.logger.debug('\tmove_x: '+str(move_x))
+                self.logger.debug('\tmove_y: '+str(move_y))
+                a_r.moveto(move_x, move_y)
+                '''
+                a_r.moveto(mod_pos[node_id][0],
                            mod_pos[node_id][1]+subplot_size[1]) #WARNING: not sure why I have to + subpot
+                '''
+                '''
+                a_r.moveto(mod_pos[node_id][0],
+                           mod_pos[node_id][1]) #WARNING: not sure why I have to + subpot
+                '''
                 fig.append(a_r)
-                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0]+edge_x, 
-                                                       mod_pos[node_id][1]-subplot_size[1]/2), 
+                #if mod_pos[node_id][1]==0:
+                '''
+                if mod_pos[node_id][1]-subplot_size[1]/2==-100:
+                    newy = 100
+                else:
+                    newy = mod_pos[node_id][1]-subplot_size[1]/2
+                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0]+edge_x,
+                                                       newy),
+                                              'right': (mod_pos[node_id][0]+subplot_size[0]-edge_x+reac_stroke_width/2,
+                                                        newy)}
+                '''
+                '''
+                nodes_attach_locs[node_id] = {'left': (mod_pos[node_id][0]+edge_x,
+                                                       mod_pos[node_id][1]-subplot_size[1]/2),
                                               'right': (mod_pos[node_id][0]+subplot_size[0]-edge_x+reac_stroke_width/2,
                                                         mod_pos[node_id][1]-subplot_size[1]/2)}
+                '''
+                '''
+                nodes_attach_locs[node_id] = {'left': (move_x+edge_x,
+                                                       move_y-subplot_size[1]/2),
+                                              'right': (move_x+subplot_size[0]-edge_x+reac_stroke_width/2,
+                                                        move_y-subplot_size[1]/2)}
+                '''
+                nodes_attach_locs[node_id] = {'left': (move_x+edge_x,
+                                                       move_y-subplot_size[1]/2),
+                                              'right': (move_x+subplot_size[0]-edge_x+reac_stroke_width/2,
+                                                        move_y-subplot_size[1]/2)}
             self.logger.debug('\t-------------------------------')
+        self.logger.debug('nodes_attach_locs: '+str(nodes_attach_locs))
+        self.logger.debug(list(resG.edges))
+        arrow_box = draw.Drawing(len_fig_x, len_fig_y, origin=(0,0))
         for edge in list(resG.edges):
             self.logger.debug('\t---------- edge: '+str(edge)+' -----------')
-            source_x = nodes_attach_locs[edge[0]]['right'][0]
-            self.logger.debug('\tsource_x: '+str(source_x))
-            source_y = nodes_attach_locs[edge[0]]['right'][1]
-            self.logger.debug('\tsource_y: '+str(source_y))
-            target_x = nodes_attach_locs[edge[1]]['left'][0]
-            self.logger.debug('\ttarget_x: '+str(target_x))
-            target_y = nodes_attach_locs[edge[1]]['left'][1]
-            self.logger.debug('\ttarget_y: '+str(target_y))
-            line_x = max([source_x, target_x])-min([source_x, target_x])
-            self.logger.debug('\tline_x: '+str(line_x))
-            line_y = max([source_y, target_y])-min([source_y, target_y])
-            self.logger.debug('\tline_y: '+str(line_y))
-            p = draw.Path(stroke=arrow_stroke_color,
-                          stroke_width=arrow_stroke_width,
-                          fill='none',
-                          marker_end=arrowhead_flat)
-            p.M(source_x, source_y).C(subplot_size[0]/2-arrowhead_comp_x+source_x,
-                                      source_y,
-                                      source_x,
-                                      target_y,
-                                      target_x-arrowhead_comp_x,
-                                      target_y)
-            background.append(p)
-        back = sg.fromstring(background.asSvg())
-        b = back.getroot()
-        b.moveto(0, background_len_y) #not sure why I have to move this
-        fig.append(b)
+            node_obj_source = G.node.get(edge[0])
+            node_obj_target = G.node.get(edge[1])
+            #if node_obj_source['type']=='reaction' and node_obj_target['type']=='species':
+            self.logger.debug('source_x: '+str(pos[edge[0]][0]))
+            self.logger.debug('target_x: '+str(pos[edge[1]][0]))
+            if pos[edge[0]][0]>pos[edge[1]][0]:
+                source_x = nodes_attach_locs[edge[0]]['left'][0]
+                source_y = nodes_attach_locs[edge[0]]['left'][1]
+                #source_y -= len_fig_y-subplot_size[1]/2
+                target_x = nodes_attach_locs[edge[1]]['right'][0]
+                target_y = nodes_attach_locs[edge[1]]['right'][1]
+                #target_y -= len_fig_y-subplot_size[1]/2
+                self.logger.debug('\tsource_x: '+str(source_x))
+                self.logger.debug('\tsource_y: '+str(source_y))
+                self.logger.debug('\ttarget_x: '+str(target_x))
+                self.logger.debug('\ttarget_y: '+str(target_y))
+                '''
+                len_x = source_x-target_x
+                len_y = source_y-target_y
+                self.logger.debug('\tlen_x: '+str(len_x))
+                self.logger.debug('\tlen_y: '+str(len_y))
+                d = draw.Drawing(len_x+10, len_y+10, origin=(0,0))
+                '''
+                '''
+                if source_y==-100.0:
+                    source_y = 100.0
+                if target_y==-100.0:
+                    target_y = 100.0
+                if source_y==400.0:
+                    source_y = 100.0
+                if target_y==400.0:
+                    target_y = 100.0
+                '''
+                self.logger.debug('\tsource_x: '+str(source_x))
+                self.logger.debug('\tsource_y: '+str(source_y))
+                self.logger.debug('\ttarget_x: '+str(target_x))
+                self.logger.debug('\ttarget_y: '+str(target_y))
+                p = draw.Path(stroke=arrow_stroke_color,
+                              stroke_width=arrow_stroke_width,
+                              fill='none',
+                              marker_end=self.rev_arrowhead_flat)
+                '''
+                p.M(source_x, source_y).C(target_x+self.arrowhead_comp_x-1.5,
+                                          source_y,
+                                          source_x,
+                                          target_y,
+                                          target_x+self.arrowhead_comp_x-1.5,
+                                          target_y)
+                '''
+                '''
+                p.M(0.0, 0.0).L((target_x-source_x)/2, 0.0).L((target_x-source_x)/2, len_y).L(len_x, len_y)
+                d.append(p)
+                a = sg.fromstring(d.asSvg())
+                a_r = a.getroot()
+                a_r.moveto(source_x, source_y)
+                fig.append(a_r)
+                '''
+                self.logger.debug((source_x, source_y))
+                self.logger.debug((source_x+(target_x-source_x)/2, source_y))
+                self.logger.debug((source_x+(target_x-source_x)/2, target_y))
+                self.logger.debug((target_x-self.arrowhead_comp_x, target_y))
+                p.M(source_x, source_y).L(source_x+(target_x-source_x)/2, source_y).L(source_x+(target_x-source_x)/2, target_y).L(target_x+self.arrowhead_comp_x, target_y)
+                #background.append(p)
+                arrow_box.append(p)
+            #elif node_obj_source['type']=='species' and node_obj_target['type']=='reaction':
+            elif pos[edge[0]][0]<pos[edge[1]][0]:
+                source_x = nodes_attach_locs[edge[0]]['right'][0]
+                source_y = nodes_attach_locs[edge[0]]['right'][1]
+                target_x = nodes_attach_locs[edge[1]]['left'][0]
+                target_y = nodes_attach_locs[edge[1]]['left'][1]
+                self.logger.debug('\tsource_x: '+str(source_x))
+                self.logger.debug('\tsource_y: '+str(source_y))
+                self.logger.debug('\ttarget_x: '+str(target_x))
+                self.logger.debug('\ttarget_y: '+str(target_y))
+                '''
+                len_x = source_x-target_x
+                len_y = source_y-target_y
+                self.logger.debug('\tlen_x: '+str(len_x))
+                self.logger.debug('\tlen_y: '+str(len_y))
+                d = draw.Drawing(len_x+10, len_y+10, origin=(0,0))
+                '''
+                '''
+                if source_y==-100.0:
+                    source_y = 100.0
+                if target_y==-100.0:
+                    target_y = 100.0
+                if source_y==300.0:
+                    source_y = 100.0
+                if target_y==300.0:
+                    target_y = 100.0
+                self.logger.debug('\tsource_x: '+str(source_x))
+                self.logger.debug('\tsource_y: '+str(source_y))
+                self.logger.debug('\ttarget_x: '+str(target_x))
+                self.logger.debug('\ttarget_y: '+str(target_y))
+                '''
+                p = draw.Path(stroke=arrow_stroke_color,
+                              stroke_width=arrow_stroke_width,
+                              fill='none',
+                              marker_end=self.arrowhead_flat)
+                '''
+                p.M(source_x, source_y).C(subplot_size[0]/2-self.arrowhead_comp_x+source_x,
+                                          source_y,
+                                          source_x,
+                                          target_y,
+                                          target_x-self.arrowhead_comp_x,
+                                          target_y)
+                '''
+                '''
+                p.M(0.0, 0.0).L((target_x-source_x)/2, 0.0).L((target_x-source_x)/2, len_y).L(len_x, len_y)
+                d.append(p)
+                a = sg.fromstring(d.asSvg())
+                a_r = a.getroot()
+                a_r.moveto(source_x, source_y)
+                fig.append(a_r)
+                '''
+                self.logger.debug((source_x, source_y))
+                self.logger.debug((source_x+(target_x-source_x)/2, source_y))
+                self.logger.debug((source_x+(target_x-source_x)/2, target_y))
+                self.logger.debug((target_x-self.arrowhead_comp_x, target_y))
+                p.M(source_x, source_y).L(source_x+(target_x-source_x)/2, source_y).L(source_x+(target_x-source_x)/2, target_y).L(target_x-self.arrowhead_comp_x, target_y)
+                #background.append(p)
+                arrow_box.append(p)
+            else:
+                self.logger.error('Cannot connect same y-axi')
+        a = sg.fromstring(arrow_box.asSvg())
+        a_b = a.getroot()
+        a_b.moveto(0, background_len_y)#WARNING: not sure why I have to + subpot
+        fig.append(a_b)
         svg = fig.to_str().decode("utf-8")
-        return svg
+        return svg, resG, pos, reac_cofactors_name
 
 
 
@@ -997,7 +1287,7 @@ class rpDraw:
     ########################################## Public Function ###########################################
     ######################################################################################################
 
-    def drawsvg(self,
+    def drawsvg1(self,
                 G,
                 path=None,
                 plot_only_central=True,
