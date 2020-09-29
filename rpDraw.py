@@ -195,7 +195,7 @@ class rpDraw:
 
 
     ######################################################################################################
-    ########################################## Public Function ###########################################
+    ########################################## Public Functions ##########################################
     ######################################################################################################
 
 
@@ -454,48 +454,154 @@ class rpDraw:
         self.logger.debug('nodes_attach_locs: '+str(nodes_attach_locs))
         self.logger.debug(list(resG.edges))
         arrow_box = draw.Drawing(len_fig_x, len_fig_y, origin=(0,0))
+        #depending on the directions of the node, switch the source and the target
+        #and calculate the center pocitions of the arrows
+        edge_pos = {}
+        strict_loc = {}
         for edge in list(resG.edges):
-            self.logger.debug('\t---------- edge: '+str(edge)+' -----------')
-            node_obj_source = rpgraph.G.node.get(edge[0])
-            node_obj_target = rpgraph.G.node.get(edge[1])
-            self.logger.debug('source_x: '+str(pos[edge[0]][0]))
-            self.logger.debug('target_x: '+str(pos[edge[1]][0]))
+            #left to right
             if pos[edge[0]][0]>pos[edge[1]][0]:
                 source_x = nodes_attach_locs[edge[0]]['left'][0]
                 source_y = nodes_attach_locs[edge[0]]['left'][1]
                 target_x = nodes_attach_locs[edge[1]]['right'][0]
                 target_y = nodes_attach_locs[edge[1]]['right'][1]
-                self.logger.debug('\tsource_x: '+str(source_x))
-                self.logger.debug('\tsource_y: '+str(source_y))
-                self.logger.debug('\ttarget_x: '+str(target_x))
-                self.logger.debug('\ttarget_y: '+str(target_y))
-                self.logger.debug('\tsource_x: '+str(source_x))
-                self.logger.debug('\tsource_y: '+str(source_y))
-                self.logger.debug('\ttarget_x: '+str(target_x))
-                self.logger.debug('\ttarget_y: '+str(target_y))
-                p = draw.Path(stroke=arrow_stroke_color,
-                              stroke_width=arrow_stroke_width,
-                              fill='none',
-                              marker_end=self.rev_arrowhead_flat)
-                p.M(source_x, source_y).L(source_x+(target_x-source_x)/2, source_y).L(source_x+(target_x-source_x)/2, target_y).L(target_x+self.arrowhead_comp_x, target_y)
-                arrow_box.append(p)
+                edge_pos[edge] = {'source': (round(source_x, 2), round(source_y, 2)),
+                                  'L1': (round(source_x+(target_x-source_x)/2, 2), round(source_y, 2)),
+                                  'L2': (round(source_x+(target_x-source_x)/2, 2), round(target_y, 2)),
+                                  'target': (round(target_x+self.arrowhead_comp_x, 2), round(target_y, 2)),
+                                  'arrow_direction': self.rev_arrowhead_flat}
+                strict_loc[edge] = {'source': (round(source_x, 2), round(source_y, 2)),
+                                  'L1': (round(source_x+(target_x-source_x)/2, 2), round(source_y, 2)),
+                                  'L2': (round(source_x+(target_x-source_x)/2, 2), round(target_y, 2)),
+                                  'target': (round(target_x, 2), round(target_y, 2)),
+                                  'arrow_direction': self.rev_arrowhead_flat}
+                '''
+                edge_pos[edge] = {'source': [source_x, source_y],
+                                  'L1': [source_x+(target_x-source_x)/2+self.arrowhead_comp_y/2, source_y],
+                                  'L2': [source_x+(target_x-source_x)/2+self.arrowhead_comp_y/2, target_y],
+                                  'target': [target_x+self.arrowhead_comp_x, target_y],
+                                  'arrow_direction': self.rev_arrowhead_flat}
+                '''
+            #right to left
             elif pos[edge[0]][0]<pos[edge[1]][0]:
                 source_x = nodes_attach_locs[edge[0]]['right'][0]
                 source_y = nodes_attach_locs[edge[0]]['right'][1]
                 target_x = nodes_attach_locs[edge[1]]['left'][0]
                 target_y = nodes_attach_locs[edge[1]]['left'][1]
-                self.logger.debug('\tsource_x: '+str(source_x))
-                self.logger.debug('\tsource_y: '+str(source_y))
-                self.logger.debug('\ttarget_x: '+str(target_x))
-                self.logger.debug('\ttarget_y: '+str(target_y))
-                p = draw.Path(stroke=arrow_stroke_color,
-                              stroke_width=arrow_stroke_width,
-                              fill='none',
-                              marker_end=self.arrowhead_flat)
-                p.M(source_x, source_y).L(source_x+(target_x-source_x)/2, source_y).L(source_x+(target_x-source_x)/2, target_y).L(target_x-self.arrowhead_comp_x, target_y)
-                arrow_box.append(p)
+                edge_pos[edge] = {'source': (round(source_x, 2), round(source_y, 2)),
+                                  'L1': (round(source_x+(target_x-source_x)/2, 2), round(source_y, 2)),
+                                  'L2': (round(source_x+(target_x-source_x)/2, 2), round(target_y, 2)),
+                                  'target': (round(target_x-self.arrowhead_comp_x, 2), round(target_y, 2)),
+                                  'arrow_direction': self.arrowhead_flat}
+                strict_loc[edge] = {'source': (round(source_x, 2), round(source_y, 2)),
+                                  'L1': (round(source_x+(target_x-source_x)/2, 2), round(source_y, 2)),
+                                  'L2': (round(source_x+(target_x-source_x)/2, 2), round(target_y, 2)),
+                                  'target': (round(target_x, 2), round(target_y, 2)),
+                                  'arrow_direction': self.arrowhead_flat}
+                '''
+                edge_pos[edge] = {'source': [source_x, source_y],
+                                  'L1': [source_x+(target_x-source_x)/2-self.arrowhead_comp_y/2, source_y],
+                                  'L2': [source_x+(target_x-source_x)/2-self.arrowhead_comp_y/2, target_y],
+                                  'target': [target_x-self.arrowhead_comp_x, target_y],
+                                  'arrow_direction': self.arrowhead_flat}
+                '''
             else:
                 self.logger.error('Cannot connect same y-axi')
+        #calculate the center positions of the arrows
+        self.logger.debug('edge_pos: '+str(edge_pos))
+        #find the edges that have the same source/target locations - if more than that do not go in the same direction
+        # then create a input/output location and update the positions
+        #NOTE: have to make strings from the edge locations to be able to be
+        overlaps = {'node': {}, 'L': {}}
+        for edge in strict_loc:
+            source_id = str(strict_loc[edge]['source'][0])+'-'+str(strict_loc[edge]['source'][1])
+            target_id = str(strict_loc[edge]['target'][0])+'-'+str(strict_loc[edge]['target'][1])
+            l1_id = str(strict_loc[edge]['L1'][0])+'-'+str(strict_loc[edge]['L1'][1])
+            l2_id = str(strict_loc[edge]['L2'][0])+'-'+str(strict_loc[edge]['L1'][1])
+            if not source_id in overlaps['node']:
+                overlaps['node'][source_id] = [strict_loc[edge]['arrow_direction']]
+            else:
+                overlaps['node'][source_id].append(strict_loc[edge]['arrow_direction'])
+            if not target_id in overlaps['node']:
+                overlaps['node'][target_id] = [strict_loc[edge]['arrow_direction']]
+            else:
+                overlaps['node'][target_id].append(strict_loc[edge]['arrow_direction'])
+            if not l1_id in overlaps['L']:
+                overlaps['L'][l1_id] = [strict_loc[edge]['arrow_direction']]
+            else:
+                overlaps['L'][l1_id].append(strict_loc[edge]['arrow_direction'])
+            if not l2_id in overlaps['L']:
+                overlaps['L'][l2_id] = [strict_loc[edge]['arrow_direction']]
+            else:
+                overlaps['L'][l2_id].append(strict_loc[edge]['arrow_direction'])
+        #adjust the perpendecular arrows if there is overlap with reversed directions
+        self.logger.debug('overlaps: '+str(overlaps))
+        self.logger.debug('overlaps[node]: '+str(overlaps['node'].keys()))
+        for pos_id in overlaps['node']:
+            #if the direction of the node locations are not the same then you need seperate the input/output
+            self.logger.debug('\tpos_id: '+str(pos_id))
+            self.logger.debug('\tarrows: '+str(overlaps['node'][pos_id]))
+            if len(overlaps['node'][pos_id])>1:
+                if not overlaps['node'][pos_id].count(self.arrowhead_flat)==len(overlaps['node'][pos_id]) or overlaps['node'][pos_id].count(self.rev_arrowhead_flat)==len(overlaps['node'][pos_id]):
+                    for edge in strict_loc:
+                        source_id = str(strict_loc[edge]['source'][0])+'-'+str(strict_loc[edge]['source'][1])
+                        target_id = str(strict_loc[edge]['target'][0])+'-'+str(strict_loc[edge]['target'][1])
+                        if source_id==pos_id and strict_loc[edge]['arrow_direction']==self.arrowhead_flat:
+                            edge_pos[edge]['source'] = (edge_pos[edge]['source'][0], edge_pos[edge]['source'][1]-self.arrowhead_comp_y/2)
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1]-self.arrowhead_comp_y/2)
+                        elif source_id==pos_id and strict_loc[edge]['arrow_direction']==self.rev_arrowhead_flat:
+                            edge_pos[edge]['source'] = (edge_pos[edge]['source'][0], edge_pos[edge]['source'][1]+self.arrowhead_comp_y/2)
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1]+self.arrowhead_comp_y/2)
+                        if target_id==pos_id and strict_loc[edge]['arrow_direction']==self.arrowhead_flat:
+                            edge_pos[edge]['target'] = (edge_pos[edge]['target'][0], edge_pos[edge]['target'][1]-self.arrowhead_comp_y/2)
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0], edge_pos[edge]['L2'][1]-self.arrowhead_comp_y/2)
+                        elif target_id==pos_id and strict_loc[edge]['arrow_direction']==self.rev_arrowhead_flat:
+                            edge_pos[edge]['target'] = (edge_pos[edge]['target'][0], edge_pos[edge]['target'][1]+self.arrowhead_comp_y/2)
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0], edge_pos[edge]['L2'][1]+self.arrowhead_comp_y/2)
+        #do the same for the the perpendicular
+        for pos_id in overlaps['L']:
+            if len(overlaps['L'][pos_id])>1:
+                if not overlaps['L'][pos_id].count(self.arrowhead_flat)==len(overlaps['L'][pos_id]) or overlaps['L'][pos_id].count(self.rev_arrowhead_flat)==len(overlaps['L'][pos_id]):
+                    #TODO: need to detect if there are any criss-cross of perpendecular arrows at their target of source to seperate in either direction
+                    for edge in strict_loc:
+                        l1_id = str(strict_loc[edge]['L1'][0])+'-'+str(strict_loc[edge]['L1'][1])
+                        l2_id = str(strict_loc[edge]['L2'][0])+'-'+str(strict_loc[edge]['L1'][1])
+                        if l1_id==pos_id and strict_loc[edge]['arrow_direction']==self.arrowhead_flat:
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                        elif l1_id==pos_id and strict_loc[edge]['arrow_direction']==self.rev_arrowhead_flat:
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                        if l2_id==pos_id and strict_loc[edge]['arrow_direction']==self.arrowhead_flat:
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                        elif l2_id==pos_id and strict_loc[edge]['arrow_direction']==self.rev_arrowhead_flat:
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]+self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+                            '''
+                            edge_pos[edge]['L1'] = (edge_pos[edge]['L1'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L1'][1])
+                            edge_pos[edge]['L2'] = (edge_pos[edge]['L2'][0]-self.arrowhead_comp_y/2, edge_pos[edge]['L2'][1])
+        #finally draw them
+        for edge in edge_pos:
+            p = draw.Path(stroke=arrow_stroke_color,
+                          stroke_width=arrow_stroke_width,
+                          fill='none',
+                          marker_end=edge_pos[edge]['arrow_direction'])
+            p.M(edge_pos[edge]['source'][0], edge_pos[edge]['source'][1]).L(edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1]).L(edge_pos[edge]['L2'][0], edge_pos[edge]['L2'][1]).L(edge_pos[edge]['target'][0], edge_pos[edge]['target'][1])
+            arrow_box.append(p)
         a = sg.fromstring(arrow_box.asSvg())
         a_b = a.getroot()
         a_b.moveto(0, background_len_y)#WARNING: not sure why I have to + subpot
