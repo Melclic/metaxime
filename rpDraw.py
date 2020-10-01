@@ -40,6 +40,7 @@ class rpDraw:
     # This method iterates from the TARGET and organises the heterologous in a tree like manner. The 
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
     #BUG: /Users/melchior/Downloads/Galaxy111/rp_50_28.sbml.xml not having the  ink entry added
+    #TODO: move this to rpGraph
     def _hierarchy_pos(self,
                        G,
                        root,

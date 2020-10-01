@@ -60,6 +60,7 @@ class rpGraph:
         #ged = gm.GraphEditDistance(1,1,1,1)
         result = ged.compare([i[0] for i in source_compare_graph]+[i[0] for i in target_compare_graph], None)
         self.logger.debug('result: \n'+str([list(i) for i in result]))
+        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
         weights = np.array([sum(i[1])/7.0 for i in source_compare_graph]+[sum(i[1])/7.0 for i in target_compare_graph])
         weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
         self.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
@@ -143,14 +144,14 @@ class rpGraph:
                 for reac in reactions:
                     #brsynth = self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation())
                     miriam = self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation())
+                    self.logger.debug(str(reac)+' MIRIAM: '+str(miriam))
                     reacid_newid[reac.getId()] = []
                     if 'ec-code' in miriam:
                         #WARNING: need to deal with multiple ec numbers....
                         for ec_n in miriam['ec-code']:
                             reacid_newid[reac.getId()].append('.'.join(i for i in ec_n.split('.')[:ec_lay] if not i=='-')) #remove the layers that have '-' characters
                     else:
-                        self.logger.warning('There is no EC number associated with reaction: '+str(reac.getId()))
-                        self.logger.warning('Setting the id as node name')
+                        self.logger.warning('There is no EC number associated with reaction: '+str(reac.getId())+'. Setting the is as the node name')
                         reacid_newid[reac.getId()] = [reac.getId()] #consider random assignement of reaction id's since these may skew the comparison results
                 reac_comb.append(reacid_newid)
                 reac_comb_info.append(ec_lay)
@@ -391,6 +392,8 @@ class rpGraph:
 
     #@staticmethod
     def similarityScore(self, source_rpsbml, target_rpsbml, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+    """Heavy duty method for pathway comparison using graphs most accurate but also the heaviest
+    """
         source_rpsbml = rpGraph.rpGraph(source_rpsbml)
         target_rpsbml = rpGraph.rpGraph(target_rpsbml)
         source_graphs = source_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
