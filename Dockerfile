@@ -15,6 +15,7 @@ RUN apt-get --quiet update && \
     conda update -n base -c defaults conda && \
     conda install -y -c SBMLTeam python-libsbml
 
+RUN conda install -c anaconda cython
 RUN pip install networkx==2.3 numpy pandas
 
 RUN git clone https://gitlab.irstea.fr/jacques.fize/GMatch4py.git
