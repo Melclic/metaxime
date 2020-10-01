@@ -238,7 +238,7 @@ class rpDraw:
 
 
     def _iscross(self, edge1, edge2):
-        """Small function to determine if the two arrows criss-cross
+        """Determine if the line
         """
         #Starting points or end points are the same
         if edge1['source'][0]==edge2['source'][0] and edge1['source'][1]==edge2['source'][1]:
@@ -252,6 +252,24 @@ class rpDraw:
             return True
         if edge1['L2'][1]==edge2['L2'][1]:
             return True
+
+
+    def line_intersection(line1, line2):
+        """ Taken from https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
+            Determine the location of an intersection between two lines
+        """
+        xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+        ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+        def det(a, b):
+            return a[0] * b[1] - a[1] * b[0]
+        div = det(xdiff, ydiff)
+        if div == 0:
+           raise Exception('lines do not intersect')
+        d = (det(*line1), det(*line2))
+        x = det(d, xdiff) / div
+        y = det(d, ydiff) / div
+        return x, y
+
 
     def drawsvg(self, rpgraph,
                 target,
