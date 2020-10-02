@@ -6,19 +6,6 @@ import itertools
 import numpy as np
 import random
 
-'''
-logging.basicConfig()
-logging.root.setLevel(logging.NOTSET)
-logging.basicConfig(level=logging.NOTSET)
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-'''
 
 ## Create hypergraphs using networkx and perform different types of operations on it
 #
@@ -27,7 +14,7 @@ class rpGraph:
     ##
     #
     #
-    def __init__(self, rpsbml, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+    def __init__(self, rpsbml=None, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
@@ -43,43 +30,13 @@ class rpGraph:
         self.central_species = []
         self.sink_species = []
         self.num_species = 0
-        self._makeGraph(pathway_id, central_species_group_id, sink_species_group_id)
+        if rpsbml:
+            self._makeGraph(pathway_id, central_species_group_id, sink_species_group_id)
 
 
     ######################################################################################################
     ######################################### Private Function ###########################################
     ######################################################################################################
-
-    ## Compare two rpgraph hypergraphs and return a score using a simple walk
-    #
-    #
-    def _compare(self, source_compare_graph, target_compare_graph):
-        import gmatch4py as gm
-        #NOTE: here we use the greedy edit distance method but others may be used... 
-        ged = gm.GreedyEditDistance(1,1,1,1)
-        #ged = gm.GraphEditDistance(1,1,1,1)
-        result = ged.compare([i[0] for i in source_compare_graph]+[i[0] for i in target_compare_graph], None)
-        self.logger.debug('result: \n'+str([list(i) for i in result]))
-        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
-        weights = np.array([sum(i[1])/7.0 for i in source_compare_graph]+[sum(i[1])/7.0 for i in target_compare_graph])
-        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
-        self.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
-        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
-        #self.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
-        filtered_weighted_similarity =  []
-        source_pos = [i for i in range(len(source_compare_graph))]
-        for i in range(len(weighted_similarity)):
-            tmp = []
-            for y in range(len(weighted_similarity[i])):
-                if i in source_pos and not y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                elif i not in source_pos and y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                else:
-                    tmp.append(0.0)
-            filtered_weighted_similarity.append(tmp)
-        self.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
-        return max(map(max, filtered_weighted_similarity))
 
 
     ## Make a special graphs for comparison whit the ID's being unique to the nodes
@@ -388,17 +345,42 @@ class rpGraph:
     ########################################## Public Function ###########################################
     ######################################################################################################
 
-    ############################# graph analysis ################################
 
-    #@staticmethod
-    def similarityScore(self, source_rpsbml, target_rpsbml, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
-    """Heavy duty method for pathway comparison using graphs most accurate but also the heaviest
-    """
-        source_rpsbml = rpGraph.rpGraph(source_rpsbml)
-        target_rpsbml = rpGraph.rpGraph(target_rpsbml)
-        source_graphs = source_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        target_graphs = target_rpsbml._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        return rpGraph._compare(source_graphs, target_graphs)
+    ## Compare two rpgraph hypergraphs and return a score using a simple walk
+    #
+    # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
+    @staticmethod
+    def compare(source_rpgraph, target_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        import gmatch4py as gm
+        source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        #NOTE: here we use the greedy edit distance method but others may be used... 
+        ged = gm.GreedyEditDistance(1,1,1,1)
+        #ged = gm.GraphEditDistance(1,1,1,1)
+        result = ged.compare([i[0] for i in source_compare_graphs]+[i[0] for i in target_compare_graphs], None)
+        rpGraph.logger.debug('result: \n'+str([list(i) for i in result]))
+        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
+        weights = np.array([sum(i[1])/7.0 for i in source_compare_graphs]+[sum(i[1])/7.0 for i in target_compare_graphs])
+        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
+        rpGraph.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
+        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
+        #rpGraph.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
+        filtered_weighted_similarity =  []
+        source_pos = [i for i in range(len(source_compare_graphs))]
+        for i in range(len(weighted_similarity)):
+            tmp = []
+            for y in range(len(weighted_similarity[i])):
+                if i in source_pos and not y in source_pos:
+                    tmp.append(weighted_similarity[i][y])
+                elif i not in source_pos and y in source_pos:
+                    tmp.append(weighted_similarity[i][y])
+                else:
+                    tmp.append(0.0)
+            filtered_weighted_similarity.append(tmp)
+        rpGraph.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
+        return max(map(max, filtered_weighted_similarity))
+
+    ############################# graph analysis ################################
 
 
     def exportJSON(self):
