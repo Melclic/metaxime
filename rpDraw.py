@@ -266,7 +266,8 @@ class rpDraw:
             return a[0] * b[1] - a[1] * b[0]
         div = det(xdiff, ydiff)
         if div == 0:
-           raise Exception('lines do not intersect')
+           #raise Exception('lines do not intersect')
+           return None, None
         d = (det(*line1), det(*line2))
         x = det(d, xdiff) / div
         y = det(d, ydiff) / div
@@ -555,7 +556,7 @@ class rpDraw:
         # then create a input/output location and update the positions
         #NOTE: have to make strings from the edge locations to be able to be
         overlaps_arrow = {'node': {}, 'L': {}}
-        overlaps_edge = {'node': {}, 'L': {}}
+        #overlaps_edge = {'node': {}, 'L': {}}
         for edge in strict_edge_pos:
             source_id = str(strict_edge_pos[edge]['source'][0])+'-'+str(strict_edge_pos[edge]['source'][1])
             target_id = str(strict_edge_pos[edge]['target'][0])+'-'+str(strict_edge_pos[edge]['target'][1])
@@ -579,6 +580,7 @@ class rpDraw:
             else:
                 overlaps_arrow['L'][l2_id].append(strict_edge_pos[edge]['arrow_direction'])
             ##### make the overlap edge ####
+            """
             if not source_id in overlaps_edge['node']:
                 overlaps_edge['node'][source_id] = [edge]
             else:
@@ -595,6 +597,7 @@ class rpDraw:
                 overlaps_edge['L'][l2_id] = [edge]
             else:
                 overlaps_edge['L'][l2_id].append(edge)
+            """
         ########## Add entry/exit of node if same side node has multiple types #######
         #adjust the perpendecular arrows if there is overlap with reversed directions
         #TODO: adjust arrows that overlap in the same direction but do not have the same destination
@@ -626,6 +629,27 @@ class rpDraw:
         #           - if they are entry/exit
         #           - if they are entry or exit that overlap with other entry/exit from another reaction
         #do the same for the the perpendicular
+        '''
+        for pos_id in overlaps_arrow['edge']:
+        for edge in strict_edge_pos:
+            source_id = str(strict_edge_pos[edge]['source'][0])+'-'+str(strict_edge_pos[edge]['source'][1])
+            target_id = str(strict_edge_pos[edge]['target'][0])+'-'+str(strict_edge_pos[edge]['target'][1])
+        '''
+        #calculate the perpendicular overlaps
+        for edge in edge_pos:
+            perpendicular_layers = []
+            for comp_edge in edge_pos:
+                #if edge_pos[comp_edge]['L1']==edge_pos[edge]['L1']:
+                x, y = line_intersection(edge_pos[comp_edge]['L1'][0], edge_pos[comp_edge]['L1'][1], edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1])
+                if not x==None and y==None:
+                    perpendicular_layers.append(comp_edge)
+            if len(perpendicular_layers)>1:
+                #cases to ignore:
+                #   - when they overlap but go in the same direction and the same target or source
+                #case when overlap but they go to the same direction and not the same target
+                #case when 
+
+
         for pos_id in overlaps_arrow['L']:
             if len(overlaps_arrow['L'][pos_id])>1:
                 #TODO: need a better overlap algo that takes into consideration if they do not overlap

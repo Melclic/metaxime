@@ -810,7 +810,7 @@ class rpSBML:
 
     ## Function to find out if the model already contains a species according to its ID
     #
-    #
+    # TODO: change the way you check for the ID since these might not be the convention
     def speciesExists(self, speciesName, compartment_id='MNXC3'):
         if speciesName in [i.getName() for i in self.model.getListOfSpecies()] or speciesName+'__64__'+compartment_id in [i.getId() for i in self.model.getListOfSpecies()]:
             return True

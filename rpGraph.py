@@ -349,7 +349,6 @@ class rpGraph:
     ## Compare two rpgraph hypergraphs and return a score using a simple walk
     #
     # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
-    @staticmethod
     def compare(source_rpgraph, target_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
         import gmatch4py as gm
         source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
