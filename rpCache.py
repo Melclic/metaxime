@@ -486,6 +486,7 @@ class rpCache:
     ## Function to parse the rules_rall.tsv from RetroRules
     #
     #  Extract from the reactions rules the ruleID, the reactionID, the direction of the rule directed to the origin reaction
+    #  NOTE: we take care of the fact that a given reaction rule may have multiple reactions associated with them
     #
     #  @param self The object pointer.
     #  @param path The input file path.
