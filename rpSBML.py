@@ -1,3 +1,8 @@
+"""rpSBML
+.. moduleauthor:: Melchior du Lac
+"""
+
+
 import libsbml
 from hashlib import md5
 import os
@@ -26,16 +31,22 @@ TODO
 ##################################################################
 
 
-## libSBML reader for RetroPath
-# Converts an SBML object (or file) into the internal format
-#
 class rpSBML:
-    ## Constructor
-    #
-    # @param model libSBML model object
-    # @param docModel libSBML Document object
-    # @param nameSpaceModel libSBML name space (not required)
+    """This class uses the libSBML object and handles it by adding BRSynth annotation
+    """
     def __init__(self, modelName, document=None, path=None):
+        """Constructor for the rpSBML class
+
+        Note that the user can pass either a document libSBML object or a path to a SBML file. If a path is passed it overwrite the passed document object.
+
+        :param modelName: The Name of the model
+        :param document: The libSBML document class (Default: None)
+        :param path: The path of a SBML file (Default: None)
+
+        :type modelName: str
+        :type path: str
+        :type document: libsbml.SBMLDocument
+        """
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
@@ -61,17 +72,20 @@ class rpSBML:
 
 
     def _checklibSBML(self, value, message):
-    """Private function that checks the libSBML calls.
+        """Private function that checks the libSBML calls.
 
-    Check that the libSBML python calls do not return error INT and if so, display the error. Taken from: http://sbml.org/Software/libSBML/docs/python-api/create_simple_model_8py-example.html
+        Check that the libSBML python calls do not return error INT and if so, display the error. Taken from: http://sbml.org/Software/libSBML/docs/python-api/create_simple_model_8py-example.html
 
-    :param value: int, The libSBML command returned int
-    :param message: The string that describes the call
+        :param value: The libSBML command returned int
+        :param message: The string that describes the call
+        :type value: int
+        :type message: str
 
-    :raises AttributeError: If the libSBML command encounters an error or the input value is None
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
 
-    :returns: None
-    """
+        :return: None
+        :return: None
+        """
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
             raise AttributeError
@@ -90,14 +104,15 @@ class rpSBML:
 
 
     def _nameToSbmlId(self, name):
-    """String to SBML id's
-    
-    Convert any String to one that is compatible with the SBML meta_id formatting requirements
-    
-    :param name: str, The input string
+        """String to SBML id's
+        
+        Convert any String to one that is compatible with the SBML meta_id formatting requirements
+        
+        :param name: The input string
+        :type name: str
 
-    :returns: SBML valid string
-    """
+        :return: SBML valid string
+        """
         IdStream = []
         count = 0
         end = len(name)
@@ -117,26 +132,29 @@ class rpSBML:
 
 
     def _genMetaID(self, name):
-    """String to hashed id
+        """String to hashed id
 
-    Hash an input string and then pass it to _nameToSbmlId()
+        Hash an input string and then pass it to _nameToSbmlId()
 
-    :param name: str, Input string
+        :param name: Input string
+        :type name: str
 
-    :returns: Hashed string id
-    """
+        :return: Hashed string id
+        """
         return self._nameToSbmlId(md5(str(name).encode('utf-8')).hexdigest())
 
 
     def _compareXref(self, current, toadd):
-    """Compare two dictionaries of lists that describe the cross-reference and return the difference
+        """Compare two dictionaries of lists that describe the cross-reference and return the difference
 
-    :param current: dict, The source cross-reference dictionary
-    :param toadd: dict, The target cross-reference dictionary
+        :param current: The source cross-reference dictionary
+        :param toadd: The target cross-reference dictionary
+        :type current: dict
+        :type toadd: dict
 
-    :returns: Difference between the two cross-reference dictionaries
-    :rtype: dict
-    """
+        :return: Difference between the two cross-reference dictionaries
+        :rtype: dict
+        """
         toadd = copy.deepcopy(toadd)
         for database_id in current:
             try:
@@ -156,12 +174,13 @@ class rpSBML:
 
 
     def _defaultBothAnnot(self, meta_id):
-    """Returns a default annotation string that include MIRIAM and BRSynth annotation
+        """Returns a default annotation string that include MIRIAM and BRSynth annotation
 
-    :param meta_id: str, The meta ID to be added to the default annotation
+        :param meta_id: The meta ID to be added to the default annotation
+        :type meta_id: str
 
-    :rtype: str
-    """
+        :rtype: str
+        """
         return '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
@@ -179,12 +198,13 @@ class rpSBML:
 
 
     def _defaultBRSynthAnnot(self, meta_id):
-    """Returns BRSynth default annotation string
+        """Returns BRSynth default annotation string
 
-    :param meta_id: str, The meta ID to be added to the annotation string
+        :param meta_id: The meta ID to be added to the annotation string
+        :type meta_id: str
 
-    :rtype: str
-    """
+        :rtype: str
+        """
         return '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:BRSynth rdf:about="#'''+str(meta_id or '')+'''">
@@ -196,12 +216,13 @@ class rpSBML:
 
 
     def _defaultMIRIAMAnnot(self, meta_id):
-    """Returns MIRIAM default annotation string
+        """Returns MIRIAM default annotation string
 
-    :param meta_id: str, The meta ID to be added to the annotation string
+        :param meta_id: The meta ID to be added to the annotation string
+        :type meta_id: str
 
-    :rtype: str
-    """
+        :rtype: str
+        """
         return '''<annotation>
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
     <rdf:Description rdf:about="#'''+str(meta_id or '')+'''">
@@ -216,22 +237,32 @@ class rpSBML:
 
 
     def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None):
-    """Append or update an entry to the BRSynth annotation of the passed libsbml.SBase object.
-    
-    If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
+        """Append or update an entry to the BRSynth annotation of the passed libsbml.SBase object.
+        
+        If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
 
-    :param sbase_obj: libsbml.SBase, The libSBML object to add the different 
-    :param annot_header: str, The annotation header that defines the type of entry
-    :param value: str or int or float or list, The value(s) to add
-    :param units: str, Add a values unit to the entry  
-    :param isAlone: bool, Add the entry without any units or defined within a value child (Setting this to True will ignore any units)
-    :param isList: bool, Define if the value entry is a list or not
-    :param isSort: bool, Sort the list that is passed (Only if the isList is True)
-    :param meta_id: str, The meta ID to be added to the annotation string
+        :param sbase_obj: The libSBML object to add the different 
+        :param annot_header: The annotation header that defines the type of entry
+        :param value: The value(s) to add
+        :param units: Add a values unit to the entry  
+        :param isAlone: Add the entry without any units or defined within a value child (Setting this to True will ignore any units)
+        :param isList: Define if the value entry is a list or not
+        :param isSort: Sort the list that is passed (Only if the isList is True)
+        :param meta_id: The meta ID to be added to the annotation string
+        
+        :type units: str
+        :type isAlone: bool
+        :type isList: bool
+        :type isSort: bool
 
-    :rtype: bool
-    :returns: Sucess or failure of the function
-    """
+        :type sbase_obj: libsbml.SBase
+        :type annot_header: str
+        :type value: Union[str, int, float, list]
+        :type meta_id: str
+
+        :rtype: bool
+        :return: Sucess or failure of the function
+        """
         self.logger.debug('############### '+str(annot_header)+' ################')
         if isList:
             annotation = '''<annotation>
@@ -374,18 +405,23 @@ class rpSBML:
 
 
     def addUpdateMIRIAM(self, sbase_obj, type_param, xref, meta_id=None):
-    """Append or update an entry to the MIRIAM annotation of the passed libsbml.SBase object.
-    
-    If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
+        """Append or update an entry to the MIRIAM annotation of the passed libsbml.SBase object.
+        
+        If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
 
-    :param sbase_obj: libsbml.SBase, The libSBML object to add the different 
-    :param type_param: str, The type of parameter entered. Valid include ['compartment', 'reaction', 'species']
-    :param xref: dict, Dictionnary of the cross reference
-    :param meta_id: str, The meta ID to be added to the annotation string
+        :param sbase_obj: libsbml.SBase, The libSBML object to add the different 
+        :param type_param: The type of parameter entered. Valid include ['compartment', 'reaction', 'species']
+        :param xref: Dictionnary of the cross reference
+        :param meta_id: The meta ID to be added to the annotation string
+        
+        :type type_param: str
+        :type xref: dict
 
-    :rtype: bool
-    :returns: Sucess or failure of the function
-    """
+        :type meta_id: str
+
+        :rtype: bool
+        :return: Sucess or failure of the function
+        """
         if not type_param in ['compartment', 'reaction', 'species']:
             self.logger.error('type_param must be '+str(['compartment', 'reaction', 'species'])+' not '+str(type_param))
             return False
@@ -488,13 +524,15 @@ class rpSBML:
 
 
     def genJSON(self, pathway_id='rp_pathway'):
-    """Generate the dictionnary of all the annotations of a pathway species, reaction and pathway annotations
+        """Generate the dictionnary of all the annotations of a pathway species, reaction and pathway annotations
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: dict
-    :returns: Dictionnary of the pathway annotation
-    """
+        :rtype: dict
+        :return: Dictionnary of the pathway annotation
+        """
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
         reactions = rp_pathway.getListOfMembers()
@@ -527,16 +565,18 @@ class rpSBML:
 
 
     def readSBML(self, inFile):
-    """Open an SBML file to the object
+        """Open an SBML file to the object
 
-    :param inFile: str, Path to the input SBML file
+        :param inFile: Path to the input SBML file
+        
+        :type inFile: str
 
-    :raises FileNotFoundError: If the file cannot be found
-    :raises AttributeError: If the libSBML command encounters an error or the input value is None
+        :raises FileNotFoundError: If the file cannot be found
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
 
-    :rtype: None
-    :returns: Dictionnary of the pathway annotation
-    """
+        :rtype: None
+        :return: Dictionnary of the pathway annotation
+        """
         if not os.path.isfile(inFile):
             self.logger.error('Invalid input file')
             raise FileNotFoundError
@@ -575,16 +615,18 @@ class rpSBML:
 
 
     def writeSBML(self, path):
-    """Export the metabolic network to a SBML file
+        """Export the metabolic network to a SBML file
 
-    :param path: str, Path to the output SBML file
+        :param path: Path to the output SBML file
+        
+        :type path: str
 
-    :raises FileNotFoundError: If the file cannot be found
-    :raises AttributeError: If the libSBML command encounters an error or the input value is None
+        :raises FileNotFoundError: If the file cannot be found
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
 
-    :rtype: bool
-    :returns: Success or failure of the command
-    """
+        :rtype: bool
+        :return: Success or failure of the command
+        """
         ####### check the path #########
         #need to determine where are the path id's coming from
         p = None
@@ -615,19 +657,24 @@ class rpSBML:
 
     #TODO: seperate the find and the create
     def findCreateObjective(self, reactions, coefficients, isMax=True, objective_id=None):
-    """Find the objective (with only one reaction associated) based on the reaction ID and if not found create it
+        """Find the objective (with only one reaction associated) based on the reaction ID and if not found create it
 
-    :param reactions: list, List of the reactions id's to set as objectives
-    :param coefficients: list, List of the coefficients about the objectives
-    :param isMax: bool, Maximise or minimise the objective
-    :param objective_id: str, overwite the default id if created (from obj_[reactions])
+        :param reactions: List of the reactions id's to set as objectives
+        :param coefficients: List of the coefficients about the objectives
+        :param isMax: Maximise or minimise the objective
+        :param objective_id: overwite the default id if created (from obj_[reactions])
+        
+        :type reactions: list
+        :type coefficients: list
+        :type isMax: bool
+        :type objective_id: str
 
-    :raises FileNotFoundError: If the file cannot be found
-    :raises AttributeError: If the libSBML command encounters an error or the input value is None
+        :raises FileNotFoundError: If the file cannot be found
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
 
-    :rtype: str
-    :returns: Objective ID
-    """
+        :rtype: str
+        :return: Objective ID
+        """
         fbc_plugin = self.model.getPlugin('fbc')
         self._checklibSBML(fbc_plugin, 'Getting FBC package')
         if not objective_id:
@@ -658,13 +705,15 @@ class rpSBML:
     #TODO: add error handling if the groups does not exist
     #TODO: change the pathway_id to groups_id
     def readRPpathwayIDs(self, pathway_id='rp_pathway'):
-    """Return the members of a groups entry
+        """Return the members of a groups entry
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: list
-    :returns: List of member id's of a particular group
-    """
+        :rtype: list
+        :return: List of member id's of a particular group
+        """
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
         self._checklibSBML(rp_pathway, 'retreiving groups rp_pathway')
@@ -675,13 +724,15 @@ class rpSBML:
 
 
     def readRPrules(self, pathway_id='rp_pathway'):
-    """Return the list of reaction rules contained within a pathway
+        """Return the list of reaction rules contained within a pathway
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: dict
-    :returns: Dictionnary of reaction rules (rule_id as key)
-    """
+        :rtype: dict
+        :return: Dictionnary of reaction rules (rule_id as key)
+        """
         toRet = {}
         for reacId in self.readRPpathwayIDs(pathway_id):
             reac = self.model.getReaction(reacId)
@@ -694,13 +745,15 @@ class rpSBML:
     #TODO: merge with unique species
     #TODO: change the name of the function to read
     def readRPspecies(self, pathway_id='rp_pathway'):
-    """Return the species stoichiometry of a pathway
+        """Return the species stoichiometry of a pathway
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: dict
-    :returns: Dictionary of the pathway species and reactions
-    """
+        :rtype: dict
+        :return: Dictionary of the pathway species and reactions
+        """
         reacMembers = {}
         for reacId in self.readRPpathwayIDs(pathway_id):
             reacMembers[reacId] = {}
@@ -715,13 +768,15 @@ class rpSBML:
 
 
     def readUniqueRPspecies(self, pathway_id='rp_pathway'):
-    """Return the unique species of a pathway
+        """Return the unique species of a pathway
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: list
-    :returns: List of unique species
-    """
+        :rtype: list
+        :return: List of unique species
+        """
         rpSpecies = self.readRPspecies()
         toRet = []
         for i in rpSpecies:
@@ -735,13 +790,13 @@ class rpSBML:
 
 
     def readTaxonAnnotation(self, annot):
-    """Return he taxonomy ID from an annotation
+        """Return he taxonomy ID from an annotation
 
-    :param annot: libsbml.XMLNode, The annotation object of libSBML
+        :param annot: libsbml.XMLNode, The annotation object of libSBML
 
-    :rtype: dict
-    :returns: Dictionary of all taxonomy id's
-    """
+        :rtype: dict
+        :return: Dictionary of all taxonomy id's
+        """
         try:
             toRet = {}
             bag = annot.getChild('RDF').getChild('Description').getChild('hasTaxon').getChild('Bag')
@@ -764,13 +819,13 @@ class rpSBML:
 
 
     def readMIRIAMAnnotation(self, annot):
-    """Return the MIRIAM annotations of species
+        """Return the MIRIAM annotations of species
 
-    :param annot: libsbml.XMLNode, The annotation object of libSBML
+        :param annot: libsbml.XMLNode, The annotation object of libSBML
 
-    :rtype: dict
-    :returns: Dictionary of all the annotation of species
-    """
+        :rtype: dict
+        :return: Dictionary of all the annotation of species
+        """
         try:
             toRet = {}
             bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
@@ -793,13 +848,13 @@ class rpSBML:
 
 
     def readBRSYNTHAnnotation(self, annot):
-    """Return a dictionnary of all the information in a BRSynth annotations
+        """Return a dictionnary of all the information in a BRSynth annotations
 
-    :param annot: libsbml.XMLNode, The annotation object of libSBML
+        :param annot: libsbml.XMLNode, The annotation object of libSBML
 
-    :rtype: dict
-    :returns: Dictionary of all the BRSynth annotations
-    """
+        :rtype: dict
+        :return: Dictionary of all the BRSynth annotations
+        """
         toRet = {'dfG_prime_m': None,
                  'dfG_uncert': None,
                  'dfG_prime_o': None,
@@ -867,15 +922,15 @@ class rpSBML:
 
     # TODO: delete
     def readReactionSpecies_old(self, reaction, isID=False):
-    """Return the products and the species associated with a reaction
-    
-    WARNING: DEPRECATED
-    
-    :param reaction: libsbml.Reaction, Reaction object of libSBML
+        """Return the products and the species associated with a reaction
+        
+        WARNING: DEPRECATED
+        
+        :param reaction: libsbml.Reaction, Reaction object of libSBML
 
-    :rtype: dict
-    :returns: Dictionary of the reactions stoichiometry
-    """
+        :rtype: dict
+        :return: Dictionary of the reactions stoichiometry
+        """
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
         # it exists in the rpsbml model
         toRet = {'left': {}, 'right': {}}
@@ -900,13 +955,13 @@ class rpSBML:
 
 
     def readReactionSpecies(self, reaction):
-    """Return the products and the species associated with a reaction
-    
-    :param reaction: libsbml.Reaction, Reaction object of libSBML
+        """Return the products and the species associated with a reaction
+        
+        :param reaction: libsbml.Reaction, Reaction object of libSBML
 
-    :rtype: dict
-    :returns: Dictionary of the reaction stoichiometry
-    """
+        :rtype: dict
+        :return: Dictionary of the reaction stoichiometry
+        """
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
         # it exists in the rpsbml model
         toRet = {'left': {}, 'right': {}}
@@ -927,27 +982,29 @@ class rpSBML:
 
 
     def speciesExists(self, speciesName, compartment_id='MNXC3'):
-    """Determine if the model already contains a species according to its ID
-    
-    :param reaction: libsbml.Reaction, Reaction object of libSBML
+        """Determine if the model already contains a species according to its ID
+        
+        :param reaction: libsbml.Reaction, Reaction object of libSBML
 
-    :rtype: bool
-    :returns: True if exists and False if not
-    """
+        :rtype: bool
+        :return: True if exists and False if not
+        """
         if speciesName in [i.getName() for i in self.model.getListOfSpecies()] or speciesName+'__64__'+compartment_id in [i.getId() for i in self.model.getListOfSpecies()]:
             return True
         return False
 
 
     def isSpeciesProduct(self, species_id, ignoreReactions=[]):
-    """Function to determine if a species can be a product of any reaction.
-    
-    :param species_id: str, ID of the species to find
-    :paran ignoreReactions: list, List of all the reaction id's to ignore
+        """Function to determine if a species can be a product of any reaction.
+        
+        :param species_id: ID of the species to find
+        
+        :type species_id: str
+        :paran ignoreReactions: list, List of all the reaction id's to ignore
 
-    :rtype: bool
-    :returns: True if its a product of a reaction False if not
-    """
+        :rtype: bool
+        :return: True if its a product of a reaction False if not
+        """
         #return all the parameters values
         param_dict = {i.getId(): i.getValue() for i in self.model.parameters}
         for reaction in self.model.getListOfReactions():
@@ -985,15 +1042,17 @@ class rpSBML:
 
 
     def outPathsDict(self, pathway_id='rp_pathway'):
-    """Function to return in a dictionary in the same format as the out_paths rp2paths file dictionary object
-    
-    Example format returned: {'rule_id': 'RR-01-503dbb54cf91-49-F', 'right': {'TARGET_0000000001': 1}, 'left': {'MNXM2': 1, 'MNXM376': 1}, 'pathway_id': 1, 'step': 1, 'sub_step': 1, 'transformation_id': 'TRS_0_0_17'}. Really used to complete the monocomponent reactions
+        """Function to return in a dictionary in the same format as the out_paths rp2paths file dictionary object
+        
+        Example format returned: {'rule_id': 'RR-01-503dbb54cf91-49-F', 'right': {'TARGET_0000000001': 1}, 'left': {'MNXM2': 1, 'MNXM376': 1}, 'pathway_id': 1, 'step': 1, 'sub_step': 1, 'transformation_id': 'TRS_0_0_17'}. Really used to complete the monocomponent reactions
 
-    :param pathway_id: str, The pathway ID (Default: rp_pathway)
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        
+        :type pathway_id: str
 
-    :rtype: dict
-    :returns: Dictionary of the pathway
-    """
+        :rtype: dict
+        :return: Dictionary of the pathway
+        """
         pathway = {}
         for member in self.readRPpathwayIDs(pathway_id):
             #TODO: need to find a better way
@@ -1022,16 +1081,16 @@ class rpSBML:
 
 
     def compareBRSYNTHAnnotations(self, source_annot, target_annot):
-    """Determine if two libsbml species or reactions have members in common in BRSynth annotation
-    
-    Compare two dictionnaries and if any of the values of any of the same keys are the same then the function return True, and if none are found then return False
+        """Determine if two libsbml species or reactions have members in common in BRSynth annotation
+        
+        Compare two dictionnaries and if any of the values of any of the same keys are the same then the function return True, and if none are found then return False
 
-    :param source_annot: libsbml.Reaction, Source object of libSBML
-    :param target_annot: libsbml.Reaction, Target object of libSBML
+        :param source_annot: libsbml.Reaction, Source object of libSBML
+        :param target_annot: libsbml.Reaction, Target object of libSBML
 
-    :rtype: bool
-    :returns: True if there is at least one similar and False if none
-    """
+        :rtype: bool
+        :return: True if there is at least one similar and False if none
+        """
         source_dict = self.readBRSYNTHAnnotation(source_annot)
         target_dict = self.readBRSYNTHAnnotation(target_annot)
         #ignore thse when comparing reactions
@@ -1052,16 +1111,16 @@ class rpSBML:
 
 
     def compareMIRIAMAnnotations(self, source_annot, target_annot):
-    """Determine if two libsbml species or reactions have members in common in MIRIAM annotation
-    
-    Compare two dictionnaries and if any of the values of any of the same keys are the same then the function return True, and if none are found then return False
+        """Determine if two libsbml species or reactions have members in common in MIRIAM annotation
+        
+        Compare two dictionnaries and if any of the values of any of the same keys are the same then the function return True, and if none are found then return False
 
-    :param source_annot: libsbml.Reaction, Source object of libSBML
-    :param target_annot: libsbml.Reaction, Target object of libSBML
+        :param source_annot: libsbml.Reaction, Source object of libSBML
+        :param target_annot: libsbml.Reaction, Target object of libSBML
 
-    :rtype: bool
-    :returns: True if there is at least one similar and False if none
-    """
+        :rtype: bool
+        :return: True if there is at least one similar and False if none
+        """
         source_dict = self.readMIRIAMAnnotation(source_annot)
         target_dict = self.readMIRIAMAnnotation(target_annot)
         #list the common keys between the two
@@ -1074,14 +1133,16 @@ class rpSBML:
 
 
     def compareAnnotations_annot_dict(self, source_annot, target_dict):
-    """Compare an annotation object and annotation dictionary
-    
-    :param source_annot: libsbml.Reaction, Source object of libSBML
-    :param target_annot: dict, Target dictionary
+        """Compare an annotation object and annotation dictionary
+        
+        :param source_annot: libsbml.Reaction, Source object of libSBML
+        :param target_annot: Target dictionary
+        
+        :type target_annot: dict
 
-    :rtype: bool
-    :returns: True if there is at least one similar and False if none
-    """
+        :rtype: bool
+        :return: True if there is at least one similar and False if none
+        """
         source_dict = self.readMIRIAMAnnotation(source_annot)
         #list the common keys between the two
         for com_key in set(list(source_dict.keys()))-(set(list(source_dict.keys()))-set(list(target_dict.keys()))):
@@ -1093,14 +1154,17 @@ class rpSBML:
 
 
     def compareAnnotations_dict_dict(self, source_dict, target_dict):
-    """Compare an annotation as dictionaries
-    
-    :param source_annot: dict, Source dictionary
-    :param target_annot: dict, Target dictionary
+        """Compare an annotation as dictionaries
+        
+        :param source_annot: Source dictionary
+        :param target_annot: Target dictionary
+        
+        :type source_annot: dict
+        :type target_annot: dict
 
-    :rtype: bool
-    :returns: True if there is at least one similar and False if none
-    """
+        :rtype: bool
+        :return: True if there is at least one similar and False if none
+        """
         #list the common keys between the two
         for com_key in set(list(source_dict.keys()))-(set(list(source_dict.keys()))-set(list(target_dict.keys()))):
             #compare the keys and if same is non-empty means that there
@@ -1111,18 +1175,20 @@ class rpSBML:
 
 
     def compareRPpathways(self, measured_sbml):
-    """Function to compare two SBML's RP pathways
-    
-    Function that compares the annotations of reactions and if not found, the annotations of all
-    species in that reaction to try to recover the correct ones. Because we are working with
-    intermediate cofactors for the RP generated pathways, the annotation crossreference will
-    not work. Best is to use the cross-reference to the original reaction
+        """Function to compare two SBML's RP pathways
+        
+        Function that compares the annotations of reactions and if not found, the annotations of all
+        species in that reaction to try to recover the correct ones. Because we are working with
+        intermediate cofactors for the RP generated pathways, the annotation crossreference will
+        not work. Best is to use the cross-reference to the original reaction
 
-    :param measured_sbml: rpsbml, rpSBML object
+        :param measured_sbml: rpSBML object
+        
+        :type measured_sbml: rpsbml
 
-    :rtype: bool, dict
-    :returns: True if there is at least one similar and return the dict of similarities and False if none with empty dictionary 
-    """
+        :rtype: bool, dict
+        :return: True if there is at least one similar and return the dict of similarities and False if none with empty dictionary 
+        """
         #return all the species annotations of the RP pathways
         try:
             meas_rp_species = measured_sbml.readRPspecies()
@@ -1211,20 +1277,26 @@ class rpSBML:
                                lower_bound,
                                unit='mmol_per_gDW_per_hr',
                                is_constant=True):
-    """Set a given reaction's upper and lower bounds
+        """Set a given reaction's upper and lower bounds
 
-    Sets the upper and lower bounds of a reaction. Note that if the numerical values passed
-    are not recognised, new parameters are created for each of them
-    
-    :param reaction_id: str, The id of the reaction
-    :param upper_bound: float, Reaction upper bound
-    :param lower_bound: float, Reaction lower bound
-    :param unit: str, Unit to the bounds (Default: mmol_per_gDW_per_hr)
-    :param is_constant: bool, Set if the reaction is constant
+        Sets the upper and lower bounds of a reaction. Note that if the numerical values passed
+        are not recognised, new parameters are created for each of them
+        
+        :param reaction_id: The id of the reaction
+        :param upper_bound: Reaction upper bound
+        :param lower_bound: Reaction lower bound
+        :param unit: Unit to the bounds (Default: mmol_per_gDW_per_hr)
+        :param is_constant: Set if the reaction is constant
+        
+        :type reaction_id: str
+        :type upper_bound: float
+        :type lower_bound: float
+        :type unit: str
+        :type is_constant: bool
 
-    :rtype: tuple or bool
-    :returns: bool if there is an error and tuple of the lower and upper bound
-    """
+        :rtype: tuple or bool
+        :return: bool if there is an error and tuple of the lower and upper bound
+        """
         reaction = self.model.getReaction(reaction_id)
         if not reaction:
             self.logger.error('Cannot find the reaction: '+str(reaction_id))
@@ -1256,13 +1328,13 @@ class rpSBML:
             compartment_id='MNXC3',
             upper_flux_bound=999999,
             lower_flux_bound=10):
-    """Fill the orgpan
+        """Fill the orgpan
 
-    WARNING: in progress
+        WARNING: in progress
 
-    :rtype: tuple or bool
-    :returns: bool if there is an error and tuple of the lower and upper bound
-    """
+        :rtype: tuple or bool
+        :return: bool if there is an error and tuple of the lower and upper bound
+        """
         if rpsbml==None:
             model = self.model
         else:
@@ -1310,17 +1382,21 @@ class rpSBML:
 
 
     def createModel(self, name, model_id, meta_id=None):
-    """Create libSBML model instance
+        """Create libSBML model instance
 
-    Function that creates a new libSBML model instance and initiates it with the appropriate packages. Creates a cytosol compartment
+        Function that creates a new libSBML model instance and initiates it with the appropriate packages. Creates a cytosol compartment
 
-    :param name: str, The name of the of the model
-    :param model_id: str, The id of the model
-    :param meta_id: str, Meta ID of the model
+        :param name: The name of the of the model
+        :param model_id: The id of the model
+        :param meta_id: Meta ID of the model
+        
+        :type name: str
+        :type model_id: str
+        :type meta_id: str
 
-    :rtype: None
-    :returns: None
-    """
+        :rtype: None
+        :return: None
+        """
         ## sbmldoc
         self.sbmlns = libsbml.SBMLNamespaces(3,1)
         self._checklibSBML(self.sbmlns, 'generating model namespace')
@@ -1352,17 +1428,23 @@ class rpSBML:
     #TODO: consider seperating it in another function if another compartment is to be created
     #TODO: use MNX ids as keys instead of the string names
     def createCompartment(self, size, compId, compName, compXref, meta_id=None):
-    """Create libSBML compartment
-    
-    :param size: float, Size of the compartment
-    :param compId: str, Compartment id
-    :param compName: str, Compartment Name
-    :param compXref: dict, Cross reference dictionary of the compartment
-    :param meta_id: str, Meta id (Default: None)
+        """Create libSBML compartment
+        
+        :param size: Size of the compartment
+        :param compId: Compartment id
+        :param compName: Compartment Name
+        :param compXref: Cross reference dictionary of the compartment
+        :param meta_id: Meta id (Default: None)
+        
+        :type size: float
+        :type compId: str
+        :type compName: str
+        :type compXref: dict
+        :type meta_id: str
 
-    :rtype: None
-    :returns: None
-    """
+        :rtype: None
+        :return: None
+        """
         comp = self.model.createCompartment()
         self._checklibSBML(comp, 'create compartment')
         self._checklibSBML(comp.setId(compId), 'set compartment id')
@@ -1380,16 +1462,19 @@ class rpSBML:
 
 
     def createUnitDefinition(self, unit_id, meta_id=None):
-    """Create libSBML unit definition
+        """Create libSBML unit definition
 
-    Function that creates a unit definition (composed of one or more units)
+        Function that creates a unit definition (composed of one or more units)
 
-    :param unit_id: str, Unit id definition
-    :param meta_id: str, Meta id (Default: None)
+        :param unit_id: Unit id definition
+        :param meta_id: Meta id (Default: None)
+        
+        :type unit_id: str
+        :type meta_id: str
 
-    :rtype: libsbml.UnitDefinition
-    :returns: Unit definition object created
-    """
+        :rtype: libsbml.UnitDefinition
+        :return: Unit definition object created
+        """
         unitDef = self.model.createUnitDefinition()
         self._checklibSBML(unitDef, 'creating unit definition')
         self._checklibSBML(unitDef.setId(unit_id), 'setting id')
@@ -1400,17 +1485,23 @@ class rpSBML:
         return unitDef
 
 
-    ## Create libSBML unit
-    #
-    # Function that created a unit
-    #
-    # @param unitDef libSBML unit definition
-    # @param libsmlunit libSBML unit parameter
-    # @param exponent Value for the exponent (ex 10^5 mol/sec)
-    # @param scale Value for the scale
-    # @param multiplier Value for the multiplie
-    # @return Unit
     def createUnit(self, unitDef, libsbmlunit, exponent, scale, multiplier):
+        """Set or update the parameters of a libSBML unit definition
+
+        :param unitDef: libsbml.Unit, libSBML Unit 
+        :param libsbmlunit: String unit
+        :param exponent: Exponent unit
+        :param sale: Scale of the unit 
+        :param multiplier: Multiplier of the unit 
+        
+        :type libsbmlunit: str
+        :type exponent: int
+        :type sale: int
+        :type multiplier: int
+
+        :rtype: None
+        :return: None
+        """
         unit = unitDef.createUnit()
         self._checklibSBML(unit, 'creating unit')
         self._checklibSBML(unit.setKind(libsbmlunit), 'setting the kind of unit')
@@ -1419,21 +1510,32 @@ class rpSBML:
         self._checklibSBML(unit.setMultiplier(multiplier), 'setting the multiplier of the unit')
 
 
-    ## Create libSBML parameters
-    #
-    # Parameters, in our case, are used for the bounds for FBA analysis. Unit parameter must be an instance of unitDefinition
-    #
-    # @param parameter_id SBML id
-    # @param value Float value for this parameter
-    # @param unit libSBML unit parameter
-    # @param meta_id String Optional parameter for SBML meta_id
-    # @return libSBML parameter object
     def createReturnFluxParameter(self,
             value,
             unit='mmol_per_gDW_per_hr',
             is_constant=True,
             parameter_id=None,
             meta_id=None):
+        """Create libSBML flux parameters
+
+        Parameters are used for the bounds for FBA analysis. Unit parameter must be an instance of unitDefinition.
+        If the parameter id exists, then the function returns the libsbml.Parameter object
+
+        :param value: Value set for the parameter
+        :param unit: The unit id of the parameter
+        :param is_constant: Define if the parameter is constant
+        :param parameter_id: Overwrite the default naming convention (Default: None)
+        :param meta_id: Meta id (Default: None)
+        
+        :type value: float
+        :type unit: str
+        :type is_constant: bool
+        :type parameter_id: str
+        :type meta_id: str
+
+        :rtype: libsbml.Parameter
+        :return: The newly created libsbml.Parameter
+        """
         if parameter_id:
             param_id = parameter_id
         else:
@@ -1458,21 +1560,6 @@ class rpSBML:
             return newParam
 
 
-    ## Create libSBML reaction
-    #
-    # Create a reaction. fluxBounds is a list of libSBML.UnitDefinition, length of exactly 2 with the first position that is the upper bound and the second is the lower bound. reactants_dict and reactants_dict are dictionnaries that hold the following parameters: name, compartment, stoichiometry
-    #
-    # @param name Name for the reaction
-    # @param reaction_id Reaction ID
-    # @param fluxUpperBounds FBC id for the upper flux bound for this reaction
-    # @param fluxLowerBounds FBC id for the lower flux bound for this reaction
-    # @param step 2D dictionnary with the following structure {'left': {'name': stoichiometry, ...}, 'right': {}}
-    # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
-    # @param compartment_id String Optinal parameter compartment ID
-    # @param isTarget Boolean Flag to suppress the warning that the passed step is missing information. Used in this case for the target compound
-    # @param hetero_group Groups Optional parameter object that holds all the heterologous pathways
-    # @param meta_id String Optional parameter reaction meta_id
-    # @return meta_id meta ID for this reaction
     #TODO as of now not generic, works when creating a new SBML file, but no checks if modifying existing SBML file
     def createReaction(self,
                        reac_id,
@@ -1484,6 +1571,33 @@ class rpSBML:
                        reacXref={},
                        pathway_id=None,
                        meta_id=None):
+        """Create libSBML reaction
+
+        Create a reaction that is added to the self.model in the input compartment id. fluxBounds is a list of libSBML.UnitDefinition, length of exactly 2 with the first position that is the upper bound and the second is the lower bound. reactants_dict and reactants_dict are dictionnaries that hold the following parameters: name, compartment, stoichiometry
+
+        :param name: Name of the reaction
+        :param fluxUpperBound: The reaction fbc upper bound
+        :param fluxLowerBound: The reaction fbc lower bound
+        :param step: The id's of the reactant and products of the reactions. Example: {'left': [], 'right': []}
+        :param compartment_id: The id of the compartment to add the reaction
+        :param reaction_smiles: The reaction rule to add to the BRSynth annotation of the reaction (Default: None)
+        :param reacXref: The dict containing the MIRIAM annotation (Default: {})
+        :param pathway_id: The Groups id of the reaction to which the reacion id will be added (Default: None)
+        :param meta_id: Meta id (Default: None)
+        
+        :type name: str
+        :type fluxUpperBound: float
+        :type fluxLowerBound: float
+        :type step: dict
+        :type compartment_id: str
+        :type reaction_smiles: str
+        :type reacXref: dict
+        :type pathway_id: str
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         reac = self.model.createReaction()
         self._checklibSBML(reac, 'create reaction')
         ################ FBC ####################
@@ -1556,20 +1670,6 @@ class rpSBML:
                 self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
 
 
-    ## Create libSBML reaction
-    #
-    # Create a reaction. fluxBounds is a list of libSBML.UnitDefinition, length of exactly 2 with the first position that is the upper bound and the second is the lower bound. reactants_dict and reactants_dict are dictionnaries that hold the following parameters: name, compartment_id, stoichiometry
-    #
-    # @param chemIdDictionnary containing all the cross references that we know of, can be empty)
-    # @param chemXref Dictionnary containing all the cross references that we know of, can be empty
-    # @param meta_id Name for the reaction
-    # @param inchi String Inchi associated with this species
-    # @param smiles String SMILES associated with this species
-    # @param compartment_id String Set this species to belong to another compartment_id than the one globally set by self.compartment_id
-    # @param charge Optional parameter describing the charge of the molecule of interest
-    # @param chemForm Optional chemical formulae of the substrate (not SMILES or InChI)
-    # @param dG Optinal Thermodynamics constant for this species
-    # @param dG_uncert Optional Uncertainty associated with the thermodynamics of the reaction 
     def createSpecies(self,
                       species_id,
                       compartment_id,
@@ -1584,6 +1684,35 @@ class rpSBML:
                       #TODO: add these at some point -- not very important
                       #charge=0,
                       #chemForm=''):
+        """Create libSBML species
+
+        Create a species that is added to self.model
+
+        :param species_id: The id of the created species
+        :param compartment_id: The id of the compartment to add the reaction
+        :param species_name: Overwrite the default name of the created species (Default: None)
+        :param chemXref: The dict containing the MIRIAM annotation (Default: {})
+        :param inchi: The InChI string to be added to BRSynth annotation (Default: None)
+        :param inchikey: The InChIkey string to be added to BRSynth annotation (Default: None)
+        :param smiles: The SMLIES string to be added to BRSynth annotation (Default: None)
+        :param species_group_id: The Groups id to add the species (Default: None)
+        :param in_sink_group_id: The Groups id sink species to add the species (Default: None)
+        :param meta_id: Meta id (Default: None)
+        
+        :type species_id: str
+        :type compartment_id: str
+        :type species_name: str
+        :type chemXref: dict
+        :type inchi: str
+        :type inchikey: str
+        :type smiles: str
+        :type species_group_id: str
+        :type in_sink_group_id: str
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         spe = self.model.createSpecies()
         self._checklibSBML(spe, 'create species')
         ##### FBC #####
@@ -1656,20 +1785,21 @@ class rpSBML:
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member') 
 
 
-    ## Create libSBML pathway
-    #
-    # Create the collection of reactions that constitute the pathway using the Groups package and create the custom IBIBSA annotations
-    #
-    # @param model libSBML model to add the unit definition
-    # @param reaction_id Reaction ID
-    # @param name Name for the reaction
-    # @param fluxBounds list of size 2 that describe the FBC upper and lower bounds for this reactions flux
-    # @param reactants list of species that are the reactants of this reaction
-    # @param products list of species that are the products of this reaction
-    # @param reaction_smiles String smiles description of this reaction (added in BRSYNTH annotation)
-    # @return hetero_group The number libSBML groups object to pass to createReaction to categorise the new reactions
     #TODO: change the name of this function to createGroup
     def createPathway(self, pathway_id, meta_id=None):
+        """Create libSBML pathway
+
+        Create a pathway that is added to self.model
+
+        :param pathway_id: The Groups id of the pathway id (Default: None)
+        :param meta_id: Meta id (Default: None)
+        
+        :type pathway_id: str
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         groups_plugin = self.model.getPlugin('groups')
         new_group = groups_plugin.createGroup()
         self.logger.debug('setting new group id: '+str(pathway_id))
@@ -1681,15 +1811,22 @@ class rpSBML:
         new_group.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
-    ## Create libSBML gene
-    #
-    # Create the list of genes in the model including its custom BRSYNTH annotatons
-    #
-    # @param model libSBML model to add the unit definition
-    # @param reac libSBML reaction object
-    # @param step_id The step for the number of
-    # @return libSBML gene object
     def createGene(self, reac, step_id, meta_id=None):
+        """Create libSBML gene
+
+        Create a gene that is associated with a reaction
+
+        :param reac: The id of the reaction that is associated with the gene
+        :param step_id: The id of the reaction to name the gene
+        :param meta_id: Meta id (Default: None)
+        
+        :type reac: str
+        :type step_id: str
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         #TODO: pass this function to Pablo for him to fill with parameters that are appropriate for his needs
         geneName = 'RP'+str(step_id)+'_gene'
         fbc_plugin = self.model.getPlugin('fbc')
@@ -1705,19 +1842,28 @@ class rpSBML:
         #gp.setAnnotation(self._defaultBothAnnot(meta_id))
 
 
-    ## Create libSBML flux objective
-    # WARNING DEPRECATED -- use the createMultiFluxObj() with lists of size one to define an objective function
-    # with a single reaction
-    # Using the FBC package one can add the FBA flux objective directly to the model. This function sets a particular reaction as objective with maximization or minimization objectives
-    #
-    # @param model libSBML model to add the unit definition
-    # @param fluxobj_id The id given to this particular objective
-    # @param reactionName The name or id of the reaction that we are setting a flux objective
-    # @param coefficient FBA coefficient
-    # @param isMax Boolean to determine if we are maximizing or minimizing the objective
-    # @param meta_id Set the meta_id
-    # @return Boolean exit code
     def createFluxObj(self, fluxobj_id, reactionName, coefficient, isMax=True, meta_id=None):
+        """Create libSBML flux objective
+
+        WARNING DEPRECATED -- use the createMultiFluxObj() with lists of size one to define an objective function
+        with a single reaction
+        Using the FBC package one can add the FBA flux objective directly to the model. This function sets a particular reaction as objective with maximization or minimization objectives
+        
+        :param fluxobj_id: The id of the flux objective 
+        :param reactionName: The id of the reaction that is associated with the reaction
+        :param coefficient: The coefficient of the flux objective
+        :param isMax: Define if the objective is coefficient
+        :param meta_id: Meta id (Default: None)
+        
+        :type fluxobj_id: str
+        :type reactionName: str
+        :type coefficient: int
+        :type isMax: bool
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         fbc_plugin = self.model.getPlugin('fbc')
         target_obj = fbc_plugin.createObjective()
         #TODO: need to define inpiut metaID
@@ -1737,18 +1883,26 @@ class rpSBML:
         target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
-    ## Create libSBML flux objective
-    #
-    # Using the FBC package one can add the FBA flux objective directly to the model. This function sets a particular reaction as objective with maximization or minimization objectives
-    #
-    # @param model libSBML model to add the unit definition
-    # @param fluxobj_id The id given to this particular objective
-    # @param reactionName The name or id of the reaction that we are setting a flux objective
-    # @param coefficient FBA coefficient
-    # @param isMax Boolean to determine if we are maximizing or minimizing the objective
-    # @param meta_id Set the meta_id
-    # @return Boolean exit code
     def createMultiFluxObj(self, fluxobj_id, reactionNames, coefficients, isMax=True, meta_id=None):
+        """Create libSBML flux objective
+
+        Using the FBC package one can add the FBA flux objective directly to the model. Can add multiple reactions. This function sets a particular reaction as objective with maximization or minimization objectives
+        
+        :param fluxobj_id: The id of the flux objective 
+        :param reactionNames: The list of string id's of the reaction that is associated with the reaction
+        :param coefficients: The list of int defining the coefficients of the flux objective
+        :param isMax: Define if the objective is coefficient
+        :param meta_id: Meta id (Default: None)
+        
+        :type fluxobj_id: str
+        :type reactionNames: list
+        :type coefficients: list
+        :type isMax: bool
+        :type meta_id: str
+
+        :rtype: None
+        :return: None
+        """
         if not len(reactionNames)==len(coefficients):
             self.logger.error('The size of reactionNames is not the same as coefficients')
             return False
@@ -1776,13 +1930,6 @@ class rpSBML:
     ##############################################################################################
 
 
-    ## Generate a generic model
-    #
-    # Since we will be using the same type of parameters for the RetroPath model, this function
-    # generates a libSBML model with parameters that will be mostly used
-    #
-    #
-    #
     def genericModel(self,
                      modelName,
                      model_id,
@@ -1790,6 +1937,26 @@ class rpSBML:
                      compartment_id,
                      upper_flux_bound=999999,
                      lower_flux_bound=0):
+        """Generate a generic model
+
+        Since we will be using the same type of parameters for the RetroPath model, this function
+        generates a libSBML model with parameters that will be mostly used
+        
+        :param modelName: The given name of the model
+        :param model_id: The id of the model
+        :param compXref: The model MIRIAM annotation
+        :param upper_flux_bound: The upper flux bounds unit definitions default when adding new reaction (Default: 999999.0)
+        :param lower_flux_bound: The lower flux bounds unit definitions default when adding new reaction (Defaul: 0.0)
+        
+        :type modelName: str
+        :type model_id: str
+        :type compXref: dict
+        :type upper_flux_bound: float
+        :type lower_flux_bound: float
+
+        :rtype: None
+        :return: None
+        """
         self.createModel(modelName, model_id)
         # mmol_per_gDW_per_hr -- flux
         unitDef = self.createUnitDefinition('mmol_per_gDW_per_hr')
@@ -1804,9 +1971,7 @@ class rpSBML:
         upBound = self.createReturnFluxParameter(upper_flux_bound)
         lowBound = self.createReturnFluxParameter(lower_flux_bound)
         #compartment
-        #TODO: create a new compartment
-        #self.createCompartment(1, 'MNXC3', 'cytoplasm', compXref)
-        #try to recover the name from the Xref
+        #TODO: try to recover the name from the Xref
         try:
             name = compXref['name'][0]
         except KeyError:
