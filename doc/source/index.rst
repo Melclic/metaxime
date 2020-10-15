@@ -22,8 +22,7 @@ Usage
 Basic usage include opening a rpSBML file, extracting some of its information:
 
 .. note::
-   You can open any SBML file using rpSBML and manipulate it to enrich it. The example
-   provided here only shows the addition of the   
+   You can open any SBML file using rpSBML.py and manipulate it.
 
 To open a SBML file:
 

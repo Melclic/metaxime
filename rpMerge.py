@@ -163,6 +163,7 @@ class rpMerge:
     ###################################### INPUT FUNCTIONS ################
     #######################################################################
 
+    #TODO: automatically merge all the groups without the need to specify the id's
     def mergeSBMLFiles(self,
                        path_source, 
                        path_target,

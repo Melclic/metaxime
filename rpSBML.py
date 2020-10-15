@@ -84,7 +84,7 @@ class rpSBML:
         :raises AttributeError: If the libSBML command encounters an error or the input value is None
 
         :return: None
-        :return: None
+        :rtype: None
         """
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
@@ -112,6 +112,7 @@ class rpSBML:
         :type name: str
 
         :return: SBML valid string
+        :rtype: str
         """
         IdStream = []
         count = 0
@@ -140,6 +141,7 @@ class rpSBML:
         :type name: str
 
         :return: Hashed string id
+        :rtype: str
         """
         return self._nameToSbmlId(md5(str(name).encode('utf-8')).hexdigest())
 
@@ -179,6 +181,7 @@ class rpSBML:
         :param meta_id: The meta ID to be added to the default annotation
         :type meta_id: str
 
+        :return: The default annotation string
         :rtype: str
         """
         return '''<annotation>
@@ -203,6 +206,7 @@ class rpSBML:
         :param meta_id: The meta ID to be added to the annotation string
         :type meta_id: str
 
+        :return: The default annotation string
         :rtype: str
         """
         return '''<annotation>
@@ -221,6 +225,7 @@ class rpSBML:
         :param meta_id: The meta ID to be added to the annotation string
         :type meta_id: str
 
+        :return: The default annotation string
         :rtype: str
         """
         return '''<annotation>
