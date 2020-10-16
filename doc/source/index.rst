@@ -57,3 +57,17 @@ API
     :show-inheritance:
     :members:
     :inherited-members:
+
+.. currentmodule:: rpMerge
+
+.. autoclass:: rpMerge
+    :show-inheritance:
+    :members:
+    :inherited-members:
+
+.. currentmodule:: rpGraph
+
+.. autoclass:: rpGraph
+    :show-inheritance:
+    :members:
+    :inherited-members:

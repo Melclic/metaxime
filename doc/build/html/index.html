@@ -49,8 +49,7 @@
 <p>Basic usage include opening a rpSBML file, extracting some of its information:</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>You can open any SBML file using rpSBML and manipulate it to enrich it. The example
-provided here only shows the addition of the</p>
+<p>You can open any SBML file using rpSBML.py and manipulate it.</p>
 </div>
 <p>To open a SBML file:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rpsbml</span> <span class="o">=</span> <span class="n">rpSBML</span><span class="o">.</span><span class="n">rpSBML</span><span class="p">(</span><span class="s1">&#39;rp_1_1&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;/path/to/your/file_rpsbml.xml&#39;</span><span class="p">)</span>
@@ -111,7 +110,7 @@ provided here only shows the addition of the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>sbase_obj</strong> – libsbml.SBase, The libSBML object to add the different</p></li>
+<li><p><strong>sbase_obj</strong> (<em>libsbml.SBase</em>) – The libSBML object to add the different</p></li>
 <li><p><strong>type_param</strong> (<em>str</em>) – The type of parameter entered. Valid include [‘compartment’, ‘reaction’, ‘species’]</p></li>
 <li><p><strong>xref</strong> (<em>dict</em>) – Dictionnary of the cross reference</p></li>
 <li><p><strong>meta_id</strong> (<em>str</em>) – The meta ID to be added to the annotation string</p></li>
@@ -133,7 +132,7 @@ provided here only shows the addition of the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_annot</strong> – libsbml.Reaction, Source object of libSBML</p></li>
+<li><p><strong>source_annot</strong> (<em>libsbml.Reaction</em>) – Source object of libSBML</p></li>
 <li><p><strong>target_annot</strong> (<em>dict</em>) – Target dictionary</p></li>
 </ul>
 </dd>
@@ -174,8 +173,8 @@ provided here only shows the addition of the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_annot</strong> – libsbml.Reaction, Source object of libSBML</p></li>
-<li><p><strong>target_annot</strong> – libsbml.Reaction, Target object of libSBML</p></li>
+<li><p><strong>source_annot</strong> (<em>libsbml.Reaction</em>) – Source object of libSBML</p></li>
+<li><p><strong>target_annot</strong> (<em>libsbml.Reaction</em>) – Target object of libSBML</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -195,8 +194,8 @@ provided here only shows the addition of the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source_annot</strong> – libsbml.Reaction, Source object of libSBML</p></li>
-<li><p><strong>target_annot</strong> – libsbml.Reaction, Target object of libSBML</p></li>
+<li><p><strong>source_annot</strong> (<em>libsbml.Reaction</em>) – Source object of libSBML</p></li>
+<li><p><strong>target_annot</strong> (<em>libsbml.Reaction</em>) – Target object of libSBML</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -218,7 +217,7 @@ intermediate cofactors for the RP generated pathways, the annotation crossrefere
 not work. Best is to use the cross-reference to the original reaction</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>measured_sbml</strong> (<em>rpsbml</em>) – rpSBML object</p>
+<dd class="field-odd"><p><strong>measured_sbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – rpSBML object</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>bool, dict</p>
@@ -265,7 +264,7 @@ Using the FBC package one can add the FBA flux objective directly to the model. 
 <li><p><strong>fluxobj_id</strong> (<em>str</em>) – The id of the flux objective</p></li>
 <li><p><strong>reactionName</strong> (<em>str</em>) – The id of the reaction that is associated with the reaction</p></li>
 <li><p><strong>coefficient</strong> (<em>int</em>) – The coefficient of the flux objective</p></li>
-<li><p><strong>isMax</strong> (<em>bool</em>) – Define if the objective is coefficient</p></li>
+<li><p><strong>isMax</strong> (<em>bool</em>) – Define if the objective is coefficient (Default: True)</p></li>
 <li><p><strong>meta_id</strong> (<em>str</em>) – Meta id (Default: None)</p></li>
 </ul>
 </dd>
@@ -310,7 +309,7 @@ Using the FBC package one can add the FBA flux objective directly to the model. 
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> (<em>str</em>) – The name of the of the model</p></li>
 <li><p><strong>model_id</strong> (<em>str</em>) – The id of the model</p></li>
-<li><p><strong>meta_id</strong> (<em>str</em>) – Meta ID of the model</p></li>
+<li><p><strong>meta_id</strong> (<em>str</em>) – Meta ID of the model (Default: None)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -333,7 +332,7 @@ Using the FBC package one can add the FBA flux objective directly to the model. 
 <li><p><strong>fluxobj_id</strong> (<em>str</em>) – The id of the flux objective</p></li>
 <li><p><strong>reactionNames</strong> (<em>list</em>) – The list of string id’s of the reaction that is associated with the reaction</p></li>
 <li><p><strong>coefficients</strong> (<em>list</em>) – The list of int defining the coefficients of the flux objective</p></li>
-<li><p><strong>isMax</strong> (<em>bool</em>) – Define if the objective is coefficient</p></li>
+<li><p><strong>isMax</strong> (<em>bool</em>) – Define if the objective is coefficient (Default: True)</p></li>
 <li><p><strong>meta_id</strong> (<em>str</em>) – Meta id (Default: None)</p></li>
 </ul>
 </dd>
@@ -354,7 +353,7 @@ Using the FBC package one can add the FBA flux objective directly to the model. 
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>pathway_id</strong> (<em>str</em>) – The Groups id of the pathway id (Default: None)</p></li>
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The Groups id of the pathway id</p></li>
 <li><p><strong>meta_id</strong> (<em>str</em>) – Meta id (Default: None)</p></li>
 </ul>
 </dd>
@@ -405,8 +404,8 @@ If the parameter id exists, then the function returns the libsbml.Parameter obje
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>value</strong> (<em>float</em>) – Value set for the parameter</p></li>
-<li><p><strong>unit</strong> (<em>str</em>) – The unit id of the parameter</p></li>
-<li><p><strong>is_constant</strong> (<em>bool</em>) – Define if the parameter is constant</p></li>
+<li><p><strong>unit</strong> (<em>str</em>) – The unit id of the parameter (Default: mmol_per_gDW_per_hr)</p></li>
+<li><p><strong>is_constant</strong> (<em>bool</em>) – Define if the parameter is constant (Default: True)</p></li>
 <li><p><strong>parameter_id</strong> (<em>str</em>) – Overwrite the default naming convention (Default: None)</p></li>
 <li><p><strong>meta_id</strong> (<em>str</em>) – Meta id (Default: None)</p></li>
 </ul>
@@ -456,7 +455,7 @@ If the parameter id exists, then the function returns the libsbml.Parameter obje
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>unitDef</strong> – libsbml.Unit, libSBML Unit</p></li>
+<li><p><strong>unitDef</strong> (<em>libsbml.Unit</em>) – libSBML Unit</p></li>
 <li><p><strong>libsbmlunit</strong> (<em>str</em>) – String unit</p></li>
 <li><p><strong>exponent</strong> (<em>int</em>) – Exponent unit</p></li>
 <li><p><strong>sale</strong> (<em>int</em>) – Scale of the unit</p></li>
@@ -565,6 +564,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <li><p><strong>modelName</strong> (<em>str</em>) – The given name of the model</p></li>
 <li><p><strong>model_id</strong> (<em>str</em>) – The id of the model</p></li>
 <li><p><strong>compXref</strong> (<em>dict</em>) – The model MIRIAM annotation</p></li>
+<li><p><strong>compartment_id</strong> (<em>str</em>) – The id of the model compartment</p></li>
 <li><p><strong>upper_flux_bound</strong> (<em>float</em>) – The upper flux bounds unit definitions default when adding new reaction (Default: 999999.0)</p></li>
 <li><p><strong>lower_flux_bound</strong> (<em>float</em>) – The lower flux bounds unit definitions default when adding new reaction (Defaul: 0.0)</p></li>
 </ul>
@@ -584,16 +584,16 @@ generates a libSBML model with parameters that will be mostly used</p>
 <dd><p>Function to determine if a species can be a product of any reaction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>species_id</strong> (<em>str</em>) – ID of the species to find</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>species_id</strong> (<em>str</em>) – ID of the species to find</p></li>
+<li><p><strong>ignoreReactions</strong> (<em>list</em>) – List of all the reaction id’s to ignore</p></li>
+</ul>
 </dd>
-<dt class="field-even">Paran ignoreReactions</dt>
-<dd class="field-even"><p>list, List of all the reaction id’s to ignore</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
 </dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>bool</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>True if its a product of a reaction False if not</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>True if its a product of a reaction False if not</p>
 </dd>
 </dl>
 </dd></dl>
@@ -622,7 +622,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <dd><p>Return a dictionnary of all the information in a BRSynth annotations</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>annot</strong> – libsbml.XMLNode, The annotation object of libSBML</p>
+<dd class="field-odd"><p><strong>annot</strong> (<em>libsbml.XMLNode</em>) – The annotation object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>dict</p>
@@ -639,7 +639,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <dd><p>Return the MIRIAM annotations of species</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>annot</strong> – libsbml.XMLNode, The annotation object of libSBML</p>
+<dd class="field-odd"><p><strong>annot</strong> (<em>libsbml.XMLNode</em>) – The annotation object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>dict</p>
@@ -707,7 +707,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <dd><p>Return the products and the species associated with a reaction</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>reaction</strong> – libsbml.Reaction, Reaction object of libSBML</p>
+<dd class="field-odd"><p><strong>reaction</strong> – Reaction object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>dict</p>
@@ -725,7 +725,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <p>WARNING: DEPRECATED</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>reaction</strong> – libsbml.Reaction, Reaction object of libSBML</p>
+<dd class="field-odd"><p><strong>reaction</strong> – Reaction object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>dict</p>
@@ -765,7 +765,7 @@ generates a libSBML model with parameters that will be mostly used</p>
 <dd><p>Return he taxonomy ID from an annotation</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>annot</strong> – libsbml.XMLNode, The annotation object of libSBML</p>
+<dd class="field-odd"><p><strong>annot</strong> (<em>libsbml.XMLNode</em>) – The annotation object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>dict</p>
@@ -806,7 +806,7 @@ are not recognised, new parameters are created for each of them</p>
 <li><p><strong>upper_bound</strong> (<em>float</em>) – Reaction upper bound</p></li>
 <li><p><strong>lower_bound</strong> (<em>float</em>) – Reaction lower bound</p></li>
 <li><p><strong>unit</strong> (<em>str</em>) – Unit to the bounds (Default: mmol_per_gDW_per_hr)</p></li>
-<li><p><strong>is_constant</strong> (<em>bool</em>) – Set if the reaction is constant</p></li>
+<li><p><strong>is_constant</strong> (<em>bool</em>) – Set if the reaction is constant (Default: True)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -824,7 +824,7 @@ are not recognised, new parameters are created for each of them</p>
 <dd><p>Determine if the model already contains a species according to its ID</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>reaction</strong> – libsbml.Reaction, Reaction object of libSBML</p>
+<dd class="field-odd"><p><strong>reaction</strong> – Reaction object of libSBML</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>bool</p>
@@ -854,6 +854,194 @@ are not recognised, new parameters are created for each of them</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>Success or failure of the command</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rpMerge.rpMerge">
+<em class="property">class </em><code class="descclassname">rpMerge.</code><code class="descname">rpMerge</code><a class="headerlink" href="#rpMerge.rpMerge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class that hosts the different functions to merge two SBML files</p>
+<dl class="method">
+<dt id="rpMerge.rpMerge.compareEC">
+<code class="descname">compareEC</code><span class="sig-paren">(</span><em>sim_reac_miriam</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.compareEC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two MIRIAM annotations and find the similarity of their EC number</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>meas_reac_miriam</strong> (<em>libsbml.XMLNode</em>) – The annotation object of the source</p></li>
+<li><p><strong>sim_reac_miriam</strong> (<em>libsbml.XMLNode</em>) – The annotation object of the target</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The match score</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.compareReaction">
+<code class="descname">compareReaction</code><span class="sig-paren">(</span><em>species_source_target</em>, <em>source_reaction</em>, <em>target_reaction</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.compareReaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two reactions and elect that they are the same if they have exactly the same reactants and products</p>
+<p>species_source_target: {‘MNXM4__64__MNXC3’: {‘M_o2_c’: 1.0}, ‘MNXM10__64__MNXC3’: {‘M_nadh_c’: 1.0}, ‘CMPD_0000000003__64__MNXC3’: {}, ‘TARGET_0000000001__64__MNXC3’: {}, ‘MNXM188__64__MNXC3’: {‘M_anth_c’: 1.0}, ‘BC_32877__64__MNXC3’: {‘M_nh4_c’: 0.8}, ‘BC_32401__64__MNXC3’: {‘M_nad_c’: 0.2}, ‘BC_26705__64__MNXC3’: {‘M_h_c’: 1.0}, ‘BC_20662__64__MNXC3’: {‘M_co2_c’: 1.0}}
+the first keys are the source compartment ids
+the second key is the source species id
+the value is the target species id
+Note that we assure that the match is 1:1 between species using the species match</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>species_source_target</strong> (<em>dict</em>) – The comparison dictionary between the species of two SBML files</p></li>
+<li><p><strong>source_reaction</strong> (<em>libsbml.Reaction</em>) – The target reaction</p></li>
+<li><p><strong>target_reaction</strong> (<em>libsbml.Reaction</em>) – The source reaction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The score of the match and boolean if its a match or not</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.compareReactions">
+<code class="descname">compareReactions</code><span class="sig-paren">(</span><em>species_match</em>, <em>target_rpsbml</em>, <em>source_rpsbml</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.compareReactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare the reactions of two SBML files</p>
+<p>Compare that all the measured species of a reactions are found within sim species to match with a reaction.
+We assume that there cannot be two reactions that have the same species and reactants. This is maintained by SBML</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>species_match</strong> (<em>dict</em>) – The species match dictionary returned by compareSpecies()</p></li>
+<li><p><strong>target_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The target rpSBMl object</p></li>
+<li><p><strong>source_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The source rpSBML object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionary of the reaction matches</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.compareSpecies">
+<code class="descname">compareSpecies</code><span class="sig-paren">(</span><em>comp_source_target</em>, <em>source_rpsbml</em>, <em>target_rpsbml</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.compareSpecies" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match all the measured chemical species to the simulated chemical species between two SBML</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>comp_source_target</strong> – The comparison dictionary between the compartment of two SBML files</p></li>
+<li><p><strong>source_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The source rpSBML</p></li>
+<li><p><strong>target_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The target rpSBML</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The compartment match dictionary</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.containedReaction">
+<code class="descname">containedReaction</code><span class="sig-paren">(</span><em>species_source_target</em>, <em>source_reaction</em>, <em>target_reaction</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.containedReaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare individual reactions and see if the source reaction is contained within the target one</p>
+<p>species_source_target: {‘MNXM4__64__MNXC3’: {‘M_o2_c’: 1.0}, ‘MNXM10__64__MNXC3’: {‘M_nadh_c’: 1.0}, ‘CMPD_0000000003__64__MNXC3’: {}, ‘TARGET_0000000001__64__MNXC3’: {}, ‘MNXM188__64__MNXC3’: {‘M_anth_c’: 1.0}, ‘BC_32877__64__MNXC3’: {‘M_nh4_c’: 0.8}, ‘BC_32401__64__MNXC3’: {‘M_nad_c’: 0.2}, ‘BC_26705__64__MNXC3’: {‘M_h_c’: 1.0}, ‘BC_20662__64__MNXC3’: {‘M_co2_c’: 1.0}}
+the first keys are the source compartment ids
+the second key is the source species id
+the value is the target species id
+Note that we assure that the match is 1:1 between species using the species match</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>species_source_target</strong> (<em>dict</em>) – The comparison dictionary between the species of two SBML files</p></li>
+<li><p><strong>source_reaction</strong> (<em>libsbml.Reaction</em>) – The target reaction</p></li>
+<li><p><strong>target_reaction</strong> (<em>libsbml.Reaction</em>) – The source reaction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The score of the match and the dict of the match in that order</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.mergeModels">
+<code class="descname">mergeModels</code><span class="sig-paren">(</span><em>source_rpsbml</em>, <em>target_rpsbml</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.mergeModels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge two models species and reactions using the annotations to recognise the same species and reactions</p>
+<p>The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
+called rp_pathway. If not use the readSBML() function to create a model
+We add the reactions and species from the rpsbml to the target_model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The source rpSBML object</p></li>
+<li><p><strong>target_rpsbml</strong> (<a class="reference internal" href="#rpSBML.rpSBML" title="rpSBML.rpSBML"><em>rpSBML</em></a>) – The target rpSBML object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Tuple of dict where the first entry is the species source to target conversion and the second is the reaction source to target conversion</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpMerge.rpMerge.mergeSBMLFiles">
+<code class="descname">mergeSBMLFiles</code><span class="sig-paren">(</span><em>path_source</em>, <em>path_target</em>, <em>path_merge</em><span class="sig-paren">)</span><a class="headerlink" href="#rpMerge.rpMerge.mergeSBMLFiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Public function that merges two SBML files together</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path_source</strong> (<em>str</em>) – Path of the source SBML file</p></li>
+<li><p><strong>path_target</strong> (<em>str</em>) – Path of the target SBML file</p></li>
+<li><p><strong>path_merge</strong> (<em>str</em>) – Path of the output SBML file</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Success or failure of the function</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rpGraph.rpGraph">
+<em class="property">class </em><code class="descclassname">rpGraph.</code><code class="descname">rpGraph</code><span class="sig-paren">(</span><em>rpsbml</em>, <em>pathway_id='rp_pathway'</em>, <em>species_group_id='central_species'</em><span class="sig-paren">)</span><a class="headerlink" href="#rpGraph.rpGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The class that hosts the networkx related functions</p>
+<dl class="method">
+<dt id="rpGraph.rpGraph.orderedRetroReactions">
+<code class="descname">orderedRetroReactions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpGraph.rpGraph.orderedRetroReactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Public function to return the linear list of reactions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>List of node ids</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
 </dd>
 </dl>
 </dd></dl>
