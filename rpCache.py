@@ -22,21 +22,34 @@ logging.basicConfig(
     datefmt='%d-%m-%Y %H:%M:%S',
 )
 
+
 #######################################################
 ################### rpCache  ##########################
 #######################################################
 
 
-## Class to generate the cache
-#
-# Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the
-#the other steps. These should be called only when the files have changes
 class rpCache:
-    ## Cache constructor
-    #
-    # @param self The object pointer
-    # @param inputPath The path to the folder that contains all the input/output files required
+    """Class to generate the cache
+
+    Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the the other steps. These should be called only when the files have changes
+
+    """
     def __init__(self, rr_compounds_path=None, rr_rules_path=None, rr_rxn_recipes_path=None, fetchInputFiles=False):
+        """Cache constructor
+
+        :param rr_compounds_path: Path to the compounds file
+        :param rr_rules_path: Path to the rules file
+        :param rr_rxn_recipes_path: Path to the reactions rules recipes
+        :param fetchInputFiles: Force download all the input cache file
+
+        :type rr_compounds_path: str (Default: None) 
+        :type rr_rules_path: str (Default: None)
+        :type rr_rxn_recipes_path: str (Default: None)
+        :type fetchInputFiles: bool (Default: False)
+
+        :rtype: None
+        :return: None
+        """
         self.rr_compounds_path = rr_compounds_path
         self.rr_rules_path = rr_rules_path
         self.rr_rxn_recipes_path = rr_rxn_recipes_path
@@ -72,49 +85,56 @@ class rpCache:
         if not os.path.isdir(self.dirname+'/cache'):
             os.mkdir(self.dirname+'/cache')
 
+
     #####################################################
     ################# ERROR functions ###################
     #####################################################
 
-    ## Error function for the convertion of structures
-    #
+
     class Error(Exception):
+        """Error function for the convertion of structures
+        """
         pass
 
 
-    ## Error function for the convertion of structures
-    #
     class DepictionError(Error):
+        """Error function for the convertion of structures
+        """
         def __init__(self, message):
+            """Constructor for the class
+
+            :param message: The error handling message string
+
+            :type message: str
+            
+            :rtype: None
+            :return: None
+            """
             #self.expression = expression
             self.message = message
-
 
 
     ##########################################################
     ################## Private Functions #####################
     ##########################################################
 
-    ## Private function to fetch the required data, parse them and generate the pickle
-    #
-    #  Opens the previously generated cache to the object memory
-    #
-    # @param The oject pointer
-    # @return Boolean detemining the success of the function or not
+
     def _fetchInputFiles(self):
+        """Private function to fetch the required data, parse them and generate the pickle
+
+        :rtype: bool
+        :return: Success or failure of the function
+        """
         #################### make the local folders ############################
         # input_cache
         if not os.path.isdir(self.dirname+'/input_cache'):
             os.mkdir(self.dirname+'/input_cache')
-
         ####################### Fetch the input_cache files if necessary ######################
-
         # MNX 3.2
         url = 'ftp://ftp.vital-it.ch/databases/metanetx/MNXref/3.2/'
         for in_file in ['reac_xref.tsv', 'chem_xref.tsv', 'chem_prop.tsv', 'comp_xref.tsv']:
             if not os.path.isfile(self.dirname+'/input_cache/'+in_file):
                 urllib.request.urlretrieve(url+in_file, self.dirname+'/input_cache/'+in_file)
-
         # RetroRules
         if self.rr_compounds_path:
             shutil.copy(self.rr_compounds_path, os.path.join(self.dirname, 'input_cache', 'rr_compounds.tsv'))
@@ -149,7 +169,6 @@ class rpCache:
                             self.dirname+'/input_cache/')
                 os.remove(self.dirname+'/input_cache/rr02_more_data.tar.gz')
                 shutil.rmtree(self.dirname+'/input_cache/rr02_more_data')
-
         if self.rr_rules_path:
             shutil.copy(self.rr_rules_path, os.path.join(self.dirname, 'input_cache', 'rules_rall.tsv'))
         else:
@@ -164,10 +183,16 @@ class rpCache:
                 shutil.rmtree(self.dirname+'/input_cache/retrorules_rr02_rp3_hs')
         return True
 
+
     ###################### Populate the cache #################################
 
 
     def populateCache(self):
+        """Populate the cache by calling all the getters
+
+        :rtype: None
+        :return: None
+        """
         a = self.getCIDstrc()
         a = self.getDeprecatedCID()
         a = self.getDeprecatedRID()
@@ -184,8 +209,14 @@ class rpCache:
 
     ##################### Individual getters for the cache ####################
 
+
     ### MNX
     def getCIDstrc(self):
+        """Getter of the dictionary describing the structure of compound id's
+
+        :rtype: dict
+        :return: The dictionnary structure of compound
+        """
         #this one hos both mnx and RR
         picklename = 'cid_strc.pickle.gz'
         filename = 'chem_prop.tsv'
@@ -198,6 +229,11 @@ class rpCache:
         #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getDeprecatedCID(self):
+        """Getter of the dictionary describing the deprecated compound id to compound id
+
+        :rtype: dict
+        :return: The dictionnary structure of deprecated compounds
+        """
         picklename = 'deprecatedCID_cid.pickle.gz'
         filename = 'chem_xref.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
@@ -208,6 +244,11 @@ class rpCache:
         #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getDeprecatedRID(self):
+        """Getter of the dictionary describing the deprecated reaction id to reaction id
+
+        :rtype: dict
+        :return: The dictionnary structure of deprecated reactions
+        """
         picklename = 'deprecatedRID_rid.pickle.gz'
         filename = 'reac_xref.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
@@ -218,6 +259,11 @@ class rpCache:
         #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getCIDxref(self):
+        """Getter of the dictionary describing the cross-reference of compounds
+
+        :rtype: dict
+        :return: The dictionnary of cross-reference
+        """
         picklename = 'cid_xref.pickle.gz'
         filename = 'chem_xref.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
@@ -229,6 +275,11 @@ class rpCache:
         #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
 
     def getCompXref(self):
+        """Getter of the dictionary describing the cross-reference of the compartment
+
+        :rtype: dict
+        :return: The dictionnary of cross-reference
+        """
         picklename1 = 'xref_comp.pickle.gz'
         picklename2 = 'comp_xref.pickle.gz'
         filename = 'comp_xref.tsv'
@@ -240,10 +291,14 @@ class rpCache:
         self.comp_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'rb'))
         return self.xref_comp, self.comp_xref
 
-
      ###### RetroRules ##### WARNING: run this at the end so that you can add the BASF to the xref
 
     def getFullReactions(self):
+        """Getter of the dictionary describing the full reactions from reaction rules
+
+        :rtype: dict
+        :return: The dictionnary of full reactions
+        """
         picklename = 'rr_full_reactions.pickle.gz'
         filename = 'rxn_recipes.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
@@ -254,6 +309,11 @@ class rpCache:
         return self.rr_full_reactions
 
     def getRRreactions(self):
+        """Getter of the dictionary describing the reaction rules
+
+        :rtype: dict
+        :return: The dictionnary of reaction rules
+        """
         picklename = 'rr_reactions.pickle.gz'
         filename = 'rules_rall.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
@@ -266,6 +326,11 @@ class rpCache:
     ### Thermo
 
     def getKEGGdG(self):
+        """Getter of the dictionary for the KEGG and thermodynamics parameters (dG)
+
+        :rtype: dict
+        :return: The dictionnary of delta G
+        """
         #kegg_dG.pickle
         if not os.path.isfile(self.dirname+'/cache/kegg_dG.pickle'):
             pickle.dump(self.keggdG(self.dirname+'/input_cache/cc_compounds.json.gz',
@@ -276,6 +341,11 @@ class rpCache:
         return self.kegg_dG
 
     def getCCpreprocess(self):
+        """Getter of the dictionnary describing the Component Composition
+
+        :rtype: dict
+        :return: The dictionnary of cc preprocess
+        """
         self.cc_preprocess = np.load(self.dirname+'/cache/cc_preprocess.npz')
         return self.cc_preprocess
 
@@ -283,6 +353,11 @@ class rpCache:
     ### intermidiate generate, WARNING: needs to be added at the end after the other files
     
     def getChebiCID(self):
+        """Getter of the dictionnary describing the Chebi id to the compound id
+
+        :rtype: dict
+        :return: The dictionnary of Chebi CID
+        """
         picklename = 'chebi_cid.pickle.gz'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             self._chebiXref()
@@ -292,6 +367,11 @@ class rpCache:
         return self.chebi_cid
 
     def getInchiKeyCID(self):
+        """Getter of the dictionnary describing the inchikey to the compound id
+
+        :rtype: dict
+        :return: The dictionnary of inchikey to cid
+        """
         picklename = 'inchikey_cid.pickle.gz'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             # open the already calculated (normally) mnxm_strc.pickle.gz
@@ -301,6 +381,11 @@ class rpCache:
         return self.inchikey_cid
 
     def getCIDname(self):
+        """Getter of the dictionnary describing the name of the compounds
+
+        :rtype: dict
+        :return: The dictionnary of compound name
+        """
         picklename = 'cid_name.pickle.gz'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             pickle.dump(self.cid_name,
@@ -309,24 +394,29 @@ class rpCache:
         return self.cid_name
 
 
-
-
     #####################################################
     ############## Private Function #####################
     #####################################################
 
 
-    ## Convert chemical depiction to others type of depictions
-    #
-    # Usage example:
-    # - convert_depiction(idepic='CCO', otype={'inchi', 'smiles', 'inchikey'})
-    # - convert_depiction(idepic='InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3', itype='inchi', otype={'inchi', 'smiles', 'inchikey'})
-    #  @param self The object pointer
-    #  @param idepic String depiction to be converted, str
-    #  @param itype type of depiction provided as input, str
-    #  @param otype types of depiction to be generated, {"", "", ..}
-    #  @return odepic generated depictions, {"otype1": "odepic1", ..}
     def _convert_depiction(self, idepic, itype='smiles', otype={'inchikey'}):
+        """Convert chemical depiction to others type of depictions
+
+        Usage example:
+         - convert_depiction(idepic='CCO', otype={'inchi', 'smiles', 'inchikey'})
+         - convert_depiction(idepic='InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3', itype='inchi', otype={'inchi', 'smiles', 'inchikey'})
+
+        :param idepic: Input string
+        :param itype: The type of input
+        :param otype: Type of output. Valid options: inchi, smiles, inchikey
+
+        :type idepic: str 
+        :type itype: str
+        :type otype: dict
+
+        :rtype: dict
+        :return: Dictionnary of results
+        """
         # Import (if needed)
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)
@@ -350,12 +440,16 @@ class rpCache:
         return odepic
 
 
-    ## Function to create a dictionnary of old to new chemical id's
-    #
-    #  Generate a one-to-one dictionnary of old id's to new ones. Private function
-    #
-    # TODO: check other things about the mnxm emtry like if it has the right structure etc...
     def _checkCIDdeprecated(self, cid):
+        """Check if a given compound id is deprecated
+
+        :param cid: Compound ID
+
+        :type cid: str
+
+        :rtype: str
+        :return: The valid CID
+        """
         try:
             return self.deprecatedCID_cid[cid]
         except KeyError:
@@ -366,21 +460,27 @@ class rpCache:
     #
     # TODO: check other things about the mnxm emtry like if it has the right structure etc...
     def _checkRIDdeprecated(self, rid):
+        """Check if a given reaction id is deprecated
+
+        :param rid: Reaction ID
+
+        :type rid: str
+
+        :rtype: str
+        :return: The valid RID
+        """
         try:
             return self.deprecatedRID_rid[rid]
         except KeyError:
             return rid
 
 
-    ## Function to parse the chem_xref.tsv file of MetanetX
-    #
-    #  Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id's
-    #
-    #  @param self Object pointer
-    #  @param chem_xref_path Input file path
-    #  @return a The dictionnary of identifiers
-    #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def _chebiXref(self):
+        """Generate the chebi cross reference
+
+        :rtype: None
+        :return: None
+        """
         for cid in self.cid_xref:
             if 'chebi' in self.cid_xref[cid]:
                 for c in self.cid_xref[cid]['chebi']:
@@ -388,6 +488,11 @@ class rpCache:
 
 
     def _inchikeyCID(self):
+        """Generate the inchikey to cid dictionnary
+
+        :rtype: None
+        :return: None
+        """
         for cid in self.cid_strc:
             if not self.cid_strc[cid]['inchikey'] in self.inchikey_cid:
                 self.inchikey_cid[self.cid_strc[cid]['inchikey']] = []
@@ -402,19 +507,26 @@ class rpCache:
 
     ################## Thermodynamics ########################################
 
-    ## Function exctract the dG of components
-    #
-    #  This function parses a file from component analysis and uses KEGG id's. This means that to use precalculated
-    # values in this file a given ID must have a KEGG id listed here
-    #
-    #  @param self Object pointer
-    #  @param cc_compounds_path cc_compounds.json.gz file path
-    #  @param alberty_path alberty.json file path
-    #  @param compounds_path compounds.csv file path
+
     def keggdG(self,
                 cc_compounds_path,
                 alberty_path,
                 compounds_path):
+        """Function exctract the dG of components
+
+        This function parses a file from component analysis and uses KEGG id's. This means that to use precalculated values in this file a given ID must have a KEGG id listed here
+
+        :param cc_compounds_path: The component contribution file path
+        :param alberty_path: The Alberty delta G file path
+        :param compounds_path: The component contribution compounds file path
+
+        :type cc_compounds_path: str
+        :type alberty_path: str
+        :type compounds_path: str
+
+        :rtype: dict
+        :return: The dictionary of the results
+        """
         cc_alberty = {}
         ########################## compounds ##################
         #contains the p_kas and molecule decomposition
@@ -453,17 +565,19 @@ class rpCache:
         return cc_alberty
 
 
-
     ################## RetroRules parsers ####################################
 
 
-    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules. Uses the InchIkey as key to the dictionnary
-    #
-    #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
-    #
-    #  @param self Object pointer
-    #  @param chem_prop_path Input file path
     def retroRulesStrc(self, rr_compounds_path):
+        """Parse the Reaction Rules
+
+        :param rr_compounds_path: The reaction rules compounds
+
+        :type cc_compounds_path: str
+
+        :rtype: None
+        :return: None
+        """
         for row in csv.DictReader(open(rr_compounds_path), delimiter='\t'):
             tmp = {'formula':  None,
                    'smiles': None,
@@ -483,15 +597,19 @@ class rpCache:
                     self.cid_strc[self._checkCIDdeprecated(row['cid'])]['smiles'] = resConv['smiles']
 
 
-    ## Function to parse the rules_rall.tsv from RetroRules
-    #
-    #  Extract from the reactions rules the ruleID, the reactionID, the direction of the rule directed to the origin reaction
-    #  NOTE: we take care of the fact that a given reaction rule may have multiple reactions associated with them
-    #
-    #  @param self The object pointer.
-    #  @param path The input file path.
-    #  @return rule Dictionnary describing each reaction rule
+    #NOTE: we take care of the fact that a given reaction rule may have multiple reactions associated with them
     def retroReactions(self, rules_rall_path):
+        """Function to parse the rules_rall.tsv from RetroRules
+
+        Extract from the reactions rules the ruleID, the reactionID, the direction of the rule directed to the origin reaction
+
+        :param rules_rall_path: Path to the reaction rules
+
+        :type rules_rall_path: str
+
+        :rtype: bool
+        :return: Success or failure of the function
+        """
         try:
             for row in csv.DictReader(open(rules_rall_path), delimiter='\t'):
                 if not type(row)==dict:
@@ -529,15 +647,18 @@ class rpCache:
         return True
 
 
-    ## Generate complete reactions from the rxn_recipes.tsv from RetroRules
-    #
-    #  These are the compplete reactions from which the reaction rules are generated from. This is used to
-    # reconstruct the full reactions from monocomponent reactions
-    #
-    #  @param self The pointer object
-    #  @param rxn_recipes_path Path to the recipes file
-    #  @return Boolean that determines the success or failure of the function
     def retroRulesFullReac(self, rxn_recipes_path):
+        """Generate complete reactions from the rxn_recipes.tsv from RetroRules
+
+        These are the compplete reactions from which the reaction rules are generated from. This is used to reconstruct the full reactions from monocomponent reactions
+
+        :param rxn_recipes_path: Path to the reaction recipies
+
+        :type rxn_recipes_path: str
+
+        :rtype: None
+        :return: None
+        """
         #### for character matching that are returned
         DEFAULT_STOICHIO_RESCUE = {'4n': 4, '3n': 3, "2n": 2, 'n': 1,
                                    '(n)': 1, '(N)': 1, '(2n)': 2, '(x)': 1,
@@ -595,19 +716,22 @@ class rpCache:
             self.logger.error('Cannot find file: '+str(path))
 
 
-
     ################## MNX parsers ###################################
 
 
-    ## Function to parse the comp_xref.tsv file of MetanetX
-    #
-    #  Generate a dictionnary of compartments id's (MNX) to other database id's
-    #
-    #  @param self Object pointer
-    #  @param chem_xref_path Input file path
-    #  @return a The dictionnary of identifiers
     #TODO: save the self.deprecatedMNXM_mnxm to be used in case there rp_paths uses an old version of MNX
     def mnxCompXref(self, comp_xref_path):
+        """Function to parse the comp_xref.tsv file of MetanetX
+        
+        Generate a dictionnary of compartments id's (MNX) to other database id's
+
+        :param comp_xref_path: Path to the compartment xref
+
+        :type comp_xref_path: str
+
+        :rtype: None
+        :return: None
+        """
         try:
             with open(comp_xref_path) as f:
                 c = csv.reader(f, delimiter='\t')
@@ -642,17 +766,19 @@ class rpCache:
 
 
 
-    #[TODO] merge the two functions
-    ## Function to parse the chem_xref.tsv file of MetanetX
-    #
-    #  Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's.
-    # This can include more than one old id per new one and thus returns a dictionnary. Private function
-    #
-    #  @param self Object pointer
-    #  @param chem_xref_path Input file path
-    #  @return Dictionnary of identifiers
     #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def deprecatedMNXM(self, chem_xref_path):
+        """Function to parse the chem_xref.tsv file of MetanetX
+        
+        Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's. This can include more than one old id per new one and thus returns a dictionnary. Private function
+
+        :param chem_xref_path: The path to the MetaNetX chemical list 
+
+        :type chem_xref_path: str
+
+        :rtype: None
+        :return: None
+        """
         with open(chem_xref_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -666,15 +792,18 @@ class rpCache:
                 pass
 
 
-    ## Function to parse the reac_xref.tsv file of MetanetX
-    #
-    #  Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's.
-    # This can include more than one old id per new one and thus returns a dictionnary. Private function
-    #
-    #  @param self Object pointer
-    #  @param reac_xref_path Input file path
-    #  @return Dictionnary of identifiers
     def deprecatedMNXR(self, reac_xref_path):
+        """Function to parse the reac_xref.tsv file of MetanetX
+        
+        Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's. This can include more than one old id per new one and thus returns a dictionnary. Private function
+
+        :param reac_xref_path: The path to the MetaNetX reaction list 
+
+        :type reac_xref_path: str
+
+        :rtype: None
+        :return: None
+        """
         with open(reac_xref_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -684,14 +813,18 @@ class rpCache:
                         self.deprecatedRID_rid[mnx[1]] = row[1]
 
 
-    ## Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules
-    # TODO: use the inchikey for all the cid
-    #  Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
-    #
-    #  @param self Object pointer
-    #  @param chem_prop_path Input file path
-    #  @return cid_strc Dictionnary of formula, smiles, inchi and inchikey
     def MNXstrc(self, chem_prop_path):
+        """Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules
+        
+        Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
+
+        :param chem_prop_path: The path to the MetaNetX chemical structure list 
+
+        :type chem_prop_path: str
+
+        :rtype: None
+        :return: None
+        """
         with open(chem_prop_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:
@@ -741,15 +874,19 @@ class rpCache:
                         self.cid_strc[mnxm] = tmp
 
 
-    ## Function to parse the chem_xref.tsv file of MetanetX
-    #
-    #  Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id's
-    #
-    #  @param self Object pointer
-    #  @param chem_xref_path Input file path
-    #  @return a The dictionnary of identifiers
     #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def mnxXref(self, chem_xref_path):
+        """Function to parse the chem_xref.tsv file of MetanetX
+        
+        Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id's
+
+        :param chem_xref_path: The path to the MetaNetX chemical cross reference list 
+
+        :type chem_xref_path: str
+
+        :rtype: None
+        :return: None
+        """
         with open(chem_xref_path) as f:
             c = csv.reader(f, delimiter='\t')
             for row in c:

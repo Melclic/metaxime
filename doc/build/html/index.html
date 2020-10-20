@@ -1,0 +1,515 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rpCache’s Documentation &#8212; rpCache v0.2 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="rpcache-s-documentation">
+<h1>rpCache’s Documentation<a class="headerlink" href="#rpcache-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Welcome to rpCache’s documentation. This project generates the cache that is used throughout many different projects. The files are automatically downloaded, from three sources <a class="reference external" href="https://www.metanetx.org/">MetaNetX</a>, <a class="reference external" href="https://retrorules.org/">RetroRules</a> and <a class="reference external" href="https://github.com/eladnoor/component-contribution">Component-Contribution</a> and are parsed to generate the cache.</p>
+<p>Before building the docker, you must build the <a class="reference external" href="https://github.com/Galaxy-SynBioCAD/rpBase">rpBase</a> docker before building it using the local docker:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker build -t brsynth/rpcache:v2 .
+</pre></div>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="py class">
+<dt id="rpCache.rpCache">
+<em class="property">class </em><code class="sig-prename descclassname">rpCache.</code><code class="sig-name descname">rpCache</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rr_compounds_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rr_rules_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rr_rxn_recipes_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">fetchInputFiles</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to generate the cache</p>
+<p>Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the the other steps. These should be called only when the files have changes</p>
+<dl class="py exception">
+<dt id="rpCache.rpCache.DepictionError">
+<em class="property">exception </em><code class="sig-name descname">DepictionError</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">message</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.DepictionError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#rpCache.rpCache.Error" title="rpCache.rpCache.Error"><code class="xref py py-class docutils literal notranslate"><span class="pre">rpCache.rpCache.Error</span></code></a></p>
+<p>Error function for the convertion of structures</p>
+<dl class="py attribute">
+<dt id="rpCache.rpCache.DepictionError.args">
+<code class="sig-name descname">args</code><a class="headerlink" href="#rpCache.rpCache.DepictionError.args" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.DepictionError.with_traceback">
+<code class="sig-name descname">with_traceback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.DepictionError.with_traceback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception.with_traceback(tb) –
+set self.__traceback__ to tb and return self.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt id="rpCache.rpCache.Error">
+<em class="property">exception </em><code class="sig-name descname">Error</code><a class="headerlink" href="#rpCache.rpCache.Error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Error function for the convertion of structures</p>
+<dl class="py attribute">
+<dt id="rpCache.rpCache.Error.args">
+<code class="sig-name descname">args</code><a class="headerlink" href="#rpCache.rpCache.Error.args" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.Error.with_traceback">
+<code class="sig-name descname">with_traceback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.Error.with_traceback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception.with_traceback(tb) –
+set self.__traceback__ to tb and return self.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.MNXstrc">
+<code class="sig-name descname">MNXstrc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">chem_prop_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.MNXstrc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules</p>
+<p>Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>chem_prop_path</strong> (<em>str</em>) – The path to the MetaNetX chemical structure list</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.deprecatedMNXM">
+<code class="sig-name descname">deprecatedMNXM</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">chem_xref_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.deprecatedMNXM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the chem_xref.tsv file of MetanetX</p>
+<p>Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id’s. This can include more than one old id per new one and thus returns a dictionnary. Private function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>chem_xref_path</strong> (<em>str</em>) – The path to the MetaNetX chemical list</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.deprecatedMNXR">
+<code class="sig-name descname">deprecatedMNXR</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">reac_xref_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.deprecatedMNXR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the reac_xref.tsv file of MetanetX</p>
+<p>Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id’s. This can include more than one old id per new one and thus returns a dictionnary. Private function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>reac_xref_path</strong> (<em>str</em>) – The path to the MetaNetX reaction list</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getCCpreprocess">
+<code class="sig-name descname">getCCpreprocess</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getCCpreprocess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionnary describing the Component Composition</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of cc preprocess</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getCIDname">
+<code class="sig-name descname">getCIDname</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getCIDname" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionnary describing the name of the compounds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of compound name</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getCIDstrc">
+<code class="sig-name descname">getCIDstrc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getCIDstrc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the structure of compound id’s</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary structure of compound</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getCIDxref">
+<code class="sig-name descname">getCIDxref</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getCIDxref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the cross-reference of compounds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of cross-reference</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getChebiCID">
+<code class="sig-name descname">getChebiCID</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getChebiCID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionnary describing the Chebi id to the compound id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of Chebi CID</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getCompXref">
+<code class="sig-name descname">getCompXref</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getCompXref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the cross-reference of the compartment</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of cross-reference</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getDeprecatedCID">
+<code class="sig-name descname">getDeprecatedCID</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getDeprecatedCID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the deprecated compound id to compound id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary structure of deprecated compounds</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getDeprecatedRID">
+<code class="sig-name descname">getDeprecatedRID</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getDeprecatedRID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the deprecated reaction id to reaction id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary structure of deprecated reactions</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getFullReactions">
+<code class="sig-name descname">getFullReactions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getFullReactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the full reactions from reaction rules</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of full reactions</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getInchiKeyCID">
+<code class="sig-name descname">getInchiKeyCID</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getInchiKeyCID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionnary describing the inchikey to the compound id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of inchikey to cid</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getKEGGdG">
+<code class="sig-name descname">getKEGGdG</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getKEGGdG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary for the KEGG and thermodynamics parameters (dG)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of delta G</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.getRRreactions">
+<code class="sig-name descname">getRRreactions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.getRRreactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Getter of the dictionary describing the reaction rules</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The dictionnary of reaction rules</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.keggdG">
+<code class="sig-name descname">keggdG</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cc_compounds_path</span></em>, <em class="sig-param"><span class="n">alberty_path</span></em>, <em class="sig-param"><span class="n">compounds_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.keggdG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function exctract the dG of components</p>
+<p>This function parses a file from component analysis and uses KEGG id’s. This means that to use precalculated values in this file a given ID must have a KEGG id listed here</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cc_compounds_path</strong> (<em>str</em>) – The component contribution file path</p></li>
+<li><p><strong>alberty_path</strong> (<em>str</em>) – The Alberty delta G file path</p></li>
+<li><p><strong>compounds_path</strong> (<em>str</em>) – The component contribution compounds file path</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The dictionary of the results</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.mnxCompXref">
+<code class="sig-name descname">mnxCompXref</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comp_xref_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.mnxCompXref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the comp_xref.tsv file of MetanetX</p>
+<p>Generate a dictionnary of compartments id’s (MNX) to other database id’s</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>comp_xref_path</strong> (<em>str</em>) – Path to the compartment xref</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.mnxXref">
+<code class="sig-name descname">mnxXref</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">chem_xref_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.mnxXref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the chem_xref.tsv file of MetanetX</p>
+<p>Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id’s</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>chem_xref_path</strong> (<em>str</em>) – The path to the MetaNetX chemical cross reference list</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.populateCache">
+<code class="sig-name descname">populateCache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.populateCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populate the cache by calling all the getters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.retroReactions">
+<code class="sig-name descname">retroReactions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rules_rall_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.retroReactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to parse the rules_rall.tsv from RetroRules</p>
+<p>Extract from the reactions rules the ruleID, the reactionID, the direction of the rule directed to the origin reaction</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>rules_rall_path</strong> (<em>str</em>) – Path to the reaction rules</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Success or failure of the function</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.retroRulesFullReac">
+<code class="sig-name descname">retroRulesFullReac</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rxn_recipes_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.retroRulesFullReac" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate complete reactions from the rxn_recipes.tsv from RetroRules</p>
+<p>These are the compplete reactions from which the reaction rules are generated from. This is used to reconstruct the full reactions from monocomponent reactions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>rxn_recipes_path</strong> (<em>str</em>) – Path to the reaction recipies</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="rpCache.rpCache.retroRulesStrc">
+<code class="sig-name descname">retroRulesStrc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rr_compounds_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#rpCache.rpCache.retroRulesStrc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse the Reaction Rules</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>rr_compounds_path</strong> – The reaction rules compounds</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">rpCache</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Melchior du Lac.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
