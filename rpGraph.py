@@ -7,14 +7,22 @@ import numpy as np
 import random
 
 
-## Create hypergraphs using networkx and perform different types of operations on it
-#
-#
 class rpGraph:
-    ##
-    #
-    #
+    """The class that hosts the networkx related functions
+    """
     def __init__(self, rpsbml=None, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+        """Constructor of the class
+
+        Automatically constructs the network when calling the construtor
+
+        :param rpsbml: The rpSBML object
+        :param pathway_id: The pathway id of the heterologous pathway
+        :param species_group_id: The id of the central species
+
+        :type rpsbml: rpSBML
+        :type pathway_id: str
+        :type species_group_id: str
+        """
         self.rpsbml = rpsbml
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
@@ -163,10 +171,18 @@ class rpGraph:
 
     ################################# Analyse and make graph #####################
 
-    ## Function that converts the object rpSBML to a networkx, with all the MIRIAM and BRSynth annotations passed as attributes
-    #
-    #
     def _makeGraph(self, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+        """Private function that constructs the networkx graph
+
+        :param pathway_id: The pathway id of the heterologous pathway
+        :param species_group_id: The id of the central species
+
+        :type pathway_id: str
+        :type species_group_id: str
+
+        :return: None
+        :rtype: None
+        """
         self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
         groups = self.rpsbml.model.getPlugin('groups')
         c_s = groups.getGroup(central_species_group_id)
@@ -210,28 +226,27 @@ class rpGraph:
                                 stoichio=reac.stoichiometry)
 
 
-    ## Return the species ID's that are only consumed in the heterologous pathway
-    #
-    #
     def _onlyConsumedSpecies(self, only_central=False):
+        """Private function that returns the single parent species that are consumed only
+
+        :return: List of node ids
+        :rtype: list
+        """
         only_consumed_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
             if node['type']=='species':
-                if only_central:
-                    if node['central_species']==True:
-                        if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
-                            only_consumed_species.append(node_name)
-                else:
-                    if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
-                        only_consumed_species.append(node_name)
+                if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
+                    only_consumed_species.append(node_name)
         return only_consumed_species
 
 
-    ## Return the species ID's that are only produced in the heterologous pathway
-    #
-    #
     def _onlyProducedSpecies(self, only_central=False):
+        """Private function that returns the single parent produced species
+
+        :return: List of node ids
+        :rtype: list
+        """
         only_produced_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
@@ -308,8 +323,7 @@ class rpGraph:
             #return current_reac_list
             all_res.append(current_reac_list)
             return all_res
-        self.logger.debug('pred_node_list: '+str(pred_node_list))
-        if not pred_node_list==[]:
+
             #can be multiple reactions at a given step
             multi_reac = []
             for n_n in pred_node_list:
@@ -378,6 +392,59 @@ class rpGraph:
             filtered_weighted_similarity.append(tmp)
         rpGraph.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
         return max(map(max, filtered_weighted_similarity))
+
+
+    def _recursiveReacPredecessors(self, node_name, reac_list):
+        """Return the next linear predecessors
+
+        Better than before, however bases itself on the fact that central species do not have multiple predesessors
+        if that is the case then the algorithm will return badly ordered reactions
+
+        :param node_name: The id of the starting node
+        :param reac_list: The list of reactions that already have been run
+
+        :type node_name: str
+        :type reac_list: list
+
+        :return: List of node ids
+        :rtype: list
+        """
+        self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
+        pred_node_list = [i for i in self.G.predecessors(node_name)]
+        self.logger.debug(pred_node_list)
+        if pred_node_list==[]:
+            return reac_list
+        for n_n in pred_node_list:
+            n = self.G.node.get(n_n)
+            if n['type']=='reaction':
+                if n_n in reac_list:
+                    return reac_list
+                else:
+                    reac_list.append(n_n)
+                    self._recursiveReacPredecessors(n_n, reac_list)
+            elif n['type']=='species':
+                if n['central_species']==True:
+                    self._recursiveReacPredecessors(n_n, reac_list)
+                else:
+                    return reac_list
+        return reac_list
+
+
+    def orderedRetroReactions(self):
+        """Public function to return the linear list of reactions
+
+        :return: List of node ids
+        :rtype: list
+        """
+        #Note: may be better to loop tho
+        for prod_spe in self._onlyProducedSpecies():
+            self.logger.debug('Testing '+str(prod_spe))
+            ordered = self._recursiveReacPredecessors(prod_spe, [])
+            self.logger.debug(ordered)
+            if len(ordered)==self.num_reactions:
+                return [i for i in reversed(ordered)]
+        self.logger.error('Could not find the full ordered reactions')
+        return []
 
     ############################# graph analysis ################################
 

@@ -4,12 +4,17 @@ import logging
 import pandas as pd
 import rpSBML
 import libsbml
+import os
 
 
 ##TODO: this really does not need to be an object
 ##TODO: add the native cobrapy method to merge models
 class rpMerge:
+    """Class that hosts the different functions to merge two SBML files
+    """
     def __init__(self):
+        """Constructor of the class
+        """
         self.logger = logging.getLogger(__name__)
 
 
@@ -17,13 +22,23 @@ class rpMerge:
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
 
-    ## Check the libSBML calls
-    #
-    # Check that the libSBML python calls do not return error INT and if so, display the error. Taken from: http://sbml.org/Software/libSBML/docs/python-api/create_simple_model_8py-example.html
-    #
-    # @param value The SBML call
-    # @param message The string that describes the call
+
     def _checklibSBML(self, value, message):
+        """Private function that checks the libSBML calls.
+
+        Check that the libSBML python calls do not return error INT and if so, display the error. Taken from: http://sbml.org/Software/libSBML/docs/python-api/create_simple_model_8py-example.html
+
+        :param value: The libSBML command returned int
+        :param message: The string that describes the call
+
+        :type value: int
+        :type message: str
+
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
+
+        :return: None
+        :rtype: None
+        """
         if value is None:
             self.logger.error('LibSBML returned a null value trying to ' + message + '.')
             raise AttributeError
@@ -41,11 +56,18 @@ class rpMerge:
             return None
 
 
-    ## Function to find the unique species
-    #
-    # pd_matrix is organised such that the rows are the simulated species and the columns are the measured ones
-    #
     def _findUniqueRowColumn(self, pd_matrix):
+        """Private function that takes the matrix of similarity scores between the reactions or species of two models and finds the unqiue matches
+
+        pd_matrix is organised such that the rows are the simulated species and the columns are the measured ones
+
+        :param pd_matrix: Matrix of reactions or species of two models
+
+        :type pd_matrix: np.array
+
+        :return: Dictionary of matches
+        :rtype: dict
+        """
         self.logger.debug(pd_matrix)
         to_ret = {}
         ######################## filter by the global top values ################
@@ -166,10 +188,20 @@ class rpMerge:
     def mergeSBMLFiles(self,
                        path_source, 
                        path_target,
-                       path_merge,
-                       species_group_id='central_species',
-                       sink_species_group_id='rp_sink_species',
-                       pathway_id='rp_pathway'):
+                       path_merge):
+        """Public function that merges two SBML files together
+
+        :param path_source: Path of the source SBML file
+        :param path_target: Path of the target SBML file
+        :param path_merge: Path of the output SBML file
+
+        :type path_source: str
+        :type path_target: str
+        :type path_merge: str
+
+        :return: Success or failure of the function
+        :rtype: bool
+        """
         if not os.path.exists(path_source):
             self.logger.error('Source SBML file is invalid: '+str(path_source))
             return False
@@ -179,25 +211,35 @@ class rpMerge:
         source_rpsbml = rpSBML.rpSBML('source', path=path_source)
         target_rpsbml = rpSBML.rpSBML('target', path=path_target)
         self.mergeModels(source_rpsbml,
-                         target_rpsbml,
-                         species_group_id,
-                         sink_species_group_id,
-                         pathway_id)
+                         target_rpsbml)
         target_rpsbml.writeSBML(path_merge)
         return True
         
-
 
     ##########################################################################################
     #################################### REACTION ############################################
     ##########################################################################################
 
-    ##
-    # Compare that all the measured species of a reactions are found within sim species to match with a reaction.
-    # We assume that there cannot be two reactions that have the same species and reactants. This is maintained by SBML
+
     # TODO: need to remove from the list reactions simulated reactions that have matched
     # TODO: Remove. This assumes that reactions can match multiple times, when in fact its impossible
     def compareReactions(self, species_match, target_rpsbml, source_rpsbml):
+        """Compare the reactions of two SBML files
+
+        Compare that all the measured species of a reactions are found within sim species to match with a reaction.
+        We assume that there cannot be two reactions that have the same species and reactants. This is maintained by SBML
+
+        :param species_match: The species match dictionary returned by compareSpecies()
+        :param target_rpsbml: The target rpSBMl object
+        :param source_rpsbml: The source rpSBML object
+
+        :type species_match: dict 
+        :type target_rpsbml: rpSBML
+        :type source_rpsbml: rpSBML
+
+        :return: The dictionary of the reaction matches
+        :rtype: dict
+        """
         ############## compare the reactions #######################
         #construct sim reactions with species
         self.logger.debug('------ Comparing reactions --------')
@@ -305,16 +347,30 @@ class rpMerge:
 
 
 
-    ## Compare individual reactions and see if the source reaction is contained within the target one
+    ## 
     #
-    # species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
-    # the first keys are the source compartment ids
-    # the second key is the source species id
-    # the value is the target species id
-    # Note that we assure that the match is 1:1 between species using the species match
     #
     #TODO: change this with a flag so that all the reactants and products are the same
     def containedReaction(self, species_source_target, source_reaction, target_reaction):
+        """Compare individual reactions and see if the source reaction is contained within the target one
+
+        species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
+        the first keys are the source compartment ids
+        the second key is the source species id
+        the value is the target species id
+        Note that we assure that the match is 1:1 between species using the species match
+
+        :param species_source_target: The comparison dictionary between the species of two SBML files
+        :param source_reaction: The target reaction
+        :param target_reaction: The source reaction
+
+        :type species_source_target: dict 
+        :type source_reaction: libsbml.Reaction
+        :type target_reaction: libsbml.Reaction
+
+        :return: The score of the match and the dict of the match in that order
+        :rtype: tuple
+        """
         scores = []
         all_match = True
         ########### reactants #######
@@ -356,18 +412,27 @@ class rpMerge:
         return np.mean(scores), all_match
 
 
-
-
-    ## Compare two reactions and elect that they are the same if they have exactly the same reactants and products
-    #
-    # species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
-    # the first keys are the source compartment ids
-    # the second key is the source species id
-    # the value is the target species id
-    # Note that we assure that the match is 1:1 between species using the species match
-    #
     #TODO: change this with a flag so that all the reactants and products are the same
     def compareReaction(self, species_source_target, source_reaction, target_reaction):
+        """Compare two reactions and elect that they are the same if they have exactly the same reactants and products
+
+        species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
+        the first keys are the source compartment ids
+        the second key is the source species id
+        the value is the target species id
+        Note that we assure that the match is 1:1 between species using the species match
+
+        :param species_source_target: The comparison dictionary between the species of two SBML files
+        :param source_reaction: The target reaction
+        :param target_reaction: The source reaction
+
+        :type species_source_target: dict 
+        :type source_reaction: libsbml.Reaction
+        :type target_reaction: libsbml.Reaction
+
+        :return: The score of the match and boolean if its a match or not
+        :rtype: tuple
+        """
         scores = []
         source_reactants = [i.species for i in source_reaction.getListOfReactants()]
         target_reactants = []
@@ -418,11 +483,22 @@ class rpMerge:
     ##################################### SPECIES ############################################
     ##########################################################################################
 
-    ## Match all the measured chemical species to the simulated chemical species between two SBML 
-    #
     # TODO: for all the measured species compare with the simualted one. Then find the measured and simulated species that match the best and exclude the 
     # simulated species from potentially matching with another
     def compareSpecies(self, comp_source_target, source_rpsbml, target_rpsbml):
+        """Match all the measured chemical species to the simulated chemical species between two SBML
+
+        :param comp_source_target: The comparison dictionary between the compartment of two SBML files
+        :param source_rpsbml: The source rpSBML
+        :param target_rpsbml: The target rpSBML
+
+        :type species_source_target: dict 
+        :type source_rpsbml: rpSBML
+        :type target_rpsbml: rpSBML
+
+        :return: The compartment match dictionary
+        :rtype: dict
+        """
         ############## compare species ###################
         source_target = {}
         target_source = {}
@@ -508,14 +584,23 @@ class rpMerge:
         return species_match
 
 
-
     ######################################################################################################################
     ############################################### EC NUMBER ############################################################
     ######################################################################################################################
 
 
-
     def compareEC(meas_reac_miriam, sim_reac_miriam):
+        """Compare two MIRIAM annotations and find the similarity of their EC number
+
+        :param meas_reac_miriam: The annotation object of the source
+        :param sim_reac_miriam: The annotation object of the target
+
+        :type meas_reac_miriam: libsbml.XMLNode
+        :type sim_reac_miriam: libsbml.XMLNode
+
+        :return: The match score
+        :rtype: float
+        """
         #Warning we only match a single reaction at a time -- assume that there cannot be more than one to match at a given time
         if 'ec-code' in meas_reac_miriam and 'ec-code' in sim_reac_miriam:
             measured_frac_ec = [[y for y in ec.split('.') if not y=='-'] for ec in meas_reac_miriam['ec-code']]
@@ -559,25 +644,26 @@ class rpMerge:
     #############################################################################################################
 
 
-    ## Merge two models species and reactions using the annotations to recognise the same species and reactions
-    #
-    # The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
-    #called rp_pathway. If not use the readSBML() function to create a model
-    # We add the reactions and species from the rpsbml to the target_model
-    # 
-    # @param target_model input libsbml model object where we will add the reactions and species from self.model
-    # @param pathway_id String default is rp_pathway, name of the pathway id of the groups object
-    # @param addOrphanSpecies Boolean Default False
-    # @param bilevel_obj Tuple of size 2 with the weights associated with the targetSink and GEM objective function
-    #
     #TODO: add a confidence in the merge using the score in 
     #TODO: seperate the different parts so that others may use it
     def mergeModels(self,
                     source_rpsbml,
-                    target_rpsbml,
-                    species_group_id='central_species',
-                    sink_species_group_id='rp_sink_species',
-                    pathway_id='rp_pathway'):
+                    target_rpsbml):
+        """Merge two models species and reactions using the annotations to recognise the same species and reactions
+
+        The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
+        called rp_pathway. If not use the readSBML() function to create a model
+        We add the reactions and species from the rpsbml to the target_model
+
+        :param source_rpsbml: The source rpSBML object
+        :param target_rpsbml: The target rpSBML object
+
+        :type source_rpsbml: rpSBML
+        :type target_rpsbml: rpSBML
+
+        :return: Tuple of dict where the first entry is the species source to target conversion and the second is the reaction source to target conversion
+        :rtype: tuple
+        """
         #target_rpsbml.model = target_document.getModel()
         #Find the ID's of the similar target_rpsbml.model species
         ################ MODEL FBC ########################
@@ -706,6 +792,7 @@ class rpMerge:
                     'setting target gene product meta_id')
         ############### FBC OBJECTIVES ############
         #WARNING: here we compare by ID
+        #TODO: if overlapping id's need to replace the id with modified, as for the species
         targetObjectiveID = [i.getId() for i in target_fbc.getListOfObjectives()]
         sourceObjectiveID = [i.getId() for i in source_fbc.getListOfObjectives()]
         for source_objective in source_fbc.getListOfObjectives():
@@ -734,23 +821,47 @@ class rpMerge:
         ################ SPECIES ####################
         species_source_target = self.compareSpecies(comp_source_target, source_rpsbml, target_rpsbml)
         self.logger.debug('species_source_target: '+str(species_source_target))
+        target_species_ids = [i.id for i in target_rpsbml.model.getListOfSpecies()]
         for source_species in species_source_target:
             list_target = [i for i in species_source_target[source_species]]
             if source_species in list_target:
                 self.logger.warning('The source ('+str(source_species)+') and target species ids ('+str(list_target)+') are the same')
+            #if match, replace the annotation from the source to the target
+            if not species_source_target[source_species]=={}:
+                list_species = [i for i in species_source_target[source_species]]
+                self.logger.debug('list_species: '+str(list_species))
+                if len(list_species)==0:
+                    continue
+                    #self.logger.warning('Source species '+str(member.getIdRef())+' has been created in the target model')
+                elif len(list_species)>1:
+                    self.logger.warning('There are multiple matches to the species '+str(member.getIdRef())+'... taking the first one: '+str(list_species))
+                #TODO: loop throught the annotations and replace the non-overlapping information
+                target_member = target_rpsbml.model.getSpecies(list_species[0])
+                source_member = source_rpsbml.model.getSpecies(source_species)
+                self._checklibSBML(target_member, 'Retraiving the target species: '+str(list_species[0]))
+                self._checklibSBML(source_member, 'Retreiving the source species: '+str(source_species))
+                self._checklibSBML(target_member.setAnnotation(source_member.getAnnotation()), 'Replacing the annotations')
             #if no match then add it to the target model
-            if species_source_target[source_species]=={}:
+            else:
                 self.logger.debug('Creating source species '+str(source_species)+' in target rpsbml')
                 source_species = source_rpsbml.model.getSpecies(source_species)
                 if not source_species:
-                    self.logger.error('Cannot retreive model species: '+str(source_species_id))
+                    self.logger.error('Cannot retreive model species: '+str(source_species))
                 else:
                     self._checklibSBML(source_species, 'fetching source species')
                     targetModel_species = target_rpsbml.model.createSpecies()
                     self._checklibSBML(targetModel_species, 'creating species')
                     self._checklibSBML(targetModel_species.setMetaId(source_species.getMetaId()),
                             'setting target metaId')
-                    self._checklibSBML(targetModel_species.setId(source_species.getId()),
+                    ## need to check if the id of the source species does not already exist in the target model
+                    if source_species.getId() in target_species_ids:
+                        target_species_id = source_rpsbml.model.id+'__'+str(source_species.getId())
+                        if not source_species.getId() in species_source_target:
+                            species_source_target[source_species.getId()] = {}
+                        species_source_target[source_species.getId()][source_rpsbml.model.id+'__'+str(source_species.getId())] = 1.0
+                    else:
+                        target_species_id = source_species.getId()
+                    self._checklibSBML(targetModel_species.setId(target_species_id),
                             'setting target id')
                     self._checklibSBML(targetModel_species.setCompartment(comp_source_target[source_species.getCompartment()]),
                             'setting target compartment')
@@ -772,7 +883,8 @@ class rpMerge:
                         'setting target annotation')
         ################ REACTIONS ###################
         #TODO; consider the case where two reactions have the same ID's but are not the same reactions
-        reac_replace = {}
+        #TODO: if overlapping id's need to replace the id with modified, as for the species
+        reactions_source_target = {}
         for source_reaction in source_rpsbml.model.getListOfReactions():
             is_found = False
             for target_reaction in target_rpsbml.model.getListOfReactions():
@@ -780,7 +892,7 @@ class rpMerge:
                 if match:
                     self.logger.debug('Source reaction '+str(source_reaction)+' matches with target reaction '+str(target_reaction))
                     #source_reaction[source_reaction.getId()] = target_reaction.getId()
-                    reac_replace[source_reaction.getId()] = target_reaction.getId()
+                    reactions_source_target[source_reaction.getId()] = target_reaction.getId()
                     is_found = True
                     break
             if not is_found:
@@ -879,8 +991,43 @@ class rpMerge:
         target_groups = target_rpsbml.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
         #self.logger.debug('species_source_target: '+str(species_source_target))
-        #self.logger.debug('reac_replace: '+str(reac_replace))
-        #TODO: this will overwrite two groups of the same id, need to change
+        #self.logger.debug('reactions_source_target: '+str(reactions_source_target))
+        source_groups_ids = [i.id for i in source_groups.getListOfGroups()]
+        target_groups_ids = [i.id for i in target_groups.getListOfGroups()]
+        #NOTE: only need to update the source species since these are the ones that are replaced with their equivalent
+        for source_group in source_groups.getListOfGroups():
+            #overwrite in the group the reaction members that have been replaced
+            for member in source_group.getListOfMembers():
+                if member.getIdRef() in reactions_source_target:
+                    if reactions_source_target[member.getIdRef()]:
+                        member.setIdRef(reactions_source_target[member.getIdRef()])
+            #overwrite in the group the species members that have been replaced
+            for member in source_group.getListOfMembers():
+                if member.getIdRef() in species_source_target: 
+                    if species_source_target[member.getIdRef()]:
+                        list_species = [i for i in species_source_target[member.getIdRef()]]
+                        self.logger.debug('species_source_target: '+str(species_source_target))
+                        self.logger.debug('list_species: '+str(list_species))
+                        if len(list_species)==0:
+                            continue
+                            #self.logger.warning('Source species '+str(member.getIdRef())+' has been created in the target model')
+                        elif len(list_species)>1:
+                            self.logger.warning('There are multiple matches to the species '+str(member.getIdRef())+'... taking the first one: '+str(list_species))
+                        self._checklibSBML(member.setIdRef(list_species[0]), 'Setting name to the groups member')
+            #create and add the groups if a source group does not exist in the target
+            if not source_group.id in target_groups_ids:
+                self._checklibSBML(target_groups.addGroup(source_group),
+                    'copy the source groups to the target groups')
+            #if the group already exists in the target then need to add new members
+            else:
+                target_group = target_groups.getGroup(source_group.id)
+                target_group_ids = [i.getIdRef() for i in target_group.getListOfMembers()]
+                for member in source_group.getListOfMembers():
+                    if member.getIdRef() not in target_group_ids:
+                        new_member = target_group.createMember()
+                        self._checklibSBML(new_member, 'Creating a new groups member')
+                        self._checklibSBML(new_member.setIdRef(member.getIdRef()), 'Setting name to the groups member')
+        """
         for group in source_groups.getListOfGroups():
             #for all the species that need to be converted, replace the ones that are
             #if the group is the species group, replace the ones detected from species_source_target
@@ -900,10 +1047,11 @@ class rpMerge:
                             member.setIdRef(list_species[0])
             elif group.getId()==pathway_id:
                 for member in group.getListOfMembers():
-                    if member.getIdRef() in reac_replace:
-                        member.setIdRef(reac_replace[member.getIdRef()])
+                    if member.getIdRef() in reactions_source_target:
+                        member.setIdRef(reactions_source_target[member.getIdRef()])
             self._checklibSBML(target_groups.addGroup(group),
                     'copy the source groups to the target groups')
+        """
         ###### TITLES #####
         target_rpsbml.model.setId(target_rpsbml.model.getId()+'__'+source_rpsbml.model.getId())
         target_rpsbml.model.setName(target_rpsbml.model.getName()+' merged with '+source_rpsbml.model.getId())
@@ -911,6 +1059,4 @@ class rpMerge:
         if fillOrphanSpecies==True:
             self.fillOrphan(target_rpsbml, self.pathway_id, compartment_id)
         '''
-        return species_source_target, reac_replace
-
-
+        return species_source_target, reactions_source_target
