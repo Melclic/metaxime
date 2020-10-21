@@ -1,5 +1,4 @@
 *.swp
-__pycache__/
 .DS_Store
 *.tar
 *.sbml
@@ -9,3 +8,5 @@ input_cache_mnx/
 input_cache/
 input_cache_mnx.tar.xz
 input_cache_branda.tar.xz
+__pycache__/
+cache/
