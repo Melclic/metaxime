@@ -10,3 +10,8 @@ input_cache_mnx.tar.xz
 input_cache_branda.tar.xz
 __pycache__/
 cache/
+component_contribution_legacy/__pycache__/
+component_contribution_legacy/data/
+license.cxl
+docker_install_marvin.txt
+marvin_linux_20.9.deb
