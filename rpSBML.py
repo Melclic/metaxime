@@ -65,6 +65,7 @@ class rpSBML:
         #self.logger.setLevel(logging.INFO)
         self.model_name = model_name
         self.document = document
+        self.mean_rules_score = 0.0
         if self.document==None:
             self.model = None
         else:
@@ -84,9 +85,11 @@ class rpSBML:
                     True),
                         'Enabling the FBC package')
                 self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package')
+            self.mean_rules_score = self._computeMeanRulesScore()
         if not path==None:
             self.path = path
             self.readSBML(path)
+            self.mean_rules_score = self._computeMeanRulesScore()
         else:
             self.path = path
         self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'inchikey': 'inchikey/', 'pubchem': 'pubchem.compound/','mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
@@ -96,15 +99,15 @@ class rpSBML:
     def __eq__(self, rpsbml):
         return \
             sorted(self.readRPpathwayIDs()) == sorted(rpsbml.readRPpathwayIDs()) \
-        and self._dict_rp_pathway(self.model) == self._dict_rp_pathway(rpsbml.model)
+        and self._dictRPpathway(self) == self._dictRPpathway(rpsbml)
 
 
     def __lt__(self, rpsbml):
-        return self.computeMeanRulesScore() < rpsbml.computeMeanRulesScore()
+        return self.mean_rules_score < rpsbml.mean_rules_score
 
 
     def __gt__(self, rpsbml):
-        return self.computeMeanRulesScore() > rpsbml.computeMeanRulesScore()
+        return self.mean_rules_score > rpsbml.mean_rules_score
 
 
     #######################################################################
@@ -145,6 +148,92 @@ class rpSBML:
     #######################################################################
 
 
+    ############################# EXACT COMPARE ########################### 
+
+
+    def _computeMeanRulesScore(self, pathway_id='rp_pathway'):
+        """Compute the mean rules score
+
+        :param pathway_id: The Groups id of the hheterologous pathway
+
+        :type pathway_id: str
+
+        :rtype: float
+        :return: The mean score of all the reaction rules
+        """
+        score = 0
+        num_rules = 0
+        for member in self.getGroupsMembers(pathway_id):
+            reaction = self.model.getReaction(member)
+            score += float(reaction.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('rule_score').getAttrValue('value'))
+            num_rules += 1
+        if num_rules==0:
+            return score
+        else:
+            return score/num_rules
+
+
+    def _searchKey(self, keys, indict):
+        for key in keys:
+            if key in indict:
+                return key
+
+
+    def _dictRPpathway(self, rpsbml, pathway_id='rp_pathway'):
+        """Put species in a dictionnary for further comparison
+
+        :param rpsbml: rpSBML object
+
+        :type rpsbml: rpSBML
+
+        :rtype: dict
+        :return: Simplified dictionary version of rpSBML
+        """
+        #rpsbml = rpsbml.document.getModel()
+        # Get Reactions
+        reactions = {}
+        for member in rpsbml.getGroupsMembers(pathway_id):
+            reaction = rpsbml.model.getReaction(member)
+            reactions[reaction.getId()] = self.readBRSYNTHAnnotation(reaction.getAnnotation())
+        # Get Species
+        species = {}
+        for member in rpsbml.readUniqueRPspecies(pathway_id):
+            spe = rpsbml.model.getSpecies(member)
+            species[spe.getId()] = self.readBRSYNTHAnnotation(spe.getAnnotation())
+        # Pathways dict
+        d_reactions = {}
+        keys = ['inchikey', 'inchi', 'smiles']
+        # Select Reactions already loaded (w/o Sink one then)
+        for reaction_id in reactions:
+            # id = reactions[reaction]['smiles']
+            #id = reaction_id
+            d_reactions[reaction_id] = {}
+            # Fill the reactants in a dedicated dict
+            d_reactants = {}
+            for reactant in rpsbml.model.getReaction(reaction_id).getListOfReactants():# inchikey / inchi sinon miriam sinon IDs
+                # Il faut enregistrer toutes les infos (inchi, smiles, id)
+                key = self._searchKey(keys, species[reactant.getSpecies()])
+                if key:
+                    key = species[reactant.getSpecies()][key]
+                else:
+                    key = reactant.getSpecies()
+                d_reactants[key] = reactant.getStoichiometry()
+            # Put all reactants dicts in reactions dict for which smiles notations are the keys
+            d_reactions[reaction_id]['Reactants'] = d_reactants
+            # Fill the products in a dedicated dict
+            d_products = {}
+            for product in rpsbml.model.getReaction(reaction_id).getListOfProducts():
+                key = self._searchKey(keys, species[product.getSpecies()])
+                if key:
+                    key = species[product.getSpecies()][key]
+                else:
+                    key = product.getSpecies()
+                d_products[key] = product.getStoichiometry()
+            # Put all products dicts in reactions dict for which smiles notations are the keys
+            d_reactions[reaction_id]['Products'] = d_products
+        return d_reactions
+
+
     ############################ MERGE ####################################
 
 
@@ -173,7 +262,7 @@ class rpSBML:
         #as long as its unique keep looping
         if np.count_nonzero(x)==0:
             return to_ret
-        while len(top[0])==1 and len(top[1])==1: 
+        while len(top[0])==1 and len(top[1])==1:
             if np.count_nonzero(x)==0:
                 return to_ret
             pd_entry = pd_matrix.iloc[[top[0][0]],[top[1][0]]]
@@ -273,65 +362,7 @@ class rpSBML:
         return to_ret
 
 
-    ############################# EXACT COMPARE ########################### 
-
-
-    def _search_key(self, keys, indict):
-        for key in keys:
-            if key in indict:
-                return key
-
-
-    def _dict_rp_pathway(self, pathway, pathway_id='rp_pathway'):
-        """Put species in a dictionnary for further comparison
-
-        :param pathway: rpSBML object
-        
-        :type pathway: rpSBML
-
-        :rtype: dict
-        :return: Simplified dictionary version of rpSBML
-        """
-        model = pathway.document.getModel()
-        # Get Reactions
-        reactions = {}
-        for reaction_id in pathway.readRPpathwayIDs():
-            reaction = model.getReaction(reaction_id)
-            reactions[reaction_id] = rpSBML.readBRSYNTHAnnotation(reaction.getAnnotation())
-        # Get Species
-        species = {}
-        for specie in model.getListOfSpecies():
-            species[specie.getId()] = rpSBML.readBRSYNTHAnnotation(specie.getAnnotation())
-        # Pathways dict
-        d_reactions = {}
-        keys = ['inchikey', 'inchi', 'smiles']
-        # Select Reactions already loaded (w/o Sink one then)
-        for reaction_id in reactions:
-            # id = reactions[reaction]['smiles']
-            #id = reaction_id
-            d_reactions[reaction_id] = {}
-            # Fill the reactants in a dedicated dict
-            d_reactants = {}
-            for reactant in model.getReaction(reaction_id).getListOfReactants():# inchikey / inchi sinon miriam sinon IDs
-                # Il faut enregistrer toutes les infos (inchi, smiles, id)
-                key = self._search_key(keys, species[reactant.getSpecies()])
-                if key: key = species[reactant.getSpecies()][key]
-                else:
-                    key = reactant.getSpecies()
-                d_reactants[key] = reactant.getStoichiometry()
-            # Put all reactants dicts in reactions dict for which smiles notations are the keys
-            d_reactions[reaction_id]['Reactants'] = d_reactants
-            # Fill the products in a dedicated dict
-            d_products = {}
-            for product in model.getReaction(reaction_id).getListOfProducts():
-                key = self._search_key(keys, species[product.getSpecies()])
-                if key: key = species[product.getSpecies()][key]
-                else:
-                    key = product.getSpecies()
-                d_products[key] = product.getStoichiometry()
-            # Put all products dicts in reactions dict for which smiles notations are the keys
-            d_reactions[reaction_id]['Products'] = d_products
-        return d_reactions
+    ############# OTHERS ##############
 
 
     def _checklibSBML(self, value, message):
@@ -369,9 +400,9 @@ class rpSBML:
 
     def _nameToSbmlId(self, name):
         """String to SBML id's
-        
+
         Convert any String to one that is compatible with the SBML meta_id formatting requirements
-        
+
         :param name: The input string
 
         :type name: str
@@ -508,7 +539,7 @@ class rpSBML:
     ####################### PUBLIC FUNCTIONS #############################
     ######################################################################
 
-	############################# MERGE FUNCTIONS #########################
+    ############################# MERGE FUNCTIONS #########################
 
     #REACTION
 
@@ -1334,42 +1365,20 @@ class rpSBML:
         return species_source_target, reactions_source_target
 
 
-    def computeMeanRulesScore(self, pathway_id='rp_pathway'):
-        """Compute the mean rules score
-
-        :param pathway_id: The Groups id of the hheterologous pathway
-
-        :type pathway_id: str
-
-        :rtype: float
-        :return: The mean score of all the reaction rules
-        """
-        score = 0
-        num_rules = 0
-        for member in self.getGroupsMembers(pathway_id):
-            reaction = self.model.getReaction(member)
-            self.add_rule_score(float(reaction.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('rule_score').getAttrValue('value')))
-            num_rules += 1
-        if num_rules==0:
-            return score
-        else:
-            return score/num_rules
-
-
     def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None):
         """Append or update an entry to the BRSynth annotation of the passed libsbml.SBase object.
-        
+
         If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
 
-        :param sbase_obj: The libSBML object to add the different 
+        :param sbase_obj: The libSBML object to add the different
         :param annot_header: The annotation header that defines the type of entry
         :param value: The value(s) to add
-        :param units: Add a values unit to the entry  
+        :param units: Add a values unit to the entry
         :param isAlone: Add the entry without any units or defined within a value child (Setting this to True will ignore any units)
         :param isList: Define if the value entry is a list or not
         :param isSort: Sort the list that is passed (Only if the isList is True)
         :param meta_id: The meta ID to be added to the annotation string
-        
+
         :type sbase_obj: libsbml.SBase
         :type annot_header: str
         :type value: Union[str, int, float, list]
@@ -1525,14 +1534,14 @@ class rpSBML:
 
     def addUpdateMIRIAM(self, sbase_obj, type_param, xref, meta_id=None):
         """Append or update an entry to the MIRIAM annotation of the passed libsbml.SBase object.
-        
+
         If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
 
         :param sbase_obj: The libSBML object to add the different 
         :param type_param: The type of parameter entered. Valid include ['compartment', 'reaction', 'species']
         :param xref: Dictionnary of the cross reference
         :param meta_id: The meta ID to be added to the annotation string
-        
+
         :type sbase_obj: libsbml.SBase
         :type type_param: str
         :type xref: dict
