@@ -15,3 +15,8 @@ component_contribution_legacy/data/
 license.cxl
 docker_install_marvin.txt
 marvin_linux_20.9.deb
+.pypirc
+.pytest_cache
+package.json
+package-lock.json
+node_modules
