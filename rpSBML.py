@@ -21,8 +21,8 @@ TODO
 """
 
 logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
+    level=logging.DEBUG,
+    #level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -465,6 +465,8 @@ class rpSBML:
                     toadd[database_id] = list_diff
             except KeyError:
                 pass
+        if toadd==None:
+            return []
         return toadd
 
 
@@ -958,10 +960,8 @@ class rpSBML:
         called rp_pathway. If not use the readSBML() function to create a model
         We add the reactions and species from the rpsbml to the target_model
 
-        :param self.model: The source rpSBML model object
         :param target_model: The target rpSBML model object
 
-        :type self.model: libsbml.model
         :type target_model: libsbml.model
 
         :return: Tuple of dict where the first entry is the species source to target conversion and the second is the reaction source to target conversion
@@ -1605,7 +1605,10 @@ class rpSBML:
                 self.logger.warning('Cannot return MIRIAM attribute')
                 pass
         #add or ignore
+        self.logger.debug('inside: '+str(inside))
+        self.logger.debug('xref: '+str(xref))
         toadd = self._compareXref(inside, xref)
+        self.logger.debug('toadd: '+str(toadd))
         for database_id in toadd:
             for species_id in toadd[database_id]:
                 #not sure how to avoid having it that way
@@ -1762,14 +1765,18 @@ class rpSBML:
             p = None
             if path:
                 if os.path.isdir(path):
-                    if not os.path.exists(p):
-                        os.makedirs(p)
-                    p = os.path.join(self.path, str(self.model_name)+'_rpsbml.xml')
+                    p = os.path.join(path, str(self.model_name)+'_rpsbml.xml')
                 else:
+                    if os.path.exist(path):
+                        self.logger.warning('overwriting the following sbml file: '+str(path))
                     p = path
             else:
-                self.logger.warning('Overwriting the following SBML file: '+str(self.path))
-                p = self.path
+                if self.path:
+                    self.logger.warning('overwriting the following sbml file: '+str(self.path))
+                    p = self.path
+                else:
+                    self.logger.error('Need to define a file or folder output')
+                    return False
             ########## check and create folder #####
         except FileNotFoundError:
             self.logger.error('Cannot find the following path: '+str(path))

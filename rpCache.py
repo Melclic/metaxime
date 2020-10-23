@@ -200,9 +200,7 @@ class rpCache:
         a = self.getCompXref()
         a = self.getFullReactions()
         a = self.getRRreactions()
-        a = self.getKEGGdG()
         a = self.getChebiCID()
-        a = self.getCCpreprocess()
         a = self.getInchiKeyCID()
         a = self.getCIDname()
 
@@ -322,33 +320,6 @@ class rpCache:
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.rr_reactions
-
-    ### Thermo
-
-    def getKEGGdG(self):
-        """Getter of the dictionary for the KEGG and thermodynamics parameters (dG)
-
-        :rtype: dict
-        :return: The dictionnary of delta G
-        """
-        #kegg_dG.pickle
-        if not os.path.isfile(self.dirname+'/cache/kegg_dG.pickle'):
-            pickle.dump(self.keggdG(self.dirname+'/input_cache/cc_compounds.json.gz',
-                self.dirname+'/input_cache/alberty.json',
-                self.dirname+'/input_cache/rr_compounds.csv'),
-                open(self.dirname+'/cache/kegg_dG.pickle', 'wb'))
-        self.kegg_dG = pickle.load(open(self.dirname+'/cache/kegg_dG.pickle', 'rb'))
-        return self.kegg_dG
-
-    def getCCpreprocess(self):
-        """Getter of the dictionnary describing the Component Composition
-
-        :rtype: dict
-        :return: The dictionnary of cc preprocess
-        """
-        self.cc_preprocess = np.load(self.dirname+'/cache/cc_preprocess.npz')
-        return self.cc_preprocess
-
 
     ### intermidiate generate, WARNING: needs to be added at the end after the other files
     
@@ -503,67 +474,6 @@ class rpCache:
     #################################################################
     ################## Public functions #############################
     #################################################################
-
-
-    ################## Thermodynamics ########################################
-
-
-    def keggdG(self,
-                cc_compounds_path,
-                alberty_path,
-                compounds_path):
-        """Function exctract the dG of components
-
-        This function parses a file from component analysis and uses KEGG id's. This means that to use precalculated values in this file a given ID must have a KEGG id listed here
-
-        :param cc_compounds_path: The component contribution file path
-        :param alberty_path: The Alberty delta G file path
-        :param compounds_path: The component contribution compounds file path
-
-        :type cc_compounds_path: str
-        :type alberty_path: str
-        :type compounds_path: str
-
-        :rtype: dict
-        :return: The dictionary of the results
-        """
-        cc_alberty = {}
-        ########################## compounds ##################
-        #contains the p_kas and molecule decomposition
-        cid_comp = {}
-        with open(compounds_path) as f:
-            c = csv.reader(f, delimiter=',', quotechar='"')
-            next(c)
-            for row in c:
-                cid_comp[row[-1].split(':')[1]] = {}
-                cid_comp[row[-1].split(':')[1]]['atom_bag'] = literal_eval(row[3])
-                cid_comp[row[-1].split(':')[1]]['p_kas'] = literal_eval(row[4])
-                cid_comp[row[-1].split(':')[1]]['major_ms'] = int(literal_eval(row[6]))
-                cid_comp[row[-1].split(':')[1]]['number_of_protons'] = literal_eval(row[7])
-                cid_comp[row[-1].split(':')[1]]['charges'] = literal_eval(row[8])
-        ####################### cc_compounds ############
-        #TODO: seems like the new version of equilibrator got rid of this file... need to update the function
-        #to take as input the new file --> i.e. the JSON input
-        #notFound_cc = []
-        gz_file = gzip.open(cc_compounds_path, 'rb')
-        f_c = gz_file.read()
-        c = json.loads(f_c)
-        for cd in c:
-            #find the compound descriptions
-            try:
-                cd.update(cid_comp[cd['CID']])
-            except KeyError:
-                pass
-            #add the CID
-            #if not mnxm in cc_alberty:
-            if not cd['CID'] in cc_alberty:
-                cc_alberty[cd['CID']] = {}
-                if not 'alberty' in cc_alberty[cd['CID']]:
-                    cc_alberty[cd['CID']]['alberty'] = [cd]
-                else:
-                    cc_alberty[cd['CID']]['alberty'].append(cd)
-        return cc_alberty
-
 
     ################## RetroRules parsers ####################################
 
