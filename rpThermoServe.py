@@ -41,12 +41,12 @@ def chunkIt(seq, num):
     return out
 
 
-def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+def singleThermo(sbml_paths, pathway_id, tmp_output_folder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
     """Given a list of rpSBML input files, perform thermodynamics analysis. Less memory effecient than the _hdd method but faster
 
     :param sbml_paths: The list of rpSBML paths passed to calculate thermodynamics
     :param pathway_id: The id of the heterologous pathway of interest
-    :param tmpOutputFolder: The path to the output folder to write the result rpSBML file
+    :param tmp_output_folder: The path to the output folder to write the result rpSBML file
     :param ph: The pH of the host organism (Default: 7.0)
     :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
     :param pMg: The pMg of the host organism (Default: 10.0)
@@ -55,7 +55,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength
 
     :type sbml_paths: str
     :type pathway_id: str
-    :type tmpOutputFolder: str
+    :type tmp_output_folder: str
     :type ph: float
     :type ionic_strength: float
     :type pMg: float
@@ -72,7 +72,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength
         rpsbml = rpSBML.rpSBML(file_name, path=sbml_path)
         rpequilibrator.rpsbml = rpsbml
         res = rpequilibrator.pathway(pathway_id, True) #ignore the results because written in SBML file
-        rpsbml.writeSBML(tmpOutputFolder)
+        rpsbml.writeSBML(tmp_output_folder)
         rpsbml = None
     return True
 
@@ -88,7 +88,7 @@ def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='
     rpcache = rpCache.rpCache()
     cc_preprocess = rpcache.getCCpreprocess()
     kegg_dG = rpcache.getKEGGdG()
-    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+    with tempfile.TemporaryDirectory() as tmp_output_folder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
@@ -100,18 +100,18 @@ def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='
                 jobs = {}
                 #split the files "equally" between all workers
                 for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k)] = s_l
+                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmp_output_folder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k)] = s_l
                 for future in concurrent.futures.as_completed(jobs):
                     f_n = jobs[future]
                     try:
                         data = future.result()
                     except Exception as exc:
                         logging.error('%r generated an exception: %s' % (f_n, exc))
-            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+            if len(glob.glob(tmp_output_folder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
-                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                for sbml_path in glob.glob(tmp_output_folder+'/*'):
                     file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     file_name += '.sbml.xml'
                     info = tarfile.TarInfo(file_name)
@@ -130,7 +130,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
     rpcache = rpCache.rpCache()
     cc_preprocess = rpcache.getCCpreprocess()
     kegg_dG = rpcache.getKEGGdG()
-    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+    with tempfile.TemporaryDirectory() as tmp_output_folder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
@@ -141,17 +141,17 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
             ### construct the processes list and start
             processes = []
             for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k))
+                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmp_output_folder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k))
                 processes.append(p)
                 p.start()
             #wait for all to finish
             for process in processes:
                 process.join()
-            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+            if len(glob.glob(tmp_output_folder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
-                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                for sbml_path in glob.glob(tmp_output_folder+'/*'):
                     file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     file_name += '.sbml.xml'
                     info = tarfile.TarInfo(file_name)
@@ -178,7 +178,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
     :type inputTar: str
     :type outputTar: str
     :type pathway_id: str
-    :type tmpOutputFolder: str
+    :type tmp_output_folder: str
     :type ph: float
     :type ionic_strength: float
     :type pMg: float
@@ -189,7 +189,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
     :return: Success or failure of the function
     """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
-    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+    with tempfile.TemporaryDirectory() as tmp_output_folder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
@@ -203,13 +203,13 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
                 rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
                 rpequilibrator.rpsbml = rpsbml
                 res = rpequilibrator.pathway(pathway_id, True) #ignore the results since written to SBML file
-                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml.writeSBML(tmp_output_folder)
                 rpsbml = None
-            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+            if len(glob.glob(tmp_output_folder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
-                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                for sbml_path in glob.glob(tmp_output_folder+'/*'):
                     fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     fileName += '.sbml.xml'
                     info = tarfile.TarInfo(fileName)
@@ -235,7 +235,7 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prim
     :type inputTar: str
     :type outputTar: str
     :type pathway_id: str
-    :type tmpOutputFolder: str
+    :type tmp_output_folder: str
     :type ph: float
     :type ionic_strength: float
     :type pMg: float
@@ -247,7 +247,7 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prim
     """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
-        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
             tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
             tar.close()
@@ -261,13 +261,13 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prim
                 rpequilibrator.rpsbml = rpsbml
                 res = rpequilibrator.MDF(pathway_id, thermo_id, fba_id, stdev_factor, True) #ignore the results since written to SBML file
                 #ignore res since we are passing write to SBML
-                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml.writeSBML(tmp_output_folder)
                 rpsbml = None
-            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+            if len(glob.glob(tmp_output_folder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
-                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                for sbml_path in glob.glob(tmp_output_folder+'/*'):
                     fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     fileName += '.sbml.xml'
                     info = tarfile.TarInfo(fileName)
@@ -293,7 +293,7 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
     :type inputTar: str
     :type outputTar: str
     :type pathway_id: str
-    :type tmpOutputFolder: str
+    :type tmp_output_folder: str
     :type ph: float
     :type ionic_strength: float
     :type pMg: float
@@ -305,7 +305,7 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
     """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
-        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
             tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
             tar.close()
@@ -317,19 +317,19 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
                 fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '') 
                 rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
                 rpequilibrator.rpsbml = rpsbml
-                status = rpequilibrator.toNetworkSBtab(os.path.join(tmpOutputFolder, fileName+'.tsv'), pathway_id, thermo_id, fba_id, stdev_factor)
+                status = rpequilibrator.toNetworkSBtab(os.path.join(tmp_output_folder, fileName+'.tsv'), pathway_id, thermo_id, fba_id, stdev_factor)
                 rpsbml = None
-            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+            if len(glob.glob(tmp_output_folder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
-                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                for sbml_path in glob.glob(tmp_output_folder+'/*'):
                     fileName = str(sbml_path.split('/')[-1])
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
     return True
-    
+
 
 """ DEPRECATED: only useful when using multiprocessing
 ##

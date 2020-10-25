@@ -39,11 +39,11 @@ class rpFBA(rpSBML):
         :rtype: bool
         """
         try:
-            with tempfile.TemporaryDirectory() as tmpOutputFolder:
-                self.writeSBML(tmpOutputFolder)
-                #logging.info(glob.glob(tmpOutputFolder+'/*'))
-                #logging.info(cobra.io.validate_sbml_model(glob.glob(tmpOutputFolder+'/*')[0]))
-                self.cobraModel = cobra.io.read_sbml_model(glob.glob(tmpOutputFolder+'/*')[0], use_fbc_package=True)
+            with tempfile.TemporaryDirectory() as tmp_output_folder:
+                self.writeSBML(tmp_output_folder)
+                #logging.info(glob.glob(tmp_output_folder+'/*'))
+                #logging.info(cobra.io.validate_sbml_model(glob.glob(tmp_output_folder+'/*')[0]))
+                self.cobraModel = cobra.io.read_sbml_model(glob.glob(tmp_output_folder+'/*')[0], use_fbc_package=True)
             #self.cobraModel = cobra.io.read_sbml_model(self.document.toXMLNode().toXMLString(), use_fbc_package=True)
             #use CPLEX
             # self.cobraModel.solver = 'cplex'

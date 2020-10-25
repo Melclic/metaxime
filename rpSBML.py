@@ -552,6 +552,53 @@ class rpSBML:
   </rdf:RDF>
 </annotation>'''
 
+
+    def updateBRSynthPathway(self, rpsbml_dict, pathway_id='rp_pathway'):
+        """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the differences
+
+        :param rpsbml_dict: Heterologous dict
+        :param pathway_id: The Groups id of the heterologous pathway
+
+        :type rpsbml_dict: dict
+        :type pathway_id: str
+
+        :rtype: None
+        :return: None
+        """
+        self.logger.debug('rpsbml_dict: '+str(rpsbml_dict))
+        groups = self.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        for bd_id in rpsbml_dict['pathway']['brsynth']:
+            if bd_id[:5]=='norm_' or bd_id=='global_score':
+                try:
+                    value = rpsbml_dict['pathway']['brsynth'][bd_id]['value']
+                except KeyError:
+                    self.logger.warning('The entry '+str(db_id)+' doesnt contain value')
+                    self.logger.warning('No" value", using the root')
+                try:
+                    units = rpsbml_dict['pathway']['brsynth'][bd_id]['units']
+                except KeyError:
+                    units = None
+                self.addUpdateBRSynth(rp_pathway, bd_id, value, units, False)
+        for reac_id in rpsbml_dict['reactions']:
+            reaction = self.model.getReaction(reac_id)
+            if reaction==None:
+                self.logger.warning('Skipping updating '+str(reac_id)+', cannot retreive it')
+                continue
+            for bd_id in rpsbml_dict['reactions'][reac_id]['brsynth']:
+                if bd_id[:5]=='norm_':
+                    try:
+                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]['value']
+                    except KeyError:
+                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]
+                        self.logger.warning('No" value", using the root')
+                    try:
+                        units = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]['units']
+                    except KeyError:
+                        units = None
+                    self.addUpdateBRSynth(reaction, bd_id, value, units, False)
+
+
     ######################################################################
     ####################### PUBLIC FUNCTIONS #############################
     ######################################################################
@@ -568,7 +615,7 @@ class rpSBML:
             inchikey = None
             miriam_dict = self.readMIRIAMAnnotation(spe.getAnnotation())
             if 'inchikey' in miriam_dict:
-                self.logger.info('The species '+str(spe.id)+' already has an inchikey... skipping')
+                self.logger.debug('The species '+str(spe.id)+' already has an inchikey... skipping')
                 continue
             try:
                 for mnx in miriam_dict['metanetx']:

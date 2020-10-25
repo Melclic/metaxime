@@ -42,7 +42,7 @@ class rpCache:
         :param rr_rxn_recipes_path: Path to the reactions rules recipes
         :param fetchInputFiles: Force download all the input cache file
 
-        :type rr_compounds_path: str (Default: None) 
+        :type rr_compounds_path: str (Default: None)
         :type rr_rules_path: str (Default: None)
         :type rr_rxn_recipes_path: str (Default: None)
         :type fetchInputFiles: bool (Default: False)
@@ -541,12 +541,12 @@ class rpCache:
                         self.rr_reactions[row['# Rule_ID']] = {}
                     if row['# Rule_ID'] in self.rr_reactions[row['# Rule_ID']]:
                         self.logger.warning('There is already reaction '+str(row['# Rule_ID'])+' in reaction rule '+str(row['# Rule_ID']))
-                    self.rr_reactions[row['# Rule_ID']][self._checkRIDdeprecated(row['Reaction_ID'])] = {'rule_id': row['# Rule_ID'], 
-                                                                                                         'rule_score': float(row['Score_normalized']), 
-                                                                                                         'reac_id': self._checkRIDdeprecated(row['Reaction_ID']), 
-                                                                                                         'subs_id': self._checkCIDdeprecated(row['Substrate_ID']), 
-                                                                                                         'rel_direction': int(row['Rule_relative_direction']), 
-                                                                                                         'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1}, 
+                    self.rr_reactions[row['# Rule_ID']][self._checkRIDdeprecated(row['Reaction_ID'])] = {'rule_id': row['# Rule_ID'],
+                                                                                                         'rule_score': float(row['Score_normalized']),
+                                                                                                         'reac_id': self._checkRIDdeprecated(row['Reaction_ID']),
+                                                                                                         'subs_id': self._checkCIDdeprecated(row['Substrate_ID']),
+                                                                                                         'rel_direction': int(row['Rule_relative_direction']),
+                                                                                                         'left': {self._checkCIDdeprecated(row['Substrate_ID']): 1},
                                                                                                          'right': products}
                 except ValueError:
                     self.logger.error('Problem converting rel_direction: '+str(row['Rule_relative_direction']))
