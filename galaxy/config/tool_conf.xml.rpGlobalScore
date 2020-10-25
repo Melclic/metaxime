@@ -1,0 +1,3 @@
+  <section id="sbc" name="SynBioCAD">
+    <tool file="rpGlobalScore/code/wrap_rpGlobalScore.xml" />
+  </section>
