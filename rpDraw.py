@@ -7,12 +7,18 @@ import logging
 import drawSvg as draw
 import svgutils.transform as sg
 
+from rpGraph import rpGraph
 
-## Class that contains a collection to draw a rpSBML file
-#
-#
-class rpDraw:
+class rpDraw(rpGraph):
+    """Class that contains a collection to draw a rpSBML file
+    """
     def __init__(self):
+        """Class constructor
+
+        .. document private functions
+        .. automethod:: _hierarchyPos
+        """
+        super().__init__()
         self.logger = logging.getLogger(__name__)
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         #some drawing constants
@@ -41,7 +47,7 @@ class rpDraw:
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
     #BUG: /Users/melchior/Downloads/Galaxy111/rp_50_28.sbml.xml not having the  ink entry added
     #TODO: move this to rpGraph
-    def _hierarchy_pos(self,
+    def _hierarchyPos(self,
                        G,
                        root,
                        width=1.0,
@@ -256,7 +262,7 @@ class rpDraw:
             return True
 
 
-    def line_intersection(line1, line2):
+    def lineIntersection(line1, line2):
         """ Taken from https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines
             Determine the location of an intersection between two lines
         """
@@ -274,7 +280,7 @@ class rpDraw:
         return x, y
 
 
-    def drawsvg(self, rpgraph,
+    def drawSVG(self, rpgraph,
                 target,
                 subplot_size=[200,200],
                 #reac_size=[20,60],
@@ -332,7 +338,7 @@ class rpDraw:
         #TODO: Check this one: /Users/melchior/Downloads/rpglobalscore_77/rp_109_2.sbml.xml
         reac_size = [subplot_size[0]/8, subplot_size[1]/2]
         #gather all the inchis and convert to svg
-        resG, pos, reac_cofactors_id = self._hierarchy_pos(rpgraph.G,
+        resG, pos, reac_cofactors_id = self._hierarchyPos(rpgraph.G,
                                                            target,
                                                            plot_only_central=plot_only_central,
                                                            filter_cofactors=filter_cofactors,
@@ -640,7 +646,7 @@ class rpDraw:
             perpendicular_layers = []
             for comp_edge in edge_pos:
                 #if edge_pos[comp_edge]['L1']==edge_pos[edge]['L1']:
-                x, y = line_intersection(edge_pos[comp_edge]['L1'][0], edge_pos[comp_edge]['L1'][1], edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1])
+                x, y = lineIntersection(edge_pos[comp_edge]['L1'][0], edge_pos[comp_edge]['L1'][1], edge_pos[edge]['L1'][0], edge_pos[edge]['L1'][1])
                 if not x==None and y==None:
                     perpendicular_layers.append(comp_edge)
             if len(perpendicular_layers)>1:

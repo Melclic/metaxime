@@ -46,7 +46,7 @@ logging.basicConfig(
 class rpSBML:
     """This class uses the libSBML object and handles it by adding BRSynth annotation
     """
-    def __init__(self, model_name, document=None, path=None):
+    def __init__(self, model_name=None, document=None, path=None):
         """Constructor for the rpSBML class
 
         Note that the user can pass either a document libSBML object or a path to a SBML file. If a path is passed it overwrite the passed document object.
@@ -58,6 +58,19 @@ class rpSBML:
         :type model_name: str
         :type path: str
         :type document: libsbml.SBMLDocument
+
+        .. document private functions
+        .. automethod:: _computeMeanRulesScore
+        .. automethod:: _searchKey
+        .. automethod:: _dictRPpathway
+        .. automethod:: _findUniqueRowColumn
+        .. automethod:: _checklibSBML
+        .. automethod:: _nameToSbmlId
+        .. automethod:: _genMetaID
+        .. automethod:: _compareXref
+        .. automethod:: _defaultBothAnnot
+        .. automethod:: _defaultBRSynthAnnot
+        .. automethod:: _defaultMIRIAMAnnot
         """
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
@@ -154,7 +167,7 @@ class rpSBML:
     def _computeMeanRulesScore(self, pathway_id='rp_pathway'):
         """Compute the mean rules score
 
-        :param pathway_id: The Groups id of the hheterologous pathway
+        :param pathway_id: The Groups id of the heterologous pathway
 
         :type pathway_id: str
 
@@ -183,8 +196,10 @@ class rpSBML:
         """Put species in a dictionnary for further comparison
 
         :param rpsbml: rpSBML object
+        :param pathway_id: The id of the Groups heterologous pathway
 
         :type rpsbml: rpSBML
+        :type pathway_id: str
 
         :rtype: dict
         :return: Simplified dictionary version of rpSBML
@@ -540,6 +555,42 @@ class rpSBML:
     ######################################################################
     ####################### PUBLIC FUNCTIONS #############################
     ######################################################################
+
+
+    def addMIRIAMinchiKey(self):
+        """Check the MIRIAM annotation for MetaNetX or CHEBI id's and try to recover the inchikey from cache and add it to MIRIAM
+
+        :rtype: bool
+
+        :return: Success or failure of the function
+        """
+        for spe in self.model.getListOfSpecies():
+            inchikey = None
+            miriam_dict = self.readMIRIAMAnnotation(spe.getAnnotation())
+            if 'inchikey' in miriam_dict:
+                self.logger.info('The species '+str(spe.id)+' already has an inchikey... skipping')
+                continue
+            try:
+                for mnx in miriam_dict['metanetx']:
+                    inchikey = self.cid_strc[self._checkCIDdeprecated(mnx)]['inchikey']
+                    if inchikey:
+                        self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
+                    else:
+                        self.logger.warning('The inchikey is empty for: '+str(spe.id))
+                    continue
+            except KeyError:
+                try:
+                    for chebi in miriam_dict['chebi']:
+                        inchikey = self.cid_strc[self._checkCIDdeprecated(self.chebi_cid[chebi])]['inchikey']
+                        if inchikey:
+                            self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
+                        else:
+                            self.logger.warning('The inchikey is empty for: '+str(spe.id))
+                        continue
+                except KeyError:
+                    self.logger.warning('Cannot find the inchikey for: '+str(spe.id))
+        return True
+
 
     ############################# MERGE FUNCTIONS #########################
 

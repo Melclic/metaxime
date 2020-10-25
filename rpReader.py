@@ -7,7 +7,7 @@ import os
 import json
 from io import StringIO
 import copy
-import logging 
+import logging
 from rpSBML import rpSBML
 from rpCache import rpCache
 
@@ -33,7 +33,6 @@ class Species:
         return self.cid==cid
     def __hash__(self):
         return hash(self.cid)
-    
 
 
 class rpReader(rpCache):
@@ -41,16 +40,20 @@ class rpReader(rpCache):
     Supports: - RetroPath2.0 input
               - TSV
               - String input
+
+    .. document private functions
+    .. automethod:: _pubChemLimit
+    .. automethod:: _pubchemStrctSearch
     """
     def __init__(self):
         """Constructor for the class
         """
-        self.logger = logging.getLogger(__name__)
-        self.logger.info('Starting instance of rpReader') 
         #load the cache
         super().__init__()
+        self.logger = logging.getLogger(__name__)
+        self.logger.info('Starting instance of rpReader')
         self.cid_strc = self.getCIDstrc()
-        self.rr_reactions = self.getRRreactions() 
+        self.rr_reactions = self.getRRreactions()
         self.deprecatedCID_cid = self.getDeprecatedCID()
         self.cid_xref = self.getCIDxref()
         self.chebi_cid = self.getChebiCID()
@@ -200,7 +203,7 @@ class rpReader(rpCache):
                   sink_species_group_id='rp_sink_species',
                   pubchem_search=False):
         """Function to group all the functions for parsing RP2 output to SBML files
-        
+
         Takes RP2paths's compounds.txt and out_paths.csv and RetroPaths's *_scope.csv files and generates SBML
 
         :param rp2_pathways: The RetroPath2.0 results scope file
@@ -216,7 +219,7 @@ class rpReader(rpCache):
         :param sink_species_group_id: The Groups id of the rp_sink_species (Default: rp_sink_species)
         :param pubchem_search: Use the pubchem database to search for missing cross reference (Default: False)
 
-        :type rp2_pathways: str 
+        :type rp2_pathways: str
         :type rp2paths_pathways: str
         :type rp2paths_compounds: str
         :type tmpOutputFolder: str
@@ -255,12 +258,12 @@ class rpReader(rpCache):
 
     def _compounds(self, path):
         """Function to parse the compounds.txt file
-        
+
         Extract the smile and the structure of each compounds of RP2Path output. Method to parse all the RP output compounds.
 
         :param path: Path to the compounds file
 
-        :type path: str 
+        :type path: str
 
         :rtype: dict
         :return: Dictionnary of compounds results
@@ -302,12 +305,12 @@ class rpReader(rpCache):
 
     def _transformation(self, path):
         """Function to parse the scope.csv file
-        
+
         Extract the reaction rules from the retroPath2.0 output using the scope.csv file
 
         :param path: Path to the compounds file
 
-        :type path: str 
+        :type path: str
 
         :rtype: tuple
         :return: The RetroPath transformation and the list of sink molecules
@@ -576,9 +579,9 @@ class rpReader(rpCache):
         :param sink_species_group_id: The Groups id of the rp_sink_species (Default: rp_sink_species)
         :param pubchem_search: Use the pubchem database to search for missing cross reference (Default: False)
 
-        :type rp_strc: str 
-        :type rp_transformation: str 
-        :type sink_molecules: str 
+        :type rp_strc: str
+        :type rp_transformation: str
+        :type sink_molecules: str
         :type rp2paths_pathways: str
         :type out_folder: str
         :type upper_flux_bound: int
@@ -725,7 +728,7 @@ class rpReader(rpCache):
                 rpsbml.writeSBML(out_folder)
         return True
 
-    
+
     #############################################################################################
     ############################### COFACTORS ###################################################
     #############################################################################################
@@ -737,7 +740,7 @@ class rpReader(rpCache):
         :param step: Dictionnary describing the reaction
         :param rr_reac: Dictionnary describing the monocomponent reaction from RetroRules
         :param full_reac: The original full reaction description
-        :param mono_side: Is monocomponent side of the reaction 
+        :param mono_side: Is monocomponent side of the reaction
         :param rr_string: The reaction rule
         :param pathway_cmp: Dictionnary used to retreive the public ID of the intermediate compounds. Resets for each individual pathway
 
@@ -746,7 +749,7 @@ class rpReader(rpCache):
         :type full_reac: dict
         :type mono_side: dict
         :type rr_string: str
-        :type pathway_cmp: dict 
+        :type pathway_cmp: dict
 
         :rtype: tuple
         :return: The tuple with the status of the function and the complete reaction string
@@ -769,7 +772,7 @@ class rpReader(rpCache):
 
     def _addCofactorSpecies(self, step, full_reac, rr_reac):
         """Add the new cofactor species and update the reaction rule
-        
+
         :param step: The dictionary describing the reaction
         :param full_reac: The original full reaction
         :param rr_reac: The Reaction rule reaction describing
@@ -849,7 +852,7 @@ class rpReader(rpCache):
         :param pathway_cmp: Intermediate compounds with their public ID's
 
         :type step: dict
-        :type pathway_cmp: dict 
+        :type pathway_cmp: dict
 
         :rtype: bool
         :return: Success or failure of the function
@@ -923,14 +926,14 @@ class rpReader(rpCache):
         Read each pathway information and RetroRules information to construct heterologous pathways and add the cofactors
 
         :param rpsbml: The rpSBML object with a single model
-        :param compartment_id: The id of the SBML compartment of interest 
-        :param pathway_id: The Groups id of the heterologous pathway 
-        :param pubchem_search: Query the pubchem database 
+        :param compartment_id: The id of the SBML compartment of interest
+        :param pathway_id: The Groups id of the heterologous pathway
+        :param pubchem_search: Query the pubchem database
 
         :type rpsbml: rpSBML
-        :type compartment_id: str 
+        :type compartment_id: str
         :type pathway_id: str
-        :type pubchem_search: bool 
+        :type pubchem_search: bool
 
         :rtype: bool
         :return: Success or failure of the function

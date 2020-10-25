@@ -6,24 +6,28 @@ import itertools
 import numpy as np
 import random
 
+from rpSBML import rpSBML
 
-class rpGraph:
+class rpGraph(rpSBML):
     """The class that hosts the networkx related functions
     """
-    def __init__(self, rpsbml=None, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+    def __init__(self, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
 
-        :param rpsbml: The rpSBML object
         :param pathway_id: The pathway id of the heterologous pathway
         :param species_group_id: The id of the central species
+        :param sink_species_group_id: The ids of the sink species
 
-        :type rpsbml: rpSBML
         :type pathway_id: str
         :type species_group_id: str
+        :type sink_species_group_id: str
+
+        .. document private functions
+        .. automethod:: _makeCompareGraphs
         """
-        self.rpsbml = rpsbml
+        super().__init__()
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')
@@ -56,10 +60,10 @@ class rpGraph:
     # compare the, with your target, and return the one that has the highest score. Only then can you 
     def _makeCompareGraphs(self, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
         #retreive the pathway species and reactions
-        species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
-        groups = self.rpsbml.model.getPlugin('groups')
+        species = [self.model.getSpecies(i) for i in self.readUniqueRPspecies(pathway_id)]
+        groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
-        reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
+        reactions = [self.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
         Gs = []
         #what you want to do is build a series of graphs that have the most info to the least 
         #WARNING: Probably need to checkt that there are no 2 species that have the same inchi_keys at a particular layer
@@ -73,12 +77,12 @@ class rpGraph:
                 speid_newid = {}
                 ############# InChiKey ###############
                 for spe in species:
-                    brsynth = self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation())
+                    brsynth = self.readBRSYNTHAnnotation(spe.getAnnotation())
                     #loop through all the different layers of the inchikey and calculate the graph
                     if 'inchikey' in brsynth:
                         speid_newid[spe.getId()] = '-'.join(i for i in brsynth['inchikey'].split('-')[:inch_lay])
                     else:
-                        miriam = self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation())
+                        miriam = self.readMIRIAMAnnotation(spe.getAnnotation())
                         if 'inchikey' in miriam:
                             if len(miriam['inchikey'])>1:
                                 self.logger.warning('There are multiple inchikeys for '+str(spe.id)+': '+str(miriam['inchikey']))
@@ -107,8 +111,8 @@ class rpGraph:
                 reacid_newid = {}
                 ############### EC number ################
                 for reac in reactions:
-                    #brsynth = self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation())
-                    miriam = self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation())
+                    #brsynth = self.readBRSYNTHAnnotation(reac.getAnnotation())
+                    miriam = self.readMIRIAMAnnotation(reac.getAnnotation())
                     self.logger.debug(str(reac)+' MIRIAM: '+str(miriam))
                     reacid_newid[reac.getId()] = []
                     if 'ec-code' in miriam:
@@ -183,15 +187,15 @@ class rpGraph:
         :return: None
         :rtype: None
         """
-        self.species = [self.rpsbml.model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
-        groups = self.rpsbml.model.getPlugin('groups')
+        self.species = [self.model.getSpecies(i) for i in self.readUniqueRPspecies(pathway_id)]
+        groups = self.model.getPlugin('groups')
         c_s = groups.getGroup(central_species_group_id)
         self.central_species = [i.getIdRef() for i in c_s.getListOfMembers()]
         s_s = groups.getGroup(sink_species_group_id)
         self.sink_species = [i.getIdRef() for i in s_s.getListOfMembers()]
         rp_pathway = groups.getGroup(pathway_id)
-        self.reactions = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
-        self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
+        self.reactions = [self.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
+        self.G = nx.DiGraph(brsynth=self.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
         #nodes
         for spe in self.species:
             self.num_species += 1
@@ -204,16 +208,16 @@ class rpGraph:
             self.G.add_node(spe.getId(),
                             type='species',
                             name=spe.getName(),
-                            miriam=self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation()),
-                            brsynth=self.rpsbml.readBRSYNTHAnnotation(spe.getAnnotation()),
+                            miriam=self.readMIRIAMAnnotation(spe.getAnnotation()),
+                            brsynth=self.readBRSYNTHAnnotation(spe.getAnnotation()),
                             central_species=is_central,
                             sink_species=is_sink)
         for reac in self.reactions:
             self.num_reactions += 1
             self.G.add_node(reac.getId(),
                             type='reaction',
-                            miriam=self.rpsbml.readMIRIAMAnnotation(reac.getAnnotation()),
-                            brsynth=self.rpsbml.readBRSYNTHAnnotation(reac.getAnnotation()))
+                            miriam=self.readMIRIAMAnnotation(reac.getAnnotation()),
+                            brsynth=self.readBRSYNTHAnnotation(reac.getAnnotation()))
         #edges
         for reaction in self.reactions:
             for reac in reaction.getListOfReactants():

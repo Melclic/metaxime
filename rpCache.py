@@ -106,7 +106,7 @@ class rpCache:
             :param message: The error handling message string
 
             :type message: str
-            
+
             :rtype: None
             :return: None
             """
@@ -322,7 +322,6 @@ class rpCache:
         return self.rr_reactions
 
     ### intermidiate generate, WARNING: needs to be added at the end after the other files
-    
     def getChebiCID(self):
         """Getter of the dictionnary describing the Chebi id to the compound id
 
@@ -381,7 +380,7 @@ class rpCache:
         :param itype: The type of input
         :param otype: Type of output. Valid options: inchi, smiles, inchikey
 
-        :type idepic: str 
+        :type idepic: str
         :type itype: str
         :type otype: dict
 
@@ -632,7 +631,7 @@ class rpCache:
     #TODO: save the self.deprecatedMNXM_mnxm to be used in case there rp_paths uses an old version of MNX
     def mnxCompXref(self, comp_xref_path):
         """Function to parse the comp_xref.tsv file of MetanetX
-        
+
         Generate a dictionnary of compartments id's (MNX) to other database id's
 
         :param comp_xref_path: Path to the compartment xref
@@ -679,10 +678,10 @@ class rpCache:
     #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def deprecatedMNXM(self, chem_xref_path):
         """Function to parse the chem_xref.tsv file of MetanetX
-        
+
         Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's. This can include more than one old id per new one and thus returns a dictionnary. Private function
 
-        :param chem_xref_path: The path to the MetaNetX chemical list 
+        :param chem_xref_path: The path to the MetaNetX chemical list
 
         :type chem_xref_path: str
 
@@ -704,10 +703,10 @@ class rpCache:
 
     def deprecatedMNXR(self, reac_xref_path):
         """Function to parse the reac_xref.tsv file of MetanetX
-        
+
         Generate a dictionnary of old to new MetanetX identifiers to make sure that we always use the freshest id's. This can include more than one old id per new one and thus returns a dictionnary. Private function
 
-        :param reac_xref_path: The path to the MetaNetX reaction list 
+        :param reac_xref_path: The path to the MetaNetX reaction list
 
         :type reac_xref_path: str
 
@@ -725,10 +724,10 @@ class rpCache:
 
     def MNXstrc(self, chem_prop_path):
         """Function to parse the chemp_prop.tsv file from MetanetX and compounds.tsv from RetroRules
-        
+
         Generate a dictionnary gaving the formula, smiles, inchi and inchikey for the components
 
-        :param chem_prop_path: The path to the MetaNetX chemical structure list 
+        :param chem_prop_path: The path to the MetaNetX chemical structure list
 
         :type chem_prop_path: str
 
@@ -787,10 +786,10 @@ class rpCache:
     #TODO: save the self.deprecatedCID_cid to be used in case there rp_paths uses an old version of MNX
     def mnxXref(self, chem_xref_path):
         """Function to parse the chem_xref.tsv file of MetanetX
-        
+
         Generate a dictionnary of all cross references for a given chemical id (MNX) to other database id's
 
-        :param chem_xref_path: The path to the MetaNetX chemical cross reference list 
+        :param chem_xref_path: The path to the MetaNetX chemical cross reference list
 
         :type chem_xref_path: str
 
