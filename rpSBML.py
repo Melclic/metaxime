@@ -76,12 +76,17 @@ class rpSBML:
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
         #self.logger.setLevel(logging.INFO)
-        self.model_name = model_name
-        self.document = document
-        self.mean_rules_score = 0.0
-        if self.document==None:
-            self.model = None
+        if model_name:
+            self.model_name = model_name
         else:
+            self.model_name = 'not_defined'
+        self.mean_rules_score = 0.0
+        if document==None and path==None:
+            self.model = None
+            self.document = None
+        #document takes priority
+        elif document:
+            self.path = None
             self.model = self.document.getModel()
             #enabling the extra packages if they do not exists when reading a model
             if not self.model.isPackageEnabled('groups'):
@@ -98,13 +103,13 @@ class rpSBML:
                     True),
                         'Enabling the FBC package')
                 self._checklibSBML(self.document.setPackageRequired('fbc', False), 'enabling FBC package')
-            self.mean_rules_score = self._computeMeanRulesScore()
-        if not path==None:
+            if self._isRPsbml():
+                self.mean_rules_score = self._computeMeanRulesScore()
+        elif path:
             self.path = path
             self.readSBML(path)
-            self.mean_rules_score = self._computeMeanRulesScore()
-        else:
-            self.path = path
+            if self._isRPsbml():
+                self.mean_rules_score = self._computeMeanRulesScore()
         self.miriam_header = {'compartment': {'mnx': 'metanetx.compartment/', 'bigg': 'bigg.compartment/', 'seed': 'seed/', 'name': 'name/'}, 'reaction': {'mnx': 'metanetx.reaction/', 'rhea': 'rhea/', 'reactome': 'reactome/', 'bigg': 'bigg.reaction/', 'sabiork': 'sabiork.reaction/', 'ec': 'ec-code/', 'biocyc': 'biocyc/', 'lipidmaps': 'lipidmaps/', 'uniprot': 'uniprot/'}, 'species': {'inchikey': 'inchikey/', 'pubchem': 'pubchem.compound/','mnx': 'metanetx.chemical/', 'chebi': 'chebi/CHEBI:', 'bigg': 'bigg.metabolite/', 'hmdb': 'hmdb/', 'kegg_c': 'kegg.compound/', 'kegg_d': 'kegg.drug/', 'biocyc': 'biocyc/META:', 'seed': 'seed.compound/', 'metacyc': 'metacyc.compound/', 'sabiork': 'sabiork.compound/', 'reactome': 'reactome/R-ALL-'}}
         self.header_miriam = {'compartment': {'metanetx.compartment': 'mnx', 'bigg.compartment': 'bigg', 'seed': 'seed', 'name': 'name'}, 'reaction': {'metanetx.reaction': 'mnx', 'rhea': 'rhea', 'reactome': 'reactome', 'bigg.reaction': 'bigg', 'sabiork.reaction': 'sabiork', 'ec-code': 'ec', 'biocyc': 'biocyc', 'lipidmaps': 'lipidmaps', 'uniprot': 'uniprot'}, 'species': {'inchikey': 'inchikey', 'pubchem.compound': 'pubchem', 'metanetx.chemical': 'mnx', 'chebi': 'chebi', 'bigg.metabolite': 'bigg', 'hmdb': 'hmdb', 'kegg.compound': 'kegg_c', 'kegg.drug': 'kegg_d', 'biocyc': 'biocyc', 'seed.compound': 'seed', 'metacyc.compound': 'metacyc', 'sabiork.compound': 'sabiork', 'reactome': 'reactome'}}
 
@@ -112,15 +117,15 @@ class rpSBML:
     def __eq__(self, rpsbml):
         return \
             sorted(self.readRPpathwayIDs()) == sorted(rpsbml.readRPpathwayIDs()) \
-        and self._dictRPpathway(self) == self._dictRPpathway(rpsbml)
+        and self._dictRPpathway(self)==self._dictRPpathway(rpsbml)
 
 
     def __lt__(self, rpsbml):
-        return self.mean_rules_score < rpsbml.mean_rules_score
+        return self.mean_rules_score<rpsbml.mean_rules_score
 
 
     def __gt__(self, rpsbml):
-        return self.mean_rules_score > rpsbml.mean_rules_score
+        return self.mean_rules_score>rpsbml.mean_rules_score
 
 
     #######################################################################
@@ -128,6 +133,8 @@ class rpSBML:
     #######################################################################
 
 
+    '''
+    #TODO: remove this to another section of the project where more global are called
     @staticmethod
     def mergeSBMLFiles(path_source, path_target, path_merge):
         """Public function that merges two SBML files together
@@ -154,11 +161,22 @@ class rpSBML:
         source_rpsbml.mergeModels(target_rpsbml.model)
         target_rpsbml.writeSBML(path_merge)
         return True
-
+    '''
 
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################
+
+
+    def _isRPsbml(self, pathway_id='rp_pathway'):
+        """Check if the model is a rp_pathway
+        """
+        try:
+            self.getGroupsMembers(pathway_id)
+            return True
+        except AttributeError:
+            return False
+
 
 
     ############################# EXACT COMPARE ########################### 
@@ -397,8 +415,7 @@ class rpSBML:
         :rtype: None
         """
         if value is None:
-            self.logger.error('LibSBML returned a null value trying to ' + message + '.')
-            raise AttributeError
+            raise AttributeError('LibSBML returned a null value trying to ' + message + '.')
         elif type(value) is int:
             if value==libsbml.LIBSBML_OPERATION_SUCCESS:
                 return
@@ -406,8 +423,7 @@ class rpSBML:
                 err_msg = 'Error encountered trying to ' + message + '.' \
                         + 'LibSBML returned error code ' + str(value) + ': "' \
                         + libsbml.OperationReturnValue_toString(value).strip() + '"'
-                self.logger.error(err_msg)
-                raise AttributeError
+                raise AttributeError(err_msg)
         else:
             #self.logger.debug(message)
             return None
@@ -1049,22 +1065,48 @@ class rpSBML:
 
     #MERGE
 
+
     #TODO: add a confidence in the merge using the score in 
     #TODO: seperate the different parts so that others may use it
-    def mergeModels(self, target_model):
+    def mergeModels(self, input_model, output_path=None):
         """Merge two models species and reactions using the annotations to recognise the same species and reactions
 
         The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
         called rp_pathway. If not use the readSBML() function to create a model
-        We add the reactions and species from the rpsbml to the target_model
+        We add the reactions and species from the rpsbml to the target_model. When the output_path is specified, the function
+        will output the model to that path and if left to the default None, the self model will be overwritten.
 
-        :param target_model: The target rpSBML model object
+        :param target_model: The target model object
+        :param output_path: The path to the output file. Note that if its set to None, then self model is overwritten
 
-        :type target_model: libsbml.model
+        :type target_model: libsbml.Model
+        :type output_path: None
 
-        :return: Tuple of dict where the first entry is the species source to target conversion and the second is the reaction source to target conversion
         :rtype: tuple
+        :returns: tuple (species_source_target, reactions_source_target)
+            - str species_source_target is dict
+            - str reactions_source_target is dict
+        Tuple of dict where the first entry`target model object is the species source to target conversion and the second is the reaction source to target conversion
         """
+        if output_path and type(input_model)==libsbml.Model:
+            self.logger.warning('Cannot pass a libsbml.Model object and excpect a physical file output... Setting output_path to None')
+            output_path = None
+        if type(input_model)==libsbml.Model:
+            target_model = input_model
+        elif type(input_model)==libsbml.SBMLDocument:
+            target_model = input_model.model
+        elif type(input_model)==rpSBML:
+            target_model = input_model.model
+        elif type(input_model)==str:
+            if os.path.exists(input_model):
+                rpsbml = rpSBML(model_name=self.model_name, path=input_model)
+                target_model = rpsbml.model
+            else:
+                self.logger.error('The input model was detected to be a string and thus path, but the file does not seem to exists: '+str(input_model))
+                return False
+        else:
+            self.logger.error('The input must be either a libsbml.SBMLDocument, libsbml.Model or the path to a model')
+            return False
         #target_model = target_document.getModel()
         #Find the ID's of the similar target_model species
         ################ MODEL FBC ########################
@@ -1460,7 +1502,132 @@ class rpSBML:
         if fillOrphanSpecies==True:
             self.fillOrphan(target_rpsbml, self.pathway_id, compartment_id)
         '''
+        ########### OUTPUT ##############
+        #if the output is specified, then generate the different 
+        if output_path:
+            if type(input_model)==libsbml.SBMLDocument:
+                libsbml.writeSBMLToFile(input_model, output_path)
+            elif type(input_model)==rpSBML:
+                input_model.writeSBML(output_path)
+            elif type(input_model)==str:
+                libsbml.writeSBMLToFile(rpsbml.document, output_path)
+        else: #if there are no output specified, we overwrite the current model
+            if type(input_model)==libsbml.SBMLDocument:
+                self.document = rpsbml.document
+                self.model = target_model
+            elif type(input_model)==libsbml.Model:
+                self.document = None
+            elif type(input_model)==rpSBML:
+                self.document = input_model.document
+                self.model = input_model.model
+                self.model_name = input_model.model_name
+            elif type(input_model)==str:
+                self.document = rpsbml.document
+                self.model = rpsbml.model
         return species_source_target, reactions_source_target
+
+    
+    #TODO: need to pass the species and reaction conversions that the above function returns
+    def overwriteRPannot(self, source_rpsbml, species_source_target, reactions_source_target, source_pathway_id='rp_pathway', pathway_id='rp_pathway'):
+        """Given a rpsbml of entry, overwrite the current annotations of a pathway. This is useful when performing operations in merged model, i.e. rpFBA and then
+        adding this info to the new model
+
+        :param source_rpsbml: The source rpSBML from which to read the annotations of the pathway
+        :param source_pathway_id: The Groups id of the source heterologous pathway
+        :param pathway_id: The Groups id of the heterologous pathway
+
+        :type source_rpsbml: rpSBML
+        :param source_pathway_id: str 
+        :param pathway_id: str 
+
+        :rtype: None
+        :return: None
+        """
+        self.logger.debug('Returning model with heterologous pathway only')
+        rev_reactions_convert = {v: k for k, v in reactions_convert.items()}
+        #### species #####
+        #TODO: overwrite all the species:
+        groups = source_rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        self.logger.debug('---- Reactions ----')
+        for member in rp_pathway.getListOfMembers():
+            #### reaction annotation
+            self.logger.debug(member.getIdRef())
+            reac_fba = source_rpsbml.model.getReaction(member.getIdRef())
+            self.logger.debug(reac_fba)
+            try:
+                #reac_in = self.model.getReaction(reactions_convert[member.getIdRef()])
+                reac_in = self.model.getReaction(rev_reactions_convert[member.getIdRef()])
+            except KeyError:
+                reac_in = self.model.getReaction(member.getIdRef())
+            self.logger.debug(reac_in)
+            self.logger.debug(reac_fba.getAnnotation())
+            reac_in.setAnnotation(reac_fba.getAnnotation())
+            #### species TODO: only for shadow price
+        #### add groups ####
+        source_groups = source_rpsbml.model.getPlugin('groups')
+        target_groups = self.model.getPlugin('groups')
+        target_groups_id = [i.getId() for i in target_groups.getListOfGroups()]
+        for source_group in source_groups.getListOfGroups():
+            #self.logger.debug('Replacing group id: '+str(source_group.getId()))
+            if source_group.getId()==species_group_id:
+                target_group = target_groups.getGroup(source_group.getId())
+                #TODO: #### replace the new potentially incorect central species with the normal ones #####
+                #delete all the previous members
+                self.logger.debug('Removing central_species')
+                for i in range(target_group.getNumMembers()):
+                    self.logger.debug('Deleting group member: '+str(target_group.getMember(0).getIdRef()))
+                    target_group.removeMember(0)
+                #add the new ones
+                for cs in cent_spe:
+                    self.logger.debug('Creating new member: '+str(cs))
+                    newM = target_group.createMember()
+                    newM.setIdRef(cs)
+            elif source_group.getId()==sink_species_group_id:
+                target_group = target_groups.getGroup(source_group.getId())
+                self.logger.debug('Removing sink species')
+                for i in range(target_group.getNumMembers()):
+                    self.logger.debug('Deleting group member: '+str(target_group.getMember(0).getIdRef()))
+                    target_group.removeMember(0)
+                #add the new ones
+                for cs in sink_spe:
+                    self.logger.debug('Creating new member: '+str(cs))
+                    newM = target_group.createMember()
+                    newM.setIdRef(cs)
+            elif source_group.getId() in target_groups_id:
+                target_group = target_groups.getGroup(source_group.getId())
+                target_group.setAnnotation(source_group.getAnnotation())
+            '''
+            elif source_group.getId()==pathway_id:
+                target_group = target_groups.getGroup(source_group.getId())
+                self.logger.debug('Removing rp ractions')
+                for i in range(target_group.getNumMembers()):
+                    self.logger.debug('Deleting group member: '+str(target_group.getMember(0).getIdRef()))
+                    target_group.removeMember(0)
+                #add the new ones
+                for cs in rp_reac:
+                    self.logger.debug('Creating new member: '+str(cs))
+                    newM = target_group.createMember()
+                    newM.setIdRef(cs)  
+            '''
+        #### add objectives ####
+        source_fbc = source_rpsbml.model.getPlugin('fbc')
+        target_fbc = self.model.getPlugin('fbc')
+        target_objID = [i.getId() for i in target_fbc.getListOfObjectives()]
+        for source_obj in source_fbc.getListOfObjectives():
+            source_obj_id = source_obj.getId()
+            if source_obj.getId() in target_objID:
+                target_obj = target_fbc.getObjective(source_obj.getId())
+                target_obj.setAnnotation(source_obj.getAnnotation())
+                for target_fluxObj in target_obj.getListOfFluxObjectives():
+                    for source_fluxObj in source_obj.getListOfFluxObjectives():
+                        if target_fluxObj.getReaction()==source_fluxObj.getReaction():
+                            target_fluxObj.setAnnotation(source_fluxObj.getAnnotation())
+            else:
+                target_fbc.addObjective(source_obj)
+        #rpsbml.createMultiFluxObj('obj_RP1_sink', ['RP1_sink'], [1])
+        target_fbc.setActiveObjectiveId(source_obj_id) #tmp random assigenement of objective
+ 
 
 
     ####################### ADD ELEMENTS ############
@@ -1794,12 +1961,12 @@ class rpSBML:
     ########################## INPUT/OUTPUT #############################
 
 
-    def readSBML(self, inFile):
+    def readSBML(self, path, model_name=None):
         """Open an SBML file to the object
 
-        :param inFile: Path to the input SBML file
+        :param path: Path to the input SBML file
 
-        :type inFile: str
+        :type path: str
 
         :raises FileNotFoundError: If the file cannot be found
         :raises AttributeError: If the libSBML command encounters an error or the input value is None
@@ -1807,10 +1974,10 @@ class rpSBML:
         :rtype: None
         :return: Dictionnary of the pathway annotation
         """
-        if not os.path.isfile(inFile):
+        if not os.path.isfile(path):
             self.logger.error('Invalid input file')
             raise FileNotFoundError
-        document = libsbml.readSBMLFromFile(inFile)
+        document = libsbml.readSBMLFromFile(path)
         self._checklibSBML(document, 'reading input file')
         errors = document.getNumErrors()
         #display the errors in the log accordning to the severity
@@ -1827,6 +1994,12 @@ class rpSBML:
             raise FileNotFoundError
         self.document = document
         self.model = model
+        if self._isRPsbml():
+            self.mean_rules_score = self._computeMeanRulesScore()
+        if model_name:
+            self.model_name = model_name
+        elif not self.model_name:
+            self.model_name = model.getId().replace('model_', '').lower()
         #enabling the extra packages if they do not exists when reading a model
         if not self.model.isPackageEnabled('groups'):
             self._checklibSBML(self.model.enablePackage(
@@ -1865,7 +2038,7 @@ class rpSBML:
                 if os.path.isdir(path):
                     p = os.path.join(path, str(self.model_name)+'_rpsbml.xml')
                 else:
-                    if os.path.exist(path):
+                    if os.path.exists(path):
                         self.logger.warning('overwriting the following sbml file: '+str(path))
                     p = path
             else:
@@ -1940,7 +2113,7 @@ class rpSBML:
         """
         groups = self.model.getPlugin('groups')
         groups_obj = groups.getGroup(pathway_id)
-        self._checklibSBML(groups_obj, 'retreiving groups groups_obj')
+        self._checklibSBML(groups_obj, 'retreiving groups groups_obj (readRPpathwayIDs): '+str(group_id))
         toRet = []
         for member in groups_obj.getListOfMembers():
             toRet.append(member.getIdRef())
@@ -1962,7 +2135,7 @@ class rpSBML:
         """
         groups = self.model.getPlugin('groups')
         groups_obj = groups.getGroup(group_id)
-        self._checklibSBML(groups_obj, 'retreiving groups groups_obj')
+        self._checklibSBML(groups_obj, 'retreiving groups groups_obj (getGroupsMembers): '+str(group_id))
         toRet = []
         for member in groups_obj.getListOfMembers():
             toRet.append(member.getIdRef())

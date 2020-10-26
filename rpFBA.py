@@ -11,7 +11,7 @@ from rpSBML import rpSBML
 class rpFBA(rpSBML):
     """Class to simulate an rpsbml object using different FBA types and objective functions
     """
-    def __init__(self):
+    def __init__(self, model_name=None, document=None, path=None):
         """Default constructor
 
         .. document private functions
@@ -19,7 +19,7 @@ class rpFBA(rpSBML):
         .. automethod:: _writeAnalysisResults
         """
         #load the rpSBML
-        super().__init__()
+        super().__init__(model_name, document, path)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpFBA')
         #TODO enable FBC if not done so

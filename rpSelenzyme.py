@@ -1,4 +1,6 @@
 import tempfile
+import pickle
+import gzip
 import logging
 import json
 import sys
@@ -10,27 +12,42 @@ import os
 class rpSelenzyme(rpSBML):
     """Class to handle calling the Selenzyme service
     """
-    def __init__(self):
+    def __init__(self, pc=None, uniprot_aaLenght=None, cache_tar_path=None):
         """Class constructor
+
+        :param pc: The cache of Selenzyme preLoad object
         """
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        self.uniprot_aaLenght = {}
+        self.uniprot_aaLenght = None
         self.pc = None
-        self.datadir = '/home/selenzy/data/'
-        self._loadCache()
+        if (pc and not uniprot_aaLenght) or (not pc and uniprot_aaLenght):
+            self.logger.error('Either both pc and uniprot_aaLenght are None and the cache is loaded or both are passed')
+            raise AttributeError
+        elif uniprot_aaLenght and ps:
+            self.uniprot_aaLenght = uniprot_aaLenght
+            self.pc = pc
+        else:
+            self._loadCache()
 
 
-    def _loadCache(self):
+    def _loadCache(self, rpselen_cache_tar='input_cache/rpselenzyme_data.tar.xz'):
         """Load the selenzyme cache
         """
         ## global parameter 
-        self.pc = Selenzy.readData(self.datadir)
-        with open(os.path.exists(self.datadir, 'sel_len.csv')) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
-            next(csv_reader)
-            for row in csv_reader:
-                self.uniprot_aaLenght[row[0].split('|')[1]] = int(row[1])
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            tar = tarfile.open(rpselen_cache_tar, mode='r')
+            tar.extractall(path=tmp_output_folder)
+            tar.close()
+            self.pc = Selenzy.readData(tmp_output_folder)
+            self.uniprot_aaLenght = pickle.load(gzip.open(os.path.join(tmp_output_folder, 'uniprot_aaLenght.pickle.gz'), 'rb'))
+            '''This is how the above parameter was generated    
+            with open(os.path.exists(self.datadir, 'sel_len.csv')) as csv_file:
+                csv_reader = csv.reader(csv_file, delimiter=',')
+                next(csv_reader)
+                for row in csv_reader:
+                    self.uniprot_aaLenght[row[0].split('|')[1]] = int(row[1])
+            '''
 
 
     def singleReactionRule(reaction_rule,
