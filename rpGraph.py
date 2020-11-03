@@ -35,6 +35,12 @@ class rpGraph(rpSBML):
         :type rpsbml: rpSBML
         :type pathway_id: str
         :type species_group_id: str
+
+        .. document private functions
+        .. automethod:: _makeCompareGraphs
+        .. automethod:: _makeGraph
+        .. automethod:: _recursiveReacSuccessors
+        .. automethod:: _recursiveReacPredecessors
         """
         super().__init__(model_name, document, path))
         self.logger = logging.getLogger(__name__)
@@ -421,90 +427,6 @@ class rpGraph(rpSBML):
     ######################################################################################################
     ########################################## Public Function ###########################################
     ######################################################################################################
-
-
-    def checkSingleParent(self,
-                          del_sp_pro=False,
-                          del_sp_react=False,
-                          upper_flux_bound=999999.0,
-                          lower_flux_bound=0.0,
-                          compartment_id='MNXM3',
-                          pathway_id='rp_pathway',
-                          central_species_group_id='central_species',
-                          sink_species_group_id='rp_sink_species'):
-        """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
-
-        :param rpsbml: The rpSBML object
-        :param del_sp_pro: Define if to delete the products or create reaction that consume it
-        :param del_sp_react: Define if to delete the reactants or create reaction that produce it
-        :param upper_flux_bound: The upper flux bounds unit definitions default when adding new reaction (Default: 999999.0)
-        :param lower_flux_bound: The lower flux bounds unit definitions default when adding new reaction (Defaul: 0.0)
-        :param compartment_id: The id of the model compartment
-        :param pathway_id: The pathway ID (Default: rp_pathway)
-        :param central_species_group_id: The central species Groups id (Default: central_species)
-        :param sink_species_group_id: The sink specues Groups id (Default: sink_species_group_id)
-
-        :type rpsbml: rpSBML
-        :type del_sp_pro: bool
-        :type del_sp_react: bool
-        :type upper_flux_bound: float
-        :type lower_flux_bound: float
-        :type compartment_id: str
-        :type pathway_id: str
-        :type central_species_group_id: str
-        :type sink_species_group_id: str
-
-        :rtype: bool
-        :return: Success of failure of the function
-        """
-        import rpGraph
-        rpgraph = rpGraph.rpGraph(rpsbml, True, pathway_id, central_species_group_id, sink_species_group_id)
-        consumed_species_nid = rpgraph.onlyConsumedSpecies()
-        produced_species_nid = rpgraph.onlyProducedSpecies()
-        if del_sp_pro:
-            for pro in produced_species_nid:
-                rpSBML._checklibSBML(target_rpsbml.model.removeSpecies(pro), 'removing the following product species: '+str(pro))
-        else:
-            for pro in produced_species_nid:
-                step = {'rule_id': None,
-                        'left': {pro.split('__')[0]: 1},
-                        'right': {},
-                        'step': None,
-                        'sub_step': None,
-                        'path_id': None,
-                        'transformation_id': None,
-                        'rule_score': None,
-                        'rule_ori_reac': None}
-                #note that here the pathwats are passed as NOT being part of the heterologous pathways and 
-                #thus will be ignored when/if we extract the rp_pathway from the full GEM model
-                rpsbml.createReaction(pro+'__consumption',
-                                      upper_flux_bound,
-                                      lower_flux_bound,
-                                      step,
-                                      compartment_id)
-        if del_sp_react:
-            for react in consumed_species_nid:
-                rpSBML._checklibSBML(target_rpsbml.model.removeSpecies(react), 'removing the following reactant species: '+str(react))
-        else:
-            for react in consumed_species_nid:
-                step = {'rule_id': None,
-                        'left': {},
-                        'right': {react.split('__')[0]: 1},
-                        'step': None,
-                        'sub_step': None,
-                        'path_id': None,
-                        'transformation_id': None,
-                        'rule_score': None,
-                        'rule_ori_reac': None}
-                #note that here the pathwats are passed as NOT being part of the heterologous pathways and 
-                #thus will be ignored when/if we extract the rp_pathway from the full GEM model
-                rpsbml.createReaction(react+'__production',
-                                      upper_flux_bound,
-                                      lower_flux_bound,
-                                      step,
-                                      compartment_id)
-        return True
-
 
 
     def onlyConsumedSpecies(self, only_central=False, only_rp_pathway=True):
