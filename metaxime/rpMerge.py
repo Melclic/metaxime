@@ -1,9 +1,10 @@
-from rpGraph import rpGraph
 import os
 import logging
 import libsbml
 import pandas as pd
 import numpy as np
+
+from .rpGraph import rpGraph
 
 class rpMerge(rpGraph):
     """Class containing all the functions required to merge two SBML files together or two rpSBML objects
@@ -1202,9 +1203,9 @@ class rpMerge(rpGraph):
         ###### TITLES #####
         self.model.setId(self.model.getId()+'__'+source_model.getId())
         self.model.setName(self.model.getName()+' merged with '+source_model.getId())
-        #detect single parent species and deal with them
         #regenerate the graph with the new species added
         self._makeGraph(is_gem_sbml=True)
+        #detect single parent species and deal with them
         self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id)
         """
         ########### OUTPUT ##############

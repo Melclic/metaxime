@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 import random
 
-from rpSBML import rpSBML
+from .rpSBML import rpSBML
 
 
 class rpGraph(rpSBML):
