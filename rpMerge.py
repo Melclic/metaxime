@@ -1,17 +1,21 @@
 from rpGraph import rpGraph
+import os
 import logging
+import libsbml
+import pandas as pd
+import numpy as np
 
 class rpMerge(rpGraph):
     """Class containing all the functions required to merge two SBML files together or two rpSBML objects
     """
-    def __init__(self
+    def __init__(self,
                  model_name=None,
                  document=None,
                  path=None,
                  is_gem_sbml=False,
                  pathway_id='rp_pathway',
                  central_species_group_id='central_species',
-                 sink_species_group_id='rp_sink_species_id'): 
+                 sink_species_group_id='rp_sink_species'): 
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
@@ -31,8 +35,10 @@ class rpMerge(rpGraph):
         .. document private functions
         .. automethod:: _findUniqueRowColumn 
         """
-        super().__init__(model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id))
+        super().__init__(model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
         self.logger = logging.getLogger(__name__)
+        self.logger.debug('Started instance of rpMerge')
+        self.logger.debug('path: '+str(path))
 
 
     ##################################################################################
@@ -53,7 +59,7 @@ class rpMerge(rpGraph):
                        compartment_id='MNXC3',
                        pathway_id='rp_pathway',
                        central_species_group_id='central_species',
-                       sink_species_group_id='rp_sink_species_id'):
+                       sink_species_group_id='rp_sink_species'):
         """Static function that merges two SBML files together
 
         :param path_source: Path of the source SBML file
@@ -105,13 +111,21 @@ class rpMerge(rpGraph):
                                 pathway_id=pathway_id,
                                 central_species_group_id=central_species_group_id,
                                 sink_species_group_id=sink_species_group_id)
-        source_rpsbml.mergeModels(target_rpsbml.model,
-                                  del_sp_pro,
-                                  del_sp_react,
-                                  upper_flux_bound,
-                                  lower_flux_bound,
-                                  compartment_id,
-                                  path_merge)
+        species_source_target, reactions_source_target = target_rpsbml.mergeModels(source_rpsbml.model,
+                                                                                   del_sp_pro,
+                                                                                   del_sp_react,
+                                                                                   upper_flux_bound,
+                                                                                   lower_flux_bound,
+                                                                                   compartment_id)
+        """
+        species_source_target, reactions_source_target = source_rpsbml.mergeModels(target_rpsbml.model,
+                                                                                   del_sp_pro,
+                                                                                   del_sp_react,
+                                                                                   upper_flux_bound,
+                                                                                   lower_flux_bound,
+                                                                                   compartment_id)
+        """
+        target_rpsbml.writeSBML(path_merge)
         return True
 
 
@@ -255,7 +269,7 @@ class rpMerge(rpGraph):
                           del_sp_react=False,
                           upper_flux_bound=999999.0,
                           lower_flux_bound=0.0,
-                          compartment_id='MNXM3')
+                          compartment_id='MNXC3'):
         """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
 
         :param del_sp_pro: Define if to delete the products or create reaction that consume it
@@ -275,11 +289,15 @@ class rpMerge(rpGraph):
         """
         consumed_species_nid = self.onlyConsumedSpecies()
         produced_species_nid = self.onlyProducedSpecies()
+        self.logger.debug('consumed_species_nid: '+str(consumed_species_nid))
+        self.logger.debug('produced_species_nid: '+str(produced_species_nid))
         if del_sp_pro:
             for pro in produced_species_nid:
-                self._checklibSBML(self.model.removeSpecies(pro), 'removing the following product species: '+str(pro))
+                self.logger.debug('Deleting product species: '+str(pro))
+                self._checklibSBML(self.removeSpecies(pro), 'removing the following product species: '+str(pro))
         else:
             for pro in produced_species_nid:
+                self.logger.debug('Creating reaction to consume: '+str(pro))
                 step = {'rule_id': None,
                         'left': {pro.split('__')[0]: 1},
                         'right': {},
@@ -298,9 +316,11 @@ class rpMerge(rpGraph):
                                     compartment_id)
         if del_sp_react:
             for react in consumed_species_nid:
-                self._checklibSBML(self.model.removeSpecies(react), 'removing the following reactant species: '+str(react))
+                self.logger.debug('Deleting reactant species: '+str(react))
+                self._checklibSBML(self.removeSpecies(react), 'removing the following reactant species: '+str(react))
         else:
             for react in consumed_species_nid:
+                self.logger.debug('Creating reaction to produce: '+str(react))
                 step = {'rule_id': None,
                         'left': {},
                         'right': {react.split('__')[0]: 1},
@@ -743,30 +763,27 @@ class rpMerge(rpGraph):
                     del_sp_react=True,
                     upper_flux_bound=999999.0,
                     lower_flux_bound=0.0,
-                    compartment_id='MNXM3',
-                    output_path=None):
-        """Merge two models species and reactions using the annotations to recognise the same species and reactions
+                    compartment_id='MNXC3'):
+        """Merge two models species and reactions using the annotations to recognise the same species and reactions. The 
 
-        The source model has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
+        The source model (input model) has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
         called rp_pathway. If not use the readSBML() function to create a model
-        We add the reactions and species from the rpsbml to the target_model. When the output_path is specified, the function
-        will output the model to that path and if left to the default None, the self model will be overwritten.
+        We add the reactions and species from the rpsbml to the self.model. When the output_path is specified, the function
+        will output the model to that path and if left to the default None, the source_model will be overwritten.
 
-        :param input_model: The target model to add the source to
-        :param del_sp_pro: Delete the single parent product (default: False)
-        :param del_sp_react: Delete the single pareant reactant (default: True)
+        :param source_model: The target model to add the source to
+        :param del_sp_pro: Delete the single parent products (default: False)
+        :param del_sp_react: Delete the single parant reactants (default: True)
         :param upper_flux_bound: Upper flux FBC bound for the created reactions (default: 999999.0)
         :param lower_flux_bound: Lower flux FBC bound for the created reactions (default: 0.0)
         :param compartment_id: The compartment of the SBML file to add reactions (default: MNXC3)
-        :param output_model: The path to the output file. If None the function overwrites
 
-        :type input_model: Union[libsbml.Model, rpSBML, libsbml.Document, str]
+        :type source_model: Union[libsbml.Model, rpSBML, str]
         :type del_sp_pro: bool
         :type del_sp_react: bool
         :type upper_flux_bound: float
         :type lower_flux_bound: float
         :type compartment_id: str
-        :type output_model: str
 
         :rtype: tuple
         :returns: tuple (species_source_target, reactions_source_target)
@@ -774,52 +791,51 @@ class rpMerge(rpGraph):
             - str reactions_source_target is dict
         Tuple of dict where the first entry`target model object is the species source to target conversion and the second is the reaction source to target conversion
         """
-        if output_path and type(input_model)==libsbml.Model:
-            self.logger.warning('Cannot pass a libsbml.Model object and excpect a physical file output... Setting output_path to None')
-            output_path = None
         if type(input_model)==libsbml.Model:
-            target_model = input_model
-        elif type(input_model)==libsbml.SBMLDocument:
-            target_model = input_model.model
+            source_model = input_model
         elif type(input_model)==rpSBML:
-            target_model = input_model.model
+            source_model = input_model.model
+        elif type(input_model)==rpMerge:
+            source_model = input_model.model
+        elif type(input_model)==rpGraph:
+            source_model = input_model.model
         elif type(input_model)==str:
             if os.path.exists(input_model):
-                rpsbml = rpSBML(model_name=self.model_name, path=input_model)
-                target_model = rpsbml.model
+                rpsbml = rpSBML(path=input_model)
+                source_model = rpsbml.model
             else:
-                self.logger.error('The input model was detected to be a string and thus path, but the file does not seem to exists: '+str(input_model))
+                self.logger.error('The input model was detected to be a string and thus path, but the file does not seem to exists: '+str(source_model))
                 return False
         else:
             self.logger.error('The input must be either a libsbml.SBMLDocument, libsbml.Model or the path to a model')
             return False
-        #target_model = target_document.getModel()
-        #Find the ID's of the similar target_model species
+        #self.model = target_document.getModel()
+        #Find the ID's of the similar self.model species
         ################ MODEL FBC ########################
-        if not target_model.isPackageEnabled('fbc'):
-            self._checklibSBML(target_model.enablePackage(
-                'http://www.sbml.org/sbml/level3/version1/fbc/version2',
-                'fbc',
-                True),
-                    'Enabling the FBC package')
         if not self.model.isPackageEnabled('fbc'):
             self._checklibSBML(self.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/fbc/version2',
                 'fbc',
                 True),
                     'Enabling the FBC package')
-        target_fbc = target_model.getPlugin('fbc')
-        source_fbc = self.model.getPlugin('fbc')
+        if not source_model.isPackageEnabled('fbc'):
+            self._checklibSBML(source_model.enablePackage(
+                'http://www.sbml.org/sbml/level3/version1/fbc/version2',
+                'fbc',
+                True),
+                    'Enabling the FBC package')
+        target_fbc = self.model.getPlugin('fbc')
+        source_fbc = source_model.getPlugin('fbc')
         #note sure why one needs to set this as False
         #self._checklibSBML(source_rpsbml.document.setPackageRequired('fbc', False), 'enabling FBC package')
         ################ UNITDEFINITIONS ######
         #return the list of unit definitions id's for the target to avoid overwritting
         #WARNING: this means that the original unit definitions will be prefered over the new one
-        target_unitDefID = [i.getId() for i in target_model.getListOfUnitDefinitions()]
-        for source_unitDef in self.model.getListOfUnitDefinitions():
+        target_unitDefID = [i.getId() for i in self.model.getListOfUnitDefinitions()]
+        for source_unitDef in source_model.getListOfUnitDefinitions():
             if not source_unitDef.getId() in target_unitDefID: #have to compare by ID since no annotation
                 #create a new unitDef in the target
-                target_unitDef = target_model.createUnitDefinition()
+                target_unitDef = self.model.createUnitDefinition()
                 self._checklibSBML(target_unitDef, 'fetching target unit definition')
                 #copy unitDef info to the target
                 self._checklibSBML(target_unitDef.setId(source_unitDef.getId()),
@@ -843,15 +859,15 @@ class rpMerge(rpGraph):
         # Compare by MIRIAM annotations
         #Note that key is source and value is target conversion
         comp_source_target = {}
-        for source_compartment in self.model.getListOfCompartments():
+        for source_compartment in source_model.getListOfCompartments():
             found = False
-            target_ids = [i.getId() for i in target_model.getListOfCompartments()]
+            target_ids = [i.getId() for i in self.model.getListOfCompartments()]
             source_annotation = source_compartment.getAnnotation()
             if not source_annotation:
                 self.logger.warning('No annotation for the source of compartment '+str(source_compartment.getId()))
                 continue
             #compare by MIRIAM first
-            for target_compartment in target_model.getListOfCompartments():
+            for target_compartment in self.model.getListOfCompartments():
                 target_annotation = target_compartment.getAnnotation()
                 if not target_annotation:
                     self.logger.warning('No annotation for the target of compartment: '+str(target_compartment.getId()))
@@ -867,7 +883,7 @@ class rpMerge(rpGraph):
                     found = True
                 #if there is not MIRIAM match and the id's differ then add it
                 else:
-                    target_compartment = target_model.createCompartment()
+                    target_compartment = self.model.createCompartment()
                     self._checklibSBML(target_compartment, 'Creating target compartment')
                     self._checklibSBML(target_compartment.setMetaId(source_compartment.getMetaId()),
                             'setting target metaId')
@@ -891,11 +907,11 @@ class rpMerge(rpGraph):
         ################ PARAMETERS ###########
         #WARNING: here we compare by ID
         #TODO: need to improve and use the values that already exist in the SBML model
-        targetParametersID = [i.getId() for i in target_model.getListOfParameters()]
+        targetParametersID = [i.getId() for i in self.model.getListOfParameters()]
         self.logger.debug('targetParametersID: '+str(targetParametersID)) #BUG: some of the id's are not detected and are almost overwritten (libSBML to the rescue)
-        for source_parameter in self.model.getListOfParameters():
+        for source_parameter in source_model.getListOfParameters():
             if not source_parameter.getId() in targetParametersID:
-                target_parameter = target_model.createParameter()
+                target_parameter = self.model.createParameter()
                 self._checklibSBML(target_parameter, 'creating target parameter')
                 self._checklibSBML(target_parameter.setId(source_parameter.getId()), 'setting target parameter ID')
                 self._checklibSBML(target_parameter.setSBOTerm(source_parameter.getSBOTerm()),
@@ -950,9 +966,9 @@ class rpMerge(rpGraph):
         self.logger.debug('targetObjectiveID: '+str(targetObjectiveID))
         self.logger.debug('sourceObjectiveID: '+str(sourceObjectiveID))
         ################ SPECIES ####################
-        species_source_target = self.compareSpecies(comp_source_target, self.model, target_model)
+        species_source_target = self.compareSpecies(comp_source_target, source_model, self.model)
         self.logger.debug('species_source_target: '+str(species_source_target))
-        target_species_ids = [i.id for i in target_model.getListOfSpecies()]
+        target_species_ids = [i.id for i in self.model.getListOfSpecies()]
         for source_species in species_source_target:
             list_target = [i for i in species_source_target[source_species]]
             if source_species in list_target:
@@ -967,29 +983,29 @@ class rpMerge(rpGraph):
                 elif len(list_species)>1:
                     self.logger.warning('There are multiple matches to the species '+str(member.getIdRef())+'... taking the first one: '+str(list_species))
                 #TODO: loop throught the annotations and replace the non-overlapping information
-                target_member = target_model.getSpecies(list_species[0])
-                source_member = self.model.getSpecies(source_species)
+                target_member = self.model.getSpecies(list_species[0])
+                source_member = source_model.getSpecies(source_species)
                 self._checklibSBML(target_member, 'Retraiving the target species: '+str(list_species[0]))
                 self._checklibSBML(source_member, 'Retreiving the source species: '+str(source_species))
                 self._checklibSBML(target_member.setAnnotation(source_member.getAnnotation()), 'Replacing the annotations')
             #if no match then add it to the target model
             else:
                 self.logger.debug('Creating source species '+str(source_species)+' in target rpsbml')
-                source_species = self.model.getSpecies(source_species)
+                source_species = source_model.getSpecies(source_species)
                 if not source_species:
                     self.logger.error('Cannot retreive model species: '+str(source_species))
                 else:
                     self._checklibSBML(source_species, 'fetching source species')
-                    targetModel_species = target_model.createSpecies()
+                    targetModel_species = self.model.createSpecies()
                     self._checklibSBML(targetModel_species, 'creating species')
                     self._checklibSBML(targetModel_species.setMetaId(source_species.getMetaId()),
                             'setting target metaId')
                     ## need to check if the id of the source species does not already exist in the target model
                     if source_species.getId() in target_species_ids:
-                        target_species_id = self.model.id+'__'+str(source_species.getId())
+                        target_species_id = source_model.id+'__'+str(source_species.getId())
                         if not source_species.getId() in species_source_target:
                             species_source_target[source_species.getId()] = {}
-                        species_source_target[source_species.getId()][self.model.id+'__'+str(source_species.getId())] = 1.0
+                        species_source_target[source_species.getId()][source_model.id+'__'+str(source_species.getId())] = 1.0
                     else:
                         target_species_id = source_species.getId()
                     self._checklibSBML(targetModel_species.setId(target_species_id),
@@ -1016,9 +1032,9 @@ class rpMerge(rpGraph):
         #TODO; consider the case where two reactions have the same ID's but are not the same reactions
         #TODO: if overlapping id's need to replace the id with modified, as for the species
         reactions_source_target = {}
-        for source_reaction in self.model.getListOfReactions():
+        for source_reaction in source_model.getListOfReactions():
             is_found = False
-            for target_reaction in target_model.getListOfReactions():
+            for target_reaction in self.model.getListOfReactions():
                 score, match = self.compareReaction(species_source_target, source_reaction, target_reaction)
                 if match:
                     self.logger.debug('Source reaction '+str(source_reaction)+' matches with target reaction '+str(target_reaction))
@@ -1029,7 +1045,7 @@ class rpMerge(rpGraph):
             if not is_found:
                 self.logger.debug('Cannot find source reaction: '+str(source_reaction.getId()))
                 self._checklibSBML(source_reaction, 'fetching source reaction')
-                target_reaction = target_model.createReaction()
+                target_reaction = self.model.createReaction()
                 self._checklibSBML(target_reaction, 'create reaction')
                 target_fbc = target_reaction.getPlugin('fbc')
                 self._checklibSBML(target_fbc, 'fetching target FBC package')
@@ -1109,17 +1125,17 @@ class rpMerge(rpGraph):
                             'set stoichiometry ('+str(source_product.getStoichiometry)+')')
         #### GROUPS #####
         #TODO loop through the groups to add them
-        if not target_model.isPackageEnabled('groups'):
-            self._checklibSBML(target_model.enablePackage(
+        if not self.model.isPackageEnabled('groups'):
+            self._checklibSBML(self.model.enablePackage(
                 'http://www.sbml.org/sbml/level3/version1/groups/version1',
                 'groups',
                 True),
                     'Enabling the GROUPS package')
         #!!!! must be set to false for no apparent reason
         #self._checklibSBML(source_rpsbml.document.setPackageRequired('groups', False), 'enabling groups package')
-        source_groups = self.model.getPlugin('groups')
+        source_groups = source_model.getPlugin('groups')
         self._checklibSBML(source_groups, 'fetching the source model groups')
-        target_groups = target_model.getPlugin('groups')
+        target_groups = self.model.getPlugin('groups')
         self._checklibSBML(target_groups, 'fetching the target model groups')
         #self.logger.debug('species_source_target: '+str(species_source_target))
         #self.logger.debug('reactions_source_target: '+str(reactions_source_target))
@@ -1184,30 +1200,34 @@ class rpMerge(rpGraph):
                     'copy the source groups to the target groups')
         """
         ###### TITLES #####
-        target_model.setId(target_model.getId()+'__'+self.model.getId())
-        target_model.setName(target_model.getName()+' merged with '+self.model.getId())
+        self.model.setId(self.model.getId()+'__'+source_model.getId())
+        self.model.setName(self.model.getName()+' merged with '+source_model.getId())
         #detect single parent species and deal with them
-		self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id)
+        #regenerate the graph with the new species added
+        self._makeGraph(is_gem_sbml=True)
+        self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id)
+        """
         ########### OUTPUT ##############
         #if the output is specified, then generate the different 
         if output_path:
-            if type(input_model)==libsbml.SBMLDocument:
-                libsbml.writeSBMLToFile(input_model, output_path)
-            elif type(input_model)==rpSBML:
-                input_model.writeSBML(output_path)
-            elif type(input_model)==str:
+            if type(source_model)==libsbml.SBMLDocument:
+                libsbml.writeSBMLToFile(source_model, output_path)
+            elif type(source_model)==rpSBML:
+                source_model.writeSBML(output_path)
+            elif type(source_model)==str:
                 libsbml.writeSBMLToFile(rpsbml.document, output_path)
         else: #if there are no output specified, we overwrite the current model
-            if type(input_model)==libsbml.SBMLDocument:
+            if type(source_model)==libsbml.SBMLDocument:
                 self.document = rpsbml.document
-                self.model = target_model
-            elif type(input_model)==libsbml.Model:
+                source_model = self.model
+            elif type(source_model)==libsbml.Model:
                 self.document = None
             elif type(input_model)==rpSBML:
                 self.document = input_model.document
-                self.model = input_model.model
-                self.model_name = input_model.model_name
+                input_model = input_model.model
+                input_model_name = input_model.model_name
             elif type(input_model)==str:
                 self.document = rpsbml.document
-                self.model = rpsbml.model
+                input_model = rpsbml.model
+        """
         return species_source_target, reactions_source_target

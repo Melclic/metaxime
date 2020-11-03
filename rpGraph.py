@@ -19,7 +19,7 @@ class rpGraph(rpSBML):
                  is_gem_sbml=False,
                  pathway_id='rp_pathway',
                  central_species_group_id='central_species',
-                 sink_species_group_id='rp_sink_species_id'):
+                 sink_species_group_id='rp_sink_species'):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
@@ -37,12 +37,12 @@ class rpGraph(rpSBML):
         :type species_group_id: str
 
         .. document private functions
-        .. automethod:: _makeCompareGraphs
+        .. automethod:: _makecomparegraphs
         .. automethod:: _makeGraph
         .. automethod:: _recursiveReacSuccessors
         .. automethod:: _recursiveReacPredecessors
         """
-        super().__init__(model_name, document, path))
+        super().__init__(model_name, document, path)
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')
@@ -53,7 +53,7 @@ class rpGraph(rpSBML):
         self.pathway_id = pathway_id
         self.num_reactions = 0
         self.num_species = 0
-        if rpsbml:
+        if self.model:
             self._makeGraph(is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
 
 
@@ -194,7 +194,7 @@ class rpGraph(rpSBML):
 
 
     #TODO: add the compartments to the species and reactions node descriptions
-    def _makeGraph(self, is_gem_sbml=False, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species_id'):
+    def _makeGraph(self, is_gem_sbml=False, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
         """Private function that constructs the networkx graph
 
         :param is_gem_sbml: Determine what type of graph to build. If True then all the species and reactions will be added and not just the heterologous pathway.
@@ -207,20 +207,34 @@ class rpGraph(rpSBML):
         :return: None
         :rtype: None
         """
-        rpsbml_model = self.rpsbml.getModel()
-        #rp_species = [rpsbml_model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
-        groups = rpsbml_model.getPlugin('groups')
-        c_s = groups.getGroup(central_species_group_id)
-        s_s = groups.getGroup(sink_species_group_id)
-        rp_central_species_id = [i.getIdRef() for i in c_s.getListOfMembers()]
-        rp_sink_species_id = [i.getIdRef() for i in s_s.getListOfMembers()]
-        rp_pathway = groups.getGroup(pathway_id)
-        rp_species_id = self.rpsbml.readUniqueRPspecies(pathway_id)
-        rp_reactions_id = rp_pathway.getListOfMembers()
-        self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
+        #rp_species = [self.model.getSpecies(i) for i in self.readUniqueRPspecies(pathway_id)]
+        groups = self.model.getPlugin('groups')
+        self._checklibSBML(groups, 'Getting the groups')
+        try:
+            c_s = groups.getGroup(central_species_group_id)
+            self._checklibSBML(c_s, 'Getting the annotation: '+str(central_species_group_id))
+            rp_central_species_id = [i.getIdRef() for i in c_s.getListOfMembers()]
+        except AttributeError:
+            rp_central_species_id = []
+        try:
+            s_s = groups.getGroup(sink_species_group_id)
+            self._checklibSBML(s_s, 'Getting the annotation: '+str(sink_species_group_id))
+            rp_sink_species_id = [i.getIdRef() for i in s_s.getListOfMembers()]
+        except AttributeError:
+            rp_sink_species_id = []
+        try:
+            rp_pathway = groups.getGroup(pathway_id)
+            rp_species_id = self.readUniqueRPspecies(pathway_id)
+            rp_reactions_id = rp_pathway.getListOfMembers()
+            rp_annotation = self.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
+        except AttributeError:
+            rp_species_id = []
+            rp_reactions_id = []
+            rp_annotation = {}
+        self.G = nx.DiGraph(brsynth=rp_annotation)
         #### add ALL the species and reactions ####
         #nodes
-        for species in rpsbml_model.getListOfSpecies():
+        for species in self.model.getListOfSpecies():
             is_central = False
             is_sink = False
             is_rp_pathway = False
@@ -236,12 +250,12 @@ class rpGraph(rpSBML):
                 self.G.add_node(species.getId(),
                                 type='species',
                                 name=species.getName(),
-                                miriam=self.rpsbml.readMIRIAMAnnotation(species.getAnnotation()),
-                                brsynth=self.rpsbml.readBRSYNTHAnnotation(species.getAnnotation()),
+                                miriam=self.readMIRIAMAnnotation(species.getAnnotation()),
+                                brsynth=self.readBRSYNTHAnnotation(species.getAnnotation()),
                                 central_species=is_central,
                                 sink_species=is_sink,
                                 rp_pathway=is_rp_pathway)
-        for reaction in rpsbml_model.getListOfReactions():
+        for reaction in self.model.getListOfReactions():
             is_rp_pathway = False
             if reaction.getId() in rp_reactions_id:
                 is_rp_pathway = True
@@ -249,11 +263,11 @@ class rpGraph(rpSBML):
                 self.num_reactions += 1
                 self.G.add_node(reaction.getId(),
                                 type='reaction',
-                                miriam=self.rpsbml.readMIRIAMAnnotation(reaction.getAnnotation()),
-                                brsynth=self.rpsbml.readBRSYNTHAnnotation(reaction.getAnnotation()),
+                                miriam=self.readMIRIAMAnnotation(reaction.getAnnotation()),
+                                brsynth=self.readBRSYNTHAnnotation(reaction.getAnnotation()),
                                 rp_pathway=is_rp_pathway)
         #edges
-        for reaction in rpsbml_model.getListOfReactions():
+        for reaction in self.model.getListOfReactions():
             if reaction.getId() in rp_reactions_id or is_gem_sbml:
                 for reac in reaction.getListOfReactants():
                     self.G.add_edge(reac.species,
