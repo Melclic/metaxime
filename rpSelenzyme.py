@@ -12,23 +12,31 @@ import os
 class rpSelenzyme(rpSBML):
     """Class to handle calling the Selenzyme service
     """
-    def __init__(self, pc=None, uniprot_aaLenght=None, cache_tar_path=None):
+    def __init__(self, model_name=None, document=None, path=None, pc=None, uniprot_aaLenght=None, cache_tar_path='input_cache/rpselenzyme_data.tar.xz'):
         """Class constructor
 
         :param pc: The cache of Selenzyme preLoad object
         """
-        super().__init__()
+        super().__init__(model_name, document, path)
         self.logger = logging.getLogger(__name__)
         self.uniprot_aaLenght = None
         self.pc = None
         if (pc and not uniprot_aaLenght) or (not pc and uniprot_aaLenght):
-            self.logger.error('Either both pc and uniprot_aaLenght are None and the cache is loaded or both are passed')
-            raise AttributeError
-        elif uniprot_aaLenght and ps:
+            #self.logger.error('Either both pc and uniprot_aaLenght are None and the cache is loaded or both are passed')
+            raise ValueError('Either both pc and uniprot_aaLenght are None and the cache is loaded or both are passed')
+        elif uniprot_aaLenght and pc:
             self.uniprot_aaLenght = uniprot_aaLenght
             self.pc = pc
         else:
-            self._loadCache()
+            if cache_tar_path:
+                if os.path.exists(cache_tar_path):
+                    self._loadCache()
+                else:
+                    #self.logger.error('The input cache file is invalid: '+str(cache_tar_path))
+                    raise ValueError('The input cache file is invalid: '+str(cache_tar_path))
+            else:
+                #self.logger.error('Need to specify either the cache tar path, or the Selenzyme pc and uniprot_aaLength')
+                raise ValueError('Need to specify either the cache tar path, or the Selenzyme pc and uniprot_aaLength')
 
 
     def _loadCache(self, rpselen_cache_tar='input_cache/rpselenzyme_data.tar.xz'):
@@ -41,7 +49,7 @@ class rpSelenzyme(rpSBML):
             tar.close()
             self.pc = Selenzy.readData(tmp_output_folder)
             self.uniprot_aaLenght = pickle.load(gzip.open(os.path.join(tmp_output_folder, 'uniprot_aaLenght.pickle.gz'), 'rb'))
-            '''This is how the above parameter was generated    
+            '''This is how the above parameter was generated
             with open(os.path.exists(self.datadir, 'sel_len.csv')) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=',')
                 next(csv_reader)
@@ -50,7 +58,8 @@ class rpSelenzyme(rpSBML):
             '''
 
 
-    def singleReactionRule(reaction_rule,
+    def singleReactionRule(self,
+                           reaction_rule,
                            host_taxonomy_id,
                            num_results=50,
                            direction=0,
@@ -92,14 +101,15 @@ class rpSelenzyme(rpSBML):
             return uniprotID_score
 
 
-    def singleSBML(host_taxonomy_id=83333,
-                   pathway_id='rp_pathway',
-                   num_results=50,
-                   direction=0,
-                   noMSA=True,
-                   fp='RDK',
-                   rxntype='smarts',
-                   min_aa_length=100):
+    def run(self,
+            host_taxonomy_id=83333,
+            pathway_id='rp_pathway',
+            num_results=50,
+            direction=0,
+            noMSA=True,
+            fp='RDK',
+            rxntype='smarts',
+            min_aa_length=100):
         """Return UNIPROT id's associated with each reaction using Selenzyme, from a rpSBML object
 
         :param host_taxonomy_id: The taxonomy id of the host (Default: 83333, ie. E.Coli)
@@ -123,7 +133,7 @@ class rpSelenzyme(rpSBML):
         :rtype: bool
         :return: The success or failure of the function
         """
-        for reac_id in self.readRPpathwayIDs(pathway_id):
+        for reac_id in self.getGroupsMembers(pathway_id):
             reac = self.model.getReaction(reac_id)
             brs_reac = self.readBRSYNTHAnnotation(reac.getAnnotation())
             if brs_reac['smiles']:

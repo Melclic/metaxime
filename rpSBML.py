@@ -115,9 +115,12 @@ class rpSBML:
 
 
     def __eq__(self, rpsbml):
-        return \
-            sorted(self.readRPpathwayIDs()) == sorted(rpsbml.readRPpathwayIDs()) \
-        and self._dictRPpathway(self)==self._dictRPpathway(rpsbml)
+        if self._isRPsbml():
+            return \
+                sorted(self.getGroupsMembers('rp_pathway'))==sorted(rpsbml.getGroupsMembers('rp_pathway')) \
+            and self._dictRPpathway(self)==self._dictRPpathway(rpsbml)
+        else:
+            raise ValueError('The model is not a rpSBML but a SBML')
 
 
     def __lt__(self, rpsbml):
@@ -1204,7 +1207,9 @@ class rpSBML:
         self.logger.debug('comp_source_target: '+str(comp_source_target))
         ################ PARAMETERS ###########
         #WARNING: here we compare by ID
+        #TODO: need to improve and use the values that already exist in the SBML model
         targetParametersID = [i.getId() for i in target_model.getListOfParameters()]
+        self.logger.debug('targetParametersID: '+str(targetParametersID)) #BUG: some of the id's are not detected and are almost overwritten (libSBML to the rescue)
         for source_parameter in self.model.getListOfParameters():
             if not source_parameter.getId() in targetParametersID:
                 target_parameter = target_model.createParameter()
@@ -1526,25 +1531,26 @@ class rpSBML:
                 self.model = rpsbml.model
         return species_source_target, reactions_source_target
 
-    
+
     #TODO: need to pass the species and reaction conversions that the above function returns
     def overwriteRPannot(self, source_rpsbml, species_source_target, reactions_source_target, source_pathway_id='rp_pathway', pathway_id='rp_pathway'):
-        """Given a rpsbml of entry, overwrite the current annotations of a pathway. This is useful when performing operations in merged model, i.e. rpFBA and then
-        adding this info to the new model
+        """Given a rpsbml of entry, overwrite the current annotations of a pathway.
+
+        This is useful when performing operations in merged model, i.e. rpFBA and then wanting the annotations of the original model to be overwritten with the changes.
 
         :param source_rpsbml: The source rpSBML from which to read the annotations of the pathway
         :param source_pathway_id: The Groups id of the source heterologous pathway
         :param pathway_id: The Groups id of the heterologous pathway
 
         :type source_rpsbml: rpSBML
-        :param source_pathway_id: str 
-        :param pathway_id: str 
+        :param source_pathway_id: str
+        :param pathway_id: str
 
         :rtype: None
         :return: None
         """
-        self.logger.debug('Returning model with heterologous pathway only')
-        rev_reactions_convert = {v: k for k, v in reactions_convert.items()}
+        reactions_target_source = {v: k for k, v in reactions_source_target.items()}
+        species_target_source = {v: k for k, v in species_source_target.items()}
         #### species #####
         #TODO: overwrite all the species:
         groups = source_rpsbml.model.getPlugin('groups')
@@ -1556,8 +1562,8 @@ class rpSBML:
             reac_fba = source_rpsbml.model.getReaction(member.getIdRef())
             self.logger.debug(reac_fba)
             try:
-                #reac_in = self.model.getReaction(reactions_convert[member.getIdRef()])
-                reac_in = self.model.getReaction(rev_reactions_convert[member.getIdRef()])
+                #reac_in = self.model.getReaction(reactions_source_target[member.getIdRef()])
+                reac_in = self.model.getReaction(reactions_target_source[member.getIdRef()])
             except KeyError:
                 reac_in = self.model.getReaction(member.getIdRef())
             self.logger.debug(reac_in)
@@ -1608,7 +1614,7 @@ class rpSBML:
                 for cs in rp_reac:
                     self.logger.debug('Creating new member: '+str(cs))
                     newM = target_group.createMember()
-                    newM.setIdRef(cs)  
+                    newM.setIdRef(cs)
             '''
         #### add objectives ####
         source_fbc = source_rpsbml.model.getPlugin('fbc')
@@ -1627,7 +1633,6 @@ class rpSBML:
                 target_fbc.addObjective(source_obj)
         #rpsbml.createMultiFluxObj('obj_RP1_sink', ['RP1_sink'], [1])
         target_fbc.setActiveObjectiveId(source_obj_id) #tmp random assigenement of objective
- 
 
 
     ####################### ADD ELEMENTS ############
@@ -1805,7 +1810,7 @@ class rpSBML:
 
         If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
 
-        :param sbase_obj: The libSBML object to add the different 
+        :param sbase_obj: The libSBML object to add the different
         :param type_param: The type of parameter entered. Valid include ['compartment', 'reaction', 'species']
         :param xref: Dictionnary of the cross reference
         :param meta_id: The meta ID to be added to the annotation string
@@ -2103,26 +2108,7 @@ class rpSBML:
     ########################## READ #####################################
 
 
-    def readRPpathwayIDs(self, pathway_id='rp_pathway'):
-        """Return the members of rp_pathways
-
-        NOTE: Try not to use this function and instead use getGroupsMembers()
-
-        :rtype: list
-        :return: List of member id's of a particular group
-        """
-        groups = self.model.getPlugin('groups')
-        groups_obj = groups.getGroup(pathway_id)
-        self._checklibSBML(groups_obj, 'retreiving groups groups_obj (readRPpathwayIDs): '+str(group_id))
-        toRet = []
-        for member in groups_obj.getListOfMembers():
-            toRet.append(member.getIdRef())
-        return toRet
-
-
-    #TODO: rename this function to readGroupsMembers
     #TODO: add error handling if the groups does not exist
-    #TODO: change the pathway_id to groups_id
     def getGroupsMembers(self, group_id):
         """Return the members of a groups entry
 
@@ -2135,7 +2121,7 @@ class rpSBML:
         """
         groups = self.model.getPlugin('groups')
         groups_obj = groups.getGroup(group_id)
-        self._checklibSBML(groups_obj, 'retreiving groups groups_obj (getGroupsMembers): '+str(group_id))
+        self._checklibSBML(groups_obj, 'retreiving groups groups_obj: '+str(group_id))
         toRet = []
         for member in groups_obj.getListOfMembers():
             toRet.append(member.getIdRef())

@@ -8,26 +8,35 @@ import random
 
 from rpSBML import rpSBML
 
+
 class rpGraph(rpSBML):
     """The class that hosts the networkx related functions
     """
-    def __init__(self, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+    def __init__(self,
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 is_gem_sbml=False,
+                 pathway_id='rp_pathway',
+                 central_species_group_id='central_species',
+                 sink_species_group_id='rp_sink_species_id'):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
 
-        :param pathway_id: The pathway id of the heterologous pathway
+        :param model_name: The name of the model
+        :param document: The libSBML Document of the model
+        :param path: The path to the SBMKL file
+        :param is_gem_sbml: Determine if its a full GEM model or not
+        :param pathway_id: The Groups id of the heterologous pathway
+        :param central_specues_group_id: The Groups id of the central species
         :param species_group_id: The id of the central species
-        :param sink_species_group_id: The ids of the sink species
 
+        :type rpsbml: rpSBML
         :type pathway_id: str
         :type species_group_id: str
-        :type sink_species_group_id: str
-
-        .. document private functions
-        .. automethod:: _makeCompareGraphs
         """
-        super().__init__()
+        super().__init__(model_name, document, path))
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')
@@ -35,15 +44,11 @@ class rpGraph(rpSBML):
         self.central_species_group_id = central_species_group_id
         self.sink_species_group_id = sink_species_group_id
         self.G = None
-        self.species = None
-        self.reactions = None
         self.pathway_id = pathway_id
         self.num_reactions = 0
-        self.central_species = []
-        self.sink_species = []
         self.num_species = 0
         if rpsbml:
-            self._makeGraph(pathway_id, central_species_group_id, sink_species_group_id)
+            self._makeGraph(is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
 
 
     ######################################################################################################
@@ -51,14 +56,19 @@ class rpGraph(rpSBML):
     ######################################################################################################
 
 
-    ## Make a special graphs for comparison whit the ID's being unique to the nodes
-    #
-    # Because comparisong of networkx graphs cannot use the attributes of the nodes, we create graphs based on the EC number 
-    # of the reactions and the InChiKeys of the species
-    #
-    # TODO: if there are multiple EC number and multiple inchikeys, then you should construct all the alternative graphs and
-    # compare the, with your target, and return the one that has the highest score. Only then can you 
+    #TODO: if there are multiple EC number and multiple inchikeys, then you should construct all the alternative graphs and compare the, with your target, and return the one that has the highest score. Only then can you 
     def _makeCompareGraphs(self, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        """Make a special graphs for comparison whit the ID's being unique to the nodes
+
+        Because comparisong of networkx graphs cannot use the attributes of the nodes, we create graphs based on the EC number of the reactions and the InChiKeys of the species
+
+        :param inchikey_layers: The number of inchikey layers to take into consideration when comapring species
+        :param ec_layers: The level of the EC number to take into consideration when comparing reactions
+        :paran pathway_id: The heterologous pathway Groups id
+
+        :rtype:
+        :return:
+        """
         #retreive the pathway species and reactions
         species = [self.model.getSpecies(i) for i in self.readUniqueRPspecies(pathway_id)]
         groups = self.model.getPlugin('groups')
@@ -175,9 +185,13 @@ class rpGraph(rpSBML):
 
     ################################# Analyse and make graph #####################
 
-    def _makeGraph(self, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species'):
+
+
+    #TODO: add the compartments to the species and reactions node descriptions
+    def _makeGraph(self, is_gem_sbml=False, pathway_id='rp_pathway', central_species_group_id='central_species', sink_species_group_id='rp_sink_species_id'):
         """Private function that constructs the networkx graph
 
+        :param is_gem_sbml: Determine what type of graph to build. If True then all the species and reactions will be added and not just the heterologous pathway.
         :param pathway_id: The pathway id of the heterologous pathway
         :param species_group_id: The id of the central species
 
@@ -187,84 +201,62 @@ class rpGraph(rpSBML):
         :return: None
         :rtype: None
         """
-        self.species = [self.model.getSpecies(i) for i in self.readUniqueRPspecies(pathway_id)]
-        groups = self.model.getPlugin('groups')
+        rpsbml_model = self.rpsbml.getModel()
+        #rp_species = [rpsbml_model.getSpecies(i) for i in self.rpsbml.readUniqueRPspecies(pathway_id)]
+        groups = rpsbml_model.getPlugin('groups')
         c_s = groups.getGroup(central_species_group_id)
-        self.central_species = [i.getIdRef() for i in c_s.getListOfMembers()]
         s_s = groups.getGroup(sink_species_group_id)
-        self.sink_species = [i.getIdRef() for i in s_s.getListOfMembers()]
+        rp_central_species_id = [i.getIdRef() for i in c_s.getListOfMembers()]
+        rp_sink_species_id = [i.getIdRef() for i in s_s.getListOfMembers()]
         rp_pathway = groups.getGroup(pathway_id)
-        self.reactions = [self.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
-        self.G = nx.DiGraph(brsynth=self.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
+        rp_species_id = self.rpsbml.readUniqueRPspecies(pathway_id)
+        rp_reactions_id = rp_pathway.getListOfMembers()
+        self.G = nx.DiGraph(brsynth=self.rpsbml.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
+        #### add ALL the species and reactions ####
         #nodes
-        for spe in self.species:
-            self.num_species += 1
+        for species in rpsbml_model.getListOfSpecies():
             is_central = False
             is_sink = False
-            if spe.getId() in self.central_species:
+            is_rp_pathway = False
+            if species.getId() in rp_species_id:
+                is_rp_pathway = True
+            if species.getId() in rp_central_species_id:
                 is_central = True
-            if spe.getId() in self.sink_species:
+            if species.getId() in rp_sink_species_id:
                 is_sink = True
-            self.G.add_node(spe.getId(),
-                            type='species',
-                            name=spe.getName(),
-                            miriam=self.readMIRIAMAnnotation(spe.getAnnotation()),
-                            brsynth=self.readBRSYNTHAnnotation(spe.getAnnotation()),
-                            central_species=is_central,
-                            sink_species=is_sink)
-        for reac in self.reactions:
-            self.num_reactions += 1
-            self.G.add_node(reac.getId(),
-                            type='reaction',
-                            miriam=self.readMIRIAMAnnotation(reac.getAnnotation()),
-                            brsynth=self.readBRSYNTHAnnotation(reac.getAnnotation()))
+            #add it if GEM then all, or if rp_pathway
+            if is_rp_pathway or is_gem_sbml:
+                self.num_species += 1
+                self.G.add_node(species.getId(),
+                                type='species',
+                                name=species.getName(),
+                                miriam=self.rpsbml.readMIRIAMAnnotation(species.getAnnotation()),
+                                brsynth=self.rpsbml.readBRSYNTHAnnotation(species.getAnnotation()),
+                                central_species=is_central,
+                                sink_species=is_sink,
+                                rp_pathway=is_rp_pathway)
+        for reaction in rpsbml_model.getListOfReactions():
+            is_rp_pathway = False
+            if reaction.getId() in rp_reactions_id:
+                is_rp_pathway = True
+            if is_rp_pathway or is_gem_sbml:
+                self.num_reactions += 1
+                self.G.add_node(reaction.getId(),
+                                type='reaction',
+                                miriam=self.rpsbml.readMIRIAMAnnotation(reaction.getAnnotation()),
+                                brsynth=self.rpsbml.readBRSYNTHAnnotation(reaction.getAnnotation()),
+                                rp_pathway=is_rp_pathway)
         #edges
-        for reaction in self.reactions:
-            for reac in reaction.getListOfReactants():
-                self.G.add_edge(reac.species,
-                                reaction.getId(),
-                                stoichio=reac.stoichiometry)
-            for prod in reaction.getListOfProducts():
-                self.G.add_edge(reaction.getId(),
-                                prod.species,
-                                stoichio=reac.stoichiometry)
-
-
-    def _onlyConsumedSpecies(self, only_central=False):
-        """Private function that returns the single parent species that are consumed only
-
-        :return: List of node ids
-        :rtype: list
-        """
-        only_consumed_species = []
-        for node_name in self.G.nodes():
-            node = self.G.node.get(node_name)
-            if node['type']=='species':
-                if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
-                    only_consumed_species.append(node_name)
-        return only_consumed_species
-
-
-    def _onlyProducedSpecies(self, only_central=False):
-        """Private function that returns the single parent produced species
-
-        :return: List of node ids
-        :rtype: list
-        """
-        only_produced_species = []
-        for node_name in self.G.nodes():
-            node = self.G.node.get(node_name)
-            self.logger.debug('node_name: '+str(node_name))
-            self.logger.debug('node: '+str(node))
-            if node['type']=='species':
-                if only_central:
-                    if node['central_species']==True:
-                        if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
-                            only_produced_species.append(node_name)
-                else:
-                    if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
-                        only_produced_species.append(node_name)
-        return only_produced_species
+        for reaction in rpsbml_model.getListOfReactions():
+            if reaction.getId() in rp_reactions_id or is_gem_sbml:
+                for reac in reaction.getListOfReactants():
+                    self.G.add_edge(reac.species,
+                                    reaction.getId(),
+                                    stoichio=reac.stoichiometry)
+                for prod in reaction.getListOfProducts():
+                    self.G.add_edge(reaction.getId(),
+                                    prod.species,
+                                    stoichio=reac.stoichiometry)
 
 
     ## Recursive function that finds the order of the reactions in the graph 
@@ -272,6 +264,21 @@ class rpGraph(rpSBML):
     # NOTE: only works for linear pathways... need to find a better way ie. Tree's
     #
     def _recursiveReacSuccessors(self, node_name, reac_list, all_res, num_reactions):
+        """Recusrively order the reaction according to the successors
+
+        :param node_name: The id of the starting node
+        :param reac_list: The list of reactions that already have been run
+        :param all_res:
+        :param num_reactions:
+
+        :type node_name: str
+        :type reac_list: list
+        :type all_res:
+        :type num_reactions:
+
+        :return: List of node ids
+        :rtype: list
+        """
         current_reac_list = [i for i in reac_list]
         self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
         succ_node_list = [i for i in self.G.successors(node_name)]
@@ -316,6 +323,21 @@ class rpGraph(rpSBML):
     # NOTE: only works for linear pathways... need to find a better way
     #
     def _recursiveReacPredecessors(self, node_name, reac_list, all_res, num_reactions):
+        """Recusrively order the reaction according to the predecessors
+
+        :param node_name: The id of the starting node
+        :param reac_list: The list of reactions that already have been run
+        :param all_res:
+        :param num_reactions:
+
+        :type node_name: str
+        :type reac_list: list
+        :type all_res:
+        :type num_reactions:
+
+        :return: List of node ids
+        :rtype: list
+        """
         current_reac_list = [i for i in reac_list]
         self.logger.debug('-------- '+str(node_name)+' --> '+str(reac_list)+' ----------')
         pred_node_list = [i for i in self.G.predecessors(node_name)]
@@ -354,50 +376,6 @@ class rpGraph(rpSBML):
         return all_res
 
 
-    '''
-    def _recursiveHierarchy(self, node_name, num_nodes, ranked_nodes):
-        self.G.successors(node_name)
-    '''
-
-    ######################################################################################################
-    ########################################## Public Function ###########################################
-    ######################################################################################################
-
-
-    ## Compare two rpgraph hypergraphs and return a score using a simple walk
-    #
-    # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
-    def compare(source_rpgraph, target_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
-        import gmatch4py as gm
-        source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        #NOTE: here we use the greedy edit distance method but others may be used... 
-        ged = gm.GreedyEditDistance(1,1,1,1)
-        #ged = gm.GraphEditDistance(1,1,1,1)
-        result = ged.compare([i[0] for i in source_compare_graphs]+[i[0] for i in target_compare_graphs], None)
-        rpGraph.logger.debug('result: \n'+str([list(i) for i in result]))
-        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
-        weights = np.array([sum(i[1])/7.0 for i in source_compare_graphs]+[sum(i[1])/7.0 for i in target_compare_graphs])
-        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
-        rpGraph.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
-        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
-        #rpGraph.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
-        filtered_weighted_similarity =  []
-        source_pos = [i for i in range(len(source_compare_graphs))]
-        for i in range(len(weighted_similarity)):
-            tmp = []
-            for y in range(len(weighted_similarity[i])):
-                if i in source_pos and not y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                elif i not in source_pos and y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                else:
-                    tmp.append(0.0)
-            filtered_weighted_similarity.append(tmp)
-        rpGraph.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
-        return max(map(max, filtered_weighted_similarity))
-
-
     def _recursiveReacPredecessors(self, node_name, reac_list):
         """Return the next linear predecessors
 
@@ -434,6 +412,185 @@ class rpGraph(rpSBML):
         return reac_list
 
 
+
+    '''
+    def _recursiveHierarchy(self, node_name, num_nodes, ranked_nodes):
+        self.G.successors(node_name)
+    '''
+
+    ######################################################################################################
+    ########################################## Public Function ###########################################
+    ######################################################################################################
+
+
+    def checkSingleParent(self,
+                          del_sp_pro=False,
+                          del_sp_react=False,
+                          upper_flux_bound=999999.0,
+                          lower_flux_bound=0.0,
+                          compartment_id='MNXM3',
+                          pathway_id='rp_pathway',
+                          central_species_group_id='central_species',
+                          sink_species_group_id='rp_sink_species'):
+        """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
+
+        :param rpsbml: The rpSBML object
+        :param del_sp_pro: Define if to delete the products or create reaction that consume it
+        :param del_sp_react: Define if to delete the reactants or create reaction that produce it
+        :param upper_flux_bound: The upper flux bounds unit definitions default when adding new reaction (Default: 999999.0)
+        :param lower_flux_bound: The lower flux bounds unit definitions default when adding new reaction (Defaul: 0.0)
+        :param compartment_id: The id of the model compartment
+        :param pathway_id: The pathway ID (Default: rp_pathway)
+        :param central_species_group_id: The central species Groups id (Default: central_species)
+        :param sink_species_group_id: The sink specues Groups id (Default: sink_species_group_id)
+
+        :type rpsbml: rpSBML
+        :type del_sp_pro: bool
+        :type del_sp_react: bool
+        :type upper_flux_bound: float
+        :type lower_flux_bound: float
+        :type compartment_id: str
+        :type pathway_id: str
+        :type central_species_group_id: str
+        :type sink_species_group_id: str
+
+        :rtype: bool
+        :return: Success of failure of the function
+        """
+        import rpGraph
+        rpgraph = rpGraph.rpGraph(rpsbml, True, pathway_id, central_species_group_id, sink_species_group_id)
+        consumed_species_nid = rpgraph.onlyConsumedSpecies()
+        produced_species_nid = rpgraph.onlyProducedSpecies()
+        if del_sp_pro:
+            for pro in produced_species_nid:
+                rpSBML._checklibSBML(target_rpsbml.model.removeSpecies(pro), 'removing the following product species: '+str(pro))
+        else:
+            for pro in produced_species_nid:
+                step = {'rule_id': None,
+                        'left': {pro.split('__')[0]: 1},
+                        'right': {},
+                        'step': None,
+                        'sub_step': None,
+                        'path_id': None,
+                        'transformation_id': None,
+                        'rule_score': None,
+                        'rule_ori_reac': None}
+                #note that here the pathwats are passed as NOT being part of the heterologous pathways and 
+                #thus will be ignored when/if we extract the rp_pathway from the full GEM model
+                rpsbml.createReaction(pro+'__consumption',
+                                      upper_flux_bound,
+                                      lower_flux_bound,
+                                      step,
+                                      compartment_id)
+        if del_sp_react:
+            for react in consumed_species_nid:
+                rpSBML._checklibSBML(target_rpsbml.model.removeSpecies(react), 'removing the following reactant species: '+str(react))
+        else:
+            for react in consumed_species_nid:
+                step = {'rule_id': None,
+                        'left': {},
+                        'right': {react.split('__')[0]: 1},
+                        'step': None,
+                        'sub_step': None,
+                        'path_id': None,
+                        'transformation_id': None,
+                        'rule_score': None,
+                        'rule_ori_reac': None}
+                #note that here the pathwats are passed as NOT being part of the heterologous pathways and 
+                #thus will be ignored when/if we extract the rp_pathway from the full GEM model
+                rpsbml.createReaction(react+'__production',
+                                      upper_flux_bound,
+                                      lower_flux_bound,
+                                      step,
+                                      compartment_id)
+        return True
+
+
+
+    def onlyConsumedSpecies(self, only_central=False, only_rp_pathway=True):
+        """Private function that returns the single parent species that are consumed only
+
+        :param only_central: Focus on the central species only
+
+        :type only_central: bool
+
+        :return: List of node ids
+        :rtype: list
+        """
+        only_consumed_species = []
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
+            if node['type']=='species':
+                #NOTE: if central species then must also be rp_pathway species
+                if (only_central and node['central_species']==True) or (only_rp_pathway and node['rp_pathway']==True) or (not only_central and not only_rp_pathway):
+                    if not len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))==0:
+                        only_consumed_species.append(node_name)
+        return only_consumed_species
+
+
+    def onlyProducedSpecies(self, only_central=False, only_rp_pathway=True):
+        """Private function that returns the single parent produced species
+
+        :param only_central: Focus on the central species only
+
+        :type only_central: bool
+
+        :return: List of node ids
+        :rtype: list
+        """
+        only_produced_species = []
+        for node_name in self.G.nodes():
+            node = self.G.node.get(node_name)
+            self.logger.debug('node_name: '+str(node_name))
+            self.logger.debug('node: '+str(node))
+            if node['type']=='species':
+                #NOTE: if central species then must also be rp_pathway species
+                if (only_central and node['central_species']==True) or (only_rp_pathway and node['rp_pathway']==True) or (not only_central and not only_rp_pathway):
+                    if len(list(self.G.successors(node_name)))==0 and len(list(self.G.predecessors(node_name)))>0:
+                        only_produced_species.append(node_name)
+        return only_produced_species
+
+
+    ## Compare two rpgraph hypergraphs and return a score using a simple walk
+    #
+    # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
+    def compare(source_rpgraph, target_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        """Compare two rpgraph hypergraphs and return a score using a simple walk
+
+        This function uses the gmatch4py package that implements a number of graph comparison 
+
+        """
+        import gmatch4py as gm
+        source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        #NOTE: here we use the greedy edit distance method but others may be used... 
+        ged = gm.GreedyEditDistance(1,1,1,1)
+        #ged = gm.GraphEditDistance(1,1,1,1)
+        result = ged.compare([i[0] for i in source_compare_graphs]+[i[0] for i in target_compare_graphs], None)
+        rpGraph.logger.debug('result: \n'+str([list(i) for i in result]))
+        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
+        weights = np.array([sum(i[1])/7.0 for i in source_compare_graphs]+[sum(i[1])/7.0 for i in target_compare_graphs])
+        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
+        rpGraph.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
+        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
+        #rpGraph.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
+        filtered_weighted_similarity =  []
+        source_pos = [i for i in range(len(source_compare_graphs))]
+        for i in range(len(weighted_similarity)):
+            tmp = []
+            for y in range(len(weighted_similarity[i])):
+                if i in source_pos and not y in source_pos:
+                    tmp.append(weighted_similarity[i][y])
+                elif i not in source_pos and y in source_pos:
+                    tmp.append(weighted_similarity[i][y])
+                else:
+                    tmp.append(0.0)
+            filtered_weighted_similarity.append(tmp)
+        rpGraph.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
+        return max(map(max, filtered_weighted_similarity))
+
+
+
     def orderedRetroReactions(self):
         """Public function to return the linear list of reactions
 
@@ -464,7 +621,7 @@ class rpGraph(rpSBML):
     def orderedRetroReactions(self):
         #Note: may be better to loop tho
         succ_res = []
-        for cons_cent_spe in self._onlyConsumedSpecies():
+        for cons_cent_spe in self.onlyConsumedSpecies():
             res = self._recursiveReacSuccessors(cons_cent_spe, [], [], self.num_reactions)
             if res:
                 self.logger.debug(res)
@@ -475,7 +632,7 @@ class rpGraph(rpSBML):
             else:
                 self.logger.warning('Successors no results')
         prod_res = []
-        for prod_cent_spe in self._onlyProducedSpecies():
+        for prod_cent_spe in self.onlyProducedSpecies():
             res = self._recursiveReacPredecessors(prod_cent_spe, [], [], self.num_reactions)
             if res:
                 self.logger.debug(res)
