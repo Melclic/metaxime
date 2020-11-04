@@ -63,16 +63,16 @@ class rpDraw(rpGraph):
     #BUG: /Users/melchior/Downloads/Galaxy111/rp_50_28.sbml.xml not having the  ink entry added
     #TODO: move this to rpGraph
     def _hierarchyPos(self,
-                       G,
-                       root,
-                       width=1.0,
-                       y_gap=0.2,
-                       xcenter=0.5,
-                       plot_only_central=False,
-                       filter_cofactors=True,
-                       filter_sink_species=False,
-                       central_species_group_id='central_species',
-                       sink_species_group_id='sink_species'):
+                      G,
+                      root,
+                      width=1.0,
+                      y_gap=0.2,
+                      xcenter=0.5,
+                      plot_only_central=False,
+                      filter_cofactors=True,
+                      filter_sink_species=False,
+                      central_species_group_id='central_species',
+                      sink_species_group_id='sink_species'):
         #### find all the nodes that are in a layer ###########
         def _make_layer(parent_nodes):
             layer = []
