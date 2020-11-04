@@ -1,5 +1,4 @@
 import os
-from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 import csv
 import logging
 import numpy as np
@@ -184,191 +183,6 @@ class rpCache:
         return True
 
 
-    ###################### Populate the cache #################################
-
-
-    def populateCache(self):
-        """Populate the cache by calling all the getters
-
-        :rtype: None
-        :return: None
-        """
-        a = self.getCIDstrc()
-        a = self.getDeprecatedCID()
-        a = self.getDeprecatedRID()
-        a = self.getCIDxref()
-        a = self.getCompXref()
-        a = self.getFullReactions()
-        a = self.getRRreactions()
-        a = self.getChebiCID()
-        a = self.getInchiKeyCID()
-        a = self.getCIDname()
-
-
-    ##################### Individual getters for the cache ####################
-
-
-    ### MNX
-    def getCIDstrc(self):
-        """Getter of the dictionary describing the structure of compound id's
-
-        :rtype: dict
-        :return: The dictionnary structure of compound
-        """
-        #this one hos both mnx and RR
-        picklename = 'cid_strc.pickle.gz'
-        filename = 'chem_prop.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.MNXstrc(os.path.join(self.dirname, 'input_cache', filename))
-            self.retroRulesStrc(self.dirname+'/input_cache/rr_compounds.tsv')
-            pickle.dump(self.cid_strc, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.cid_strc = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.cid_strc
-        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-
-    def getDeprecatedCID(self):
-        """Getter of the dictionary describing the deprecated compound id to compound id
-
-        :rtype: dict
-        :return: The dictionnary structure of deprecated compounds
-        """
-        picklename = 'deprecatedCID_cid.pickle.gz'
-        filename = 'chem_xref.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.deprecatedMNXM(os.path.join(self.dirname, 'input_cache', filename))
-            pickle.dump(self.deprecatedCID_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.deprecatedCID_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.deprecatedCID_cid
-        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-
-    def getDeprecatedRID(self):
-        """Getter of the dictionary describing the deprecated reaction id to reaction id
-
-        :rtype: dict
-        :return: The dictionnary structure of deprecated reactions
-        """
-        picklename = 'deprecatedRID_rid.pickle.gz'
-        filename = 'reac_xref.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.deprecatedMNXR(os.path.join(self.dirname, 'input_cache', filename))
-            pickle.dump(self.deprecatedRID_rid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.deprecatedRID_rid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.deprecatedRID_rid
-        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-
-    def getCIDxref(self):
-        """Getter of the dictionary describing the cross-reference of compounds
-
-        :rtype: dict
-        :return: The dictionnary of cross-reference
-        """
-        picklename = 'cid_xref.pickle.gz'
-        filename = 'chem_xref.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.mnxXref(os.path.join(self.dirname, 'input_cache', filename))
-            pickle.dump(self.cid_xref,
-                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.cid_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.cid_xref
-        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-
-    def getCompXref(self):
-        """Getter of the dictionary describing the cross-reference of the compartment
-
-        :rtype: dict
-        :return: The dictionnary of cross-reference
-        """
-        picklename1 = 'xref_comp.pickle.gz'
-        picklename2 = 'comp_xref.pickle.gz'
-        filename = 'comp_xref.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename1)) or not os.path.isfile(os.path.join(self.dirname, 'cache', picklename2)):
-            self.mnxCompXref(self.dirname+'/input_cache/comp_xref.tsv')
-            pickle.dump(self.xref_comp, gzip.open(os.path.join(self.dirname, 'cache', picklename1),'wb'))
-            pickle.dump(self.comp_xref, gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'wb'))
-        self.xref_comp = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename1), 'rb'))
-        self.comp_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'rb'))
-        return self.xref_comp, self.comp_xref
-
-     ###### RetroRules ##### WARNING: run this at the end so that you can add the BASF to the xref
-
-    def getFullReactions(self):
-        """Getter of the dictionary describing the full reactions from reaction rules
-
-        :rtype: dict
-        :return: The dictionnary of full reactions
-        """
-        picklename = 'rr_full_reactions.pickle.gz'
-        filename = 'rxn_recipes.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.retroRulesFullReac(os.path.join(self.dirname, 'input_cache', filename))
-            pickle.dump(self.rr_full_reactions,
-                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.rr_full_reactions
-
-    def getRRreactions(self):
-        """Getter of the dictionary describing the reaction rules
-
-        :rtype: dict
-        :return: The dictionnary of reaction rules
-        """
-        picklename = 'rr_reactions.pickle.gz'
-        filename = 'rules_rall.tsv'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename))
-            pickle.dump(self.rr_reactions,
-                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.rr_reactions
-
-    ### intermidiate generate, WARNING: needs to be added at the end after the other files
-    def getChebiCID(self):
-        """Getter of the dictionnary describing the Chebi id to the compound id
-
-        :rtype: dict
-        :return: The dictionnary of Chebi CID
-        """
-        picklename = 'chebi_cid.pickle.gz'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            self._chebiXref()
-            pickle.dump(self.chebi_cid,
-                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.chebi_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.chebi_cid
-
-    def getInchiKeyCID(self):
-        """Getter of the dictionnary describing the inchikey to the compound id
-
-        :rtype: dict
-        :return: The dictionnary of inchikey to cid
-        """
-        picklename = 'inchikey_cid.pickle.gz'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            # open the already calculated (normally) mnxm_strc.pickle.gz
-            self._inchikeyCID()
-            pickle.dump(self.inchikey_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.inchikey_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.inchikey_cid
-
-    def getCIDname(self):
-        """Getter of the dictionnary describing the name of the compounds
-
-        :rtype: dict
-        :return: The dictionnary of compound name
-        """
-        picklename = 'cid_name.pickle.gz'
-        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
-            pickle.dump(self.cid_name,
-                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
-        self.cid_name = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
-        return self.cid_name
-
-
-    #####################################################
-    ############## Private Function #####################
-    #####################################################
-
-
     def _convert_depiction(self, idepic, itype='smiles', otype={'inchikey'}):
         """Convert chemical depiction to others type of depictions
 
@@ -387,6 +201,7 @@ class rpCache:
         :rtype: dict
         :return: Dictionnary of results
         """
+        from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
         # Import (if needed)
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)
@@ -473,6 +288,194 @@ class rpCache:
     #################################################################
     ################## Public functions #############################
     #################################################################
+
+
+    ###################### Populate the cache #################################
+
+
+    def populateCache(self):
+        """Populate the cache by calling all the getters
+
+        :rtype: None
+        :return: None
+        """
+        a = self.getCIDstrc()
+        a = self.getDeprecatedCID()
+        a = self.getDeprecatedRID()
+        a = self.getCIDxref()
+        a = self.getCompXref()
+        a = self.getFullReactions()
+        a = self.getRRreactions()
+        a = self.getChebiCID()
+        a = self.getInchiKeyCID()
+        a = self.getCIDname()
+
+
+    ##################### Individual getters for the cache ####################
+
+
+    ### MNX
+    def getCIDstrc(self):
+        """Getter of the dictionary describing the structure of compound id's
+
+        :rtype: dict
+        :return: The dictionnary structure of compound
+        """
+        #this one hos both mnx and RR
+        picklename = 'cid_strc.pickle.gz'
+        filename = 'chem_prop.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.MNXstrc(os.path.join(self.dirname, 'input_cache', filename))
+            self.retroRulesStrc(self.dirname+'/input_cache/rr_compounds.tsv')
+            pickle.dump(self.cid_strc, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_strc = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.cid_strc
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+
+
+    def getDeprecatedCID(self):
+        """Getter of the dictionary describing the deprecated compound id to compound id
+
+        :rtype: dict
+        :return: The dictionnary structure of deprecated compounds
+        """
+        picklename = 'deprecatedCID_cid.pickle.gz'
+        filename = 'chem_xref.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.deprecatedMNXM(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.deprecatedCID_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.deprecatedCID_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.deprecatedCID_cid
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+
+
+    def getDeprecatedRID(self):
+        """Getter of the dictionary describing the deprecated reaction id to reaction id
+
+        :rtype: dict
+        :return: The dictionnary structure of deprecated reactions
+        """
+        picklename = 'deprecatedRID_rid.pickle.gz'
+        filename = 'reac_xref.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.deprecatedMNXR(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.deprecatedRID_rid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.deprecatedRID_rid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.deprecatedRID_rid
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+
+
+    def getCIDxref(self):
+        """Getter of the dictionary describing the cross-reference of compounds
+
+        :rtype: dict
+        :return: The dictionnary of cross-reference
+        """
+        picklename = 'cid_xref.pickle.gz'
+        filename = 'chem_xref.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.mnxXref(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.cid_xref,
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.cid_xref
+        #return pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+
+
+    def getCompXref(self):
+        """Getter of the dictionary describing the cross-reference of the compartment
+
+        :rtype: dict
+        :return: The dictionnary of cross-reference
+        """
+        picklename1 = 'xref_comp.pickle.gz'
+        picklename2 = 'comp_xref.pickle.gz'
+        filename = 'comp_xref.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename1)) or not os.path.isfile(os.path.join(self.dirname, 'cache', picklename2)):
+            self.mnxCompXref(self.dirname+'/input_cache/comp_xref.tsv')
+            pickle.dump(self.xref_comp, gzip.open(os.path.join(self.dirname, 'cache', picklename1),'wb'))
+            pickle.dump(self.comp_xref, gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'wb'))
+        self.xref_comp = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename1), 'rb'))
+        self.comp_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'rb'))
+        return self.xref_comp, self.comp_xref
+
+
+    def getFullReactions(self):
+        """Getter of the dictionary describing the full reactions from reaction rules
+
+        :rtype: dict
+        :return: The dictionnary of full reactions
+        """
+        picklename = 'rr_full_reactions.pickle.gz'
+        filename = 'rxn_recipes.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.retroRulesFullReac(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.rr_full_reactions,
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.rr_full_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.rr_full_reactions
+
+
+    def getRRreactions(self):
+        """Getter of the dictionary describing the reaction rules
+
+        :rtype: dict
+        :return: The dictionnary of reaction rules
+        """
+        picklename = 'rr_reactions.pickle.gz'
+        filename = 'rules_rall.tsv'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self.retroReactions(os.path.join(self.dirname, 'input_cache', filename))
+            pickle.dump(self.rr_reactions,
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.rr_reactions = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.rr_reactions
+
+
+    ### intermidiate generate, WARNING: needs to be added at the end after the other files
+    def getChebiCID(self):
+        """Getter of the dictionnary describing the Chebi id to the compound id
+
+        :rtype: dict
+        :return: The dictionnary of Chebi CID
+        """
+        picklename = 'chebi_cid.pickle.gz'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            self._chebiXref()
+            pickle.dump(self.chebi_cid,
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.chebi_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.chebi_cid
+
+
+    def getInchiKeyCID(self):
+        """Getter of the dictionnary describing the inchikey to the compound id
+
+        :rtype: dict
+        :return: The dictionnary of inchikey to cid
+        """
+        picklename = 'inchikey_cid.pickle.gz'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            # open the already calculated (normally) mnxm_strc.pickle.gz
+            self._inchikeyCID()
+            pickle.dump(self.inchikey_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.inchikey_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.inchikey_cid
+
+
+    def getCIDname(self):
+        """Getter of the dictionnary describing the name of the compounds
+
+        :rtype: dict
+        :return: The dictionnary of compound name
+        """
+        picklename = 'cid_name.pickle.gz'
+        if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            pickle.dump(self.cid_name,
+                        gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
+        self.cid_name = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
+        return self.cid_name
+
 
     ################## RetroRules parsers ####################################
 
@@ -821,6 +824,51 @@ class rpCache:
                         self.cid_xref[dbName] = {}
                     if not dbId in self.cid_xref[dbName]:
                         self.cid_xref[dbName][dbId] = mnx
+
+
+    ##################### QUERY #####################
+
+
+    def queryCIDstr(self, cid): 
+        """Query the structure information of a chemical species
+
+        :param cid: The chemical id
+
+        :type cid: str
+
+        :rtype: dict
+        :return: Dictionnary of the known chemical structures
+        """
+        if not self.cid_strc:
+            self.getCIDstrc()
+        if not self.deprecatedCID_cid:
+            self.getDeprecatedCID()
+        try:
+            return self.cid_strc[self._checkCIDdeprecated(cid)]
+        except KeyError:
+            self.logger.warning('Cache does have structure information for: '+str(cid))
+            return {}
+
+
+    def queryChebiCID(self, chebi):
+        """Query the chemical id from a chebi id
+ 
+        :param chebi: The chemical id
+
+        :type chebi: str
+
+        :rtype: str
+        :return: The chemical id
+        """
+        if not self.chebi_cid:
+            self.getChebiCID()
+        if not self.deprecatedCID_cid:
+            self.getDeprecatedCID()
+        try:
+            return self._checkCIDdeprecated(self.chebi_cid[chebi])
+        except KeyError:
+            self.logger.warning('Cache does not have CHEBI entry: '+str(chebi))
+            return None
 
 
 if __name__ == "__main__":

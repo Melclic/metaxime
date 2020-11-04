@@ -1,7 +1,7 @@
-"""rpSBML
-.. moduleauthor:: Melchior du Lac
-"""
+#!/usr/bin/env python3
 
+"""rpSBML: Base project that handles SBML files
+"""
 
 import libsbml
 from hashlib import md5
@@ -12,13 +12,17 @@ import pandas as pd
 import numpy as np
 
 
-"""
-TODO
+from .rpCache import rpCache
 
-1) fonction qui retourne l’identifiant du target “target_id"
-2) fonction qui retourne directement la liste des identifiants des précurseurs “precursor_ids”.
 
-"""
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = ["Joan Herisson"]
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -29,21 +33,8 @@ logging.basicConfig(
 )
 
 
-
-## @package RetroPath SBML writer
-# Documentation for SBML representation of the different model
-#
-# To exchange between the different workflow nodes, the SBML (XML) format is used. This
-# implies using the libSBML library to create the standard definitions of species, reactions, etc...
-# Here we also define our own annotations that are used internally in that we call BRSYNTH nodes.
-# The object holds an SBML object and a series of methods to write and access BRSYNTH related annotations
-
-##################################################################
-############################### rpSBML ###########################
-##################################################################
-
-
-class rpSBML:
+#WARNING: listOfGeneProducts and other gene products in the fbc package are not saved!!!!! TODO: need to include that information if provided
+class rpSBML(rpCache):
     """This class uses the libSBML object and handles it by adding BRSynth annotation
     """
     def __init__(self, model_name=None, document=None, path=None):
@@ -67,11 +58,11 @@ class rpSBML:
         .. automethod:: _checklibSBML
         .. automethod:: _nameToSbmlId
         .. automethod:: _genMetaID
-        .. automethod:: _compareXref
         .. automethod:: _defaultBothAnnot
         .. automethod:: _defaultBRSynthAnnot
         .. automethod:: _defaultMIRIAMAnnot
         """
+        super().__init__() #pass the cache on purpose empty as to load only if needed
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
@@ -146,7 +137,6 @@ class rpSBML:
             return False
 
 
-
     ############################# EXACT COMPARE ########################### 
 
 
@@ -178,7 +168,7 @@ class rpSBML:
                 return key
 
 
-    def _dictRPpathway(self, rpsbml, pathway_id='rp_pathway'):
+    def _dictRPpathway(self, pathway_id='rp_pathway'):
         """Put species in a dictionnary for further comparison
 
         :param rpsbml: rpSBML object
@@ -193,13 +183,13 @@ class rpSBML:
         #rpsbml = rpsbml.document.getModel()
         # Get Reactions
         reactions = {}
-        for member in rpsbml.getGroupsMembers(pathway_id):
-            reaction = rpsbml.model.getReaction(member)
+        for member in self.getGroupsMembers(pathway_id):
+            reaction = self.model.getReaction(member)
             reactions[reaction.getId()] = self.readBRSYNTHAnnotation(reaction.getAnnotation())
         # Get Species
         species = {}
-        for member in rpsbml.readUniqueRPspecies(pathway_id):
-            spe = rpsbml.model.getSpecies(member)
+        for member in self.readUniqueRPspecies(pathway_id):
+            spe = self.model.getSpecies(member)
             species[spe.getId()] = self.readBRSYNTHAnnotation(spe.getAnnotation())
         # Pathways dict
         d_reactions = {}
@@ -211,7 +201,7 @@ class rpSBML:
             d_reactions[reaction_id] = {}
             # Fill the reactants in a dedicated dict
             d_reactants = {}
-            for reactant in rpsbml.model.getReaction(reaction_id).getListOfReactants():# inchikey / inchi sinon miriam sinon IDs
+            for reactant in self.model.getReaction(reaction_id).getListOfReactants():# inchikey / inchi sinon miriam sinon IDs
                 # Il faut enregistrer toutes les infos (inchi, smiles, id)
                 key = self._searchKey(keys, species[reactant.getSpecies()])
                 if key:
@@ -223,7 +213,7 @@ class rpSBML:
             d_reactions[reaction_id]['Reactants'] = d_reactants
             # Fill the products in a dedicated dict
             d_products = {}
-            for product in rpsbml.model.getReaction(reaction_id).getListOfProducts():
+            for product in self.model.getReaction(reaction_id).getListOfProducts():
                 key = self._searchKey(keys, species[product.getSpecies()])
                 if key:
                     key = species[product.getSpecies()][key]
@@ -313,7 +303,8 @@ class rpSBML:
         """
         return self._nameToSbmlId(md5(str(name).encode('utf-8')).hexdigest())
 
-
+    
+    '''
     def _compareXref(self, current, toadd):
         """Compare two dictionaries of lists that describe the cross-reference and return the difference
 
@@ -339,6 +330,7 @@ class rpSBML:
         if toadd==None:
             return []
         return toadd
+    '''
 
 
     def _defaultBothAnnot(self, meta_id):
@@ -414,8 +406,11 @@ class rpSBML:
     ######################################################################
 
 
+    #TODO: need to find if this is used
     def updateBRSynthPathway(self, rpsbml_dict, pathway_id='rp_pathway'):
-        """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the differences
+        """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the differences.
+        
+        Used by rpGlobalScore
 
         :param rpsbml_dict: Heterologous dict
         :param pathway_id: The Groups id of the heterologous pathway
@@ -460,6 +455,7 @@ class rpSBML:
                     self.addUpdateBRSynth(reaction, bd_id, value, units, False)
 
 
+    #TODO: not a fan of passing a class object 
     def addMIRIAMinchiKey(self):
         """Check the MIRIAM annotation for MetaNetX or CHEBI id's and try to recover the inchikey from cache and add it to MIRIAM
 
@@ -475,7 +471,7 @@ class rpSBML:
                 continue
             try:
                 for mnx in miriam_dict['metanetx']:
-                    inchikey = self.cid_strc[self._checkCIDdeprecated(mnx)]['inchikey']
+                    inchikey = self.queryCIDstr(mnx)['inchikey']
                     if inchikey:
                         self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
                     else:
@@ -484,7 +480,7 @@ class rpSBML:
             except KeyError:
                 try:
                     for chebi in miriam_dict['chebi']:
-                        inchikey = self.cid_strc[self._checkCIDdeprecated(self.chebi_cid[chebi])]['inchikey']
+                        inchikey = self.queryCIDstr(self.queryChebiCID(chebi))['inchikey']
                         if inchikey:
                             self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
                         else:
@@ -495,7 +491,6 @@ class rpSBML:
         return True
 
 
-    #TODO: need to pass the species and reaction conversions that the above function returns
     def overwriteRPannot(self, source_rpsbml, species_source_target, reactions_source_target, source_pathway_id='rp_pathway', pathway_id='rp_pathway'):
         """Given a rpsbml of entry, overwrite the current annotations of a pathway.
 
@@ -840,8 +835,22 @@ class rpSBML:
         #add or ignore
         self.logger.debug('inside: '+str(inside))
         self.logger.debug('xref: '+str(xref))
-        toadd = self._compareXref(inside, xref)
+        #toadd = self._compareXref(inside, xref)
+        #### replace the function by the code since used only once ###### 
+        toadd = copy.deepcopy(xref)
+        for database_id in inside:
+            try:
+                list_diff = [i for i in toadd[database_id] if i not in inside[database_id]]
+                if not list_diff:
+                    toadd.pop(database_id)
+                else:
+                    toadd[database_id] = list_diff
+            except KeyError:
+                pass
+        if toadd==None:
+            toadd = []
         self.logger.debug('toadd: '+str(toadd))
+        ##########################
         for database_id in toadd:
             for species_id in toadd[database_id]:
                 #not sure how to avoid having it that way
@@ -902,7 +911,9 @@ class rpSBML:
         """
         groups = self.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
+        self._checklibSBML(rp_pathway, 'Retreiving the heterologous pathway: '+str(pathway_id))
         reactions = rp_pathway.getListOfMembers()
+        self._checklibSBML(reactions, 'Retreiving the members of: '+str(pathway_id))
         #pathway
         rpsbml_json = {}
         rpsbml_json['pathway'] = {}
@@ -911,7 +922,9 @@ class rpSBML:
         rpsbml_json['reactions'] = {}
         for member in reactions:
             reaction = self.model.getReaction(member.getIdRef())
+            self._checklibSBML(reaction, 'Retreiving reaction: '+str(member))
             annot = reaction.getAnnotation()
+            self._checklibSBML(annot, 'Retreiving annotation of: '+str(member))
             rpsbml_json['reactions'][member.getIdRef()] = {}
             rpsbml_json['reactions'][member.getIdRef()]['brsynth'] = self.readBRSYNTHAnnotation(annot)
             rpsbml_json['reactions'][member.getIdRef()]['miriam'] = self.readMIRIAMAnnotation(annot)
@@ -919,7 +932,9 @@ class rpSBML:
         rpsbml_json['species'] = {}
         for spe_id in self.readUniqueRPspecies(pathway_id):
             species = self.model.getSpecies(spe_id)
+            self._checklibSBML(species, 'Retreiving reaction: '+str(spe_id))
             annot = species.getAnnotation()
+            self._checklibSBML(annot, 'Retreiving annotation of: '+str(spe_id))
             rpsbml_json['species'][spe_id] = {}
             rpsbml_json['species'][spe_id]['brsynth'] = self.readBRSYNTHAnnotation(annot)
             rpsbml_json['species'][spe_id]['miriam'] = self.readMIRIAMAnnotation(annot)
@@ -1157,35 +1172,37 @@ class rpSBML:
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
 
 
-    def readTaxonAnnotation(self, annot):
+    def readTaxonAnnotation(self):
         """Return he taxonomy ID from an annotation
 
-        :param annot: The annotation object of libSBML
-
-        :type annot: libsbml.XMLNode
-
-        :rtype: dict
-        :return: Dictionary of all taxonomy id's
+        :rtype: list
+        :return: List of all taxonomy id's
         """
         try:
-            toRet = {}
+            annot = self.model.getAnnotation()
+            self._checklibSBML(annot, 'Retreiving the annotation of model')
+            toRet = []
             bag = annot.getChild('RDF').getChild('Description').getChild('hasTaxon').getChild('Bag')
+            self._checklibSBML(bag, 'Retreiving the bag')
             for i in range(bag.getNumChildren()):
-                str_annot = bag.getChild(i).getAttrValue(0)
+                try:
+                    str_annot = bag.getChild(i).getAttrValue(0)
+                    self._checklibSBML(str_annot, 'Retreiving the string annotation')
+                except AttributeError:
+                    self.logger.warning('Problem retreiving the taxonomy id: '+str(i))
+                    continue
                 if str_annot=='':
                     self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
                     continue
-                dbid = str_annot.split('/')[-2].split('.')[0]
                 if len(str_annot.split('/')[-1].split(':'))==2:
                     cid = str_annot.split('/')[-1].split(':')[1]
                 else:
                     cid = str_annot.split('/')[-1]
-                if not dbid in toRet:
-                    toRet[dbid] = []
-                toRet[dbid].append(cid)
+                toRet.append(cid)
             return toRet
-        except AttributeError:
-            return {}
+        except AttributeError as e:
+            self.logger.warning('Failed to retreive the taxonomy id: '+str(e))
+            return []
 
 
     def readMIRIAMAnnotation(self, annot):
@@ -1245,7 +1262,7 @@ class rpSBML:
                  'rule_score': None,
                  'global_score': None}
         if annot==None:
-            self.logger.warning('The passed annotation is None')
+            self.logger.warning('The passed annotation is not BRSYNTH')
             return {}
         bag = annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
         for i in range(bag.getNumChildren()):
