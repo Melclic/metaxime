@@ -8,6 +8,13 @@ import random
 
 from .rpSBML import rpSBML
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
 
 class rpGraph(rpSBML):
     """The class that hosts the networkx related functions
@@ -216,21 +223,27 @@ class rpGraph(rpSBML):
             rp_central_species_id = [i.getIdRef() for i in c_s.getListOfMembers()]
         except AttributeError:
             rp_central_species_id = []
+        self.logger.debug('rp_central_species_id: '+str(rp_central_species_id))
         try:
             s_s = groups.getGroup(sink_species_group_id)
             self._checklibSBML(s_s, 'Getting the annotation: '+str(sink_species_group_id))
             rp_sink_species_id = [i.getIdRef() for i in s_s.getListOfMembers()]
         except AttributeError:
             rp_sink_species_id = []
+        self.logger.debug('rp_sink_species_id: '+str(rp_sink_species_id))
         try:
             rp_pathway = groups.getGroup(pathway_id)
             rp_species_id = self.readUniqueRPspecies(pathway_id)
-            rp_reactions_id = rp_pathway.getListOfMembers()
+            rp_reactions_id = [i.getIdRef() for i in rp_pathway.getListOfMembers()]
             rp_annotation = self.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
         except AttributeError:
             rp_species_id = []
             rp_reactions_id = []
             rp_annotation = {}
+        self.logger.debug('rp_species_id: '+str(rp_species_id))
+        self.logger.debug('rp_reactions_id: '+str(rp_reactions_id))
+        self.logger.debug('rp_annotation: '+str(rp_annotation))
+        print('rp_reactions_id: '+str(rp_reactions_id))
         self.G = nx.DiGraph(brsynth=rp_annotation)
         #### add ALL the species and reactions ####
         #nodes
@@ -261,6 +274,7 @@ class rpGraph(rpSBML):
                 is_rp_pathway = True
             if is_rp_pathway or is_gem_sbml:
                 self.num_reactions += 1
+            if reaction.getId() in rp_reactions_id or is_gem_sbml:
                 self.G.add_node(reaction.getId(),
                                 type='reaction',
                                 miriam=self.readMIRIAMAnnotation(reaction.getAnnotation()),

@@ -1495,6 +1495,7 @@ class rpSBML(rpCache):
         return False
 
 
+    '''
     def compareAnnotations_annot_dict(self, source_annot, target_dict):
         """Compare an annotation object and annotation dictionary
 
@@ -1536,6 +1537,7 @@ class rpSBML(rpCache):
             if bool(set(source_dict[com_key]) & set(target_dict[com_key])):
                 return True
         return False
+    '''
 
 
     def compareRPpathways(self, measured_sbml, pathway_id='rp_pathway'):

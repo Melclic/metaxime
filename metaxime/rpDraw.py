@@ -7,18 +7,33 @@ import logging
 import drawSvg as draw
 import svgutils.transform as sg
 
-from rpGraph import rpGraph
+from .rpGraph import rpGraph
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
 
 class rpDraw(rpGraph):
     """Class that contains a collection to draw a rpSBML file
     """
-    def __init__(self):
+    def __init__(self,
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 is_gem_sbml=False,
+                 pathway_id='rp_pathway',
+                 central_species_group_id='central_species',
+                 sink_species_group_id='rp_sink_species'):
         """Class constructor
 
         .. document private functions
         .. automethod:: _hierarchyPos
         """
-        super().__init__()
+        super().__init__(model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
         self.logger = logging.getLogger(__name__)
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         #some drawing constants
@@ -280,8 +295,9 @@ class rpDraw(rpGraph):
         return x, y
 
 
-    def drawSVG(self, rpgraph,
-                target,
+    def drawSVG(self,
+                path=None,
+                target='TARGET_0000000001__64__MNXC3',
                 subplot_size=[200,200],
                 #reac_size=[20,60],
                 reac_fill_color='#ddd',
@@ -335,14 +351,17 @@ class rpDraw(rpGraph):
 
         :rtype: tuple
         """
+        if not self.G:
+            self.logger.error('The G needs to be initialised')
+            return False
         #TODO: Check this one: /Users/melchior/Downloads/rpglobalscore_77/rp_109_2.sbml.xml
         reac_size = [subplot_size[0]/8, subplot_size[1]/2]
         #gather all the inchis and convert to svg
-        resG, pos, reac_cofactors_id = self._hierarchyPos(rpgraph.G,
-                                                           target,
-                                                           plot_only_central=plot_only_central,
-                                                           filter_cofactors=filter_cofactors,
-                                                           filter_sink_species=filter_sink_species)
+        resG, pos, reac_cofactors_id = self._hierarchyPos(self.G,
+                                                          target,
+                                                          plot_only_central=plot_only_central,
+                                                          filter_cofactors=filter_cofactors,
+                                                          filter_sink_species=filter_sink_species)
         self.logger.debug('+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=')
         ######## convert the id's to string name #####
         reac_cofactors_name = {}
@@ -351,7 +370,7 @@ class rpDraw(rpGraph):
                 reac_cofactors_name[reac_id] = {'substrates': [], 'products': []}
             for sub in reac_cofactors_id[reac_id]['substrates']:
                 try:
-                    name = rpgraph.G.node.get(sub)['name']
+                    name = self.G.node.get(sub)['name']
                 except KeyError:
                     name = sub
                 if name=='':
@@ -359,7 +378,7 @@ class rpDraw(rpGraph):
                 reac_cofactors_name[reac_id]['substrates'].append(name)
             for pro in reac_cofactors_id[reac_id]['products']:
                 try:
-                    name = rpgraph.G.node.get(pro)['name']
+                    name = self.G.node.get(pro)['name']
                 except KeyError:
                     name = pro
                 if name=='':
@@ -417,7 +436,7 @@ class rpDraw(rpGraph):
         fig.append(b_w)
         nodes_attach_locs = {}
         for node_id in mod_pos:
-            node = rpgraph.G.node.get(node_id)
+            node = self.G.node.get(node_id)
             self.logger.debug('\tSpecies: '+str(node_id))
             if node['type']=='species':
                 self.logger.debug('\tNode pos: '+str(mod_pos[node_id]))
@@ -608,7 +627,7 @@ class rpDraw(rpGraph):
         #adjust the perpendecular arrows if there is overlap with reversed directions
         #TODO: adjust arrows that overlap in the same direction but do not have the same destination
         self.logger.debug('overlaps_arrow: '+str(overlaps_arrow))
-        self.logger.debug('overlaps_edge: '+str(overlaps_edge))
+        #self.logger.debug('overlaps_edge: '+str(overlaps_edge))
         for pos_id in overlaps_arrow['node']:
             #if the direction of the node locations are not the same then you need seperate the input/output
             if len(overlaps_arrow['node'][pos_id])>1:
@@ -642,6 +661,7 @@ class rpDraw(rpGraph):
             target_id = str(strict_edge_pos[edge]['target'][0])+'-'+str(strict_edge_pos[edge]['target'][1])
         '''
         #calculate the perpendicular overlaps
+        '''
         for edge in edge_pos:
             perpendicular_layers = []
             for comp_edge in edge_pos:
@@ -650,11 +670,12 @@ class rpDraw(rpGraph):
                 if not x==None and y==None:
                     perpendicular_layers.append(comp_edge)
             if len(perpendicular_layers)>1:
+                pass
                 #cases to ignore:
                 #   - when they overlap but go in the same direction and the same target or source
                 #case when overlap but they go to the same direction and not the same target
                 #case when 
-
+        '''
 
         for pos_id in overlaps_arrow['L']:
             if len(overlaps_arrow['L'][pos_id])>1:
@@ -718,6 +739,8 @@ class rpDraw(rpGraph):
         a_b.moveto(0, background_len_y)#WARNING: not sure why I have to + subpot
         fig.append(a_b)
         svg = fig.to_str().decode("utf-8")
+        if path:
+            open(path, 'w').write(svg)
         return svg, resG, mod_pos, reac_cofactors_name, nodes_attach_locs
 
 
