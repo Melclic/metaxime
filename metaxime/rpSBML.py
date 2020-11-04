@@ -890,7 +890,7 @@ class rpSBML:
         return True
 
 
-    def asdict(self, pathway_id='rp_pathway'):
+    def asDict(self, pathway_id='rp_pathway'):
         """Generate the dictionnary of all the annotations of a pathway species, reaction and pathway annotations
 
         :param pathway_id: The pathway ID (Default: rp_pathway)

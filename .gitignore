@@ -1,8 +1,6 @@
 *.swp
 .DS_Store
 *.tar
-*.sbml
-*.xml
 input_cache_brenda/
 input_cache_mnx/
 input_cache/
