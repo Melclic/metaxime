@@ -6,21 +6,41 @@ import numpy as np
 
 from .rpGraph import rpGraph
 
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = []
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
+
+logging.basicConfig(
+    #level=logging.DEBUG,
+    level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+
+
 class rpMerge(rpGraph):
     """Class containing all the functions required to merge two SBML files together or two rpSBML objects
     """
     def __init__(self,
+                 rpcache=None,
                  model_name=None,
                  document=None,
                  path=None,
                  is_gem_sbml=False,
                  pathway_id='rp_pathway',
                  central_species_group_id='central_species',
-                 sink_species_group_id='rp_sink_species'): 
+                 sink_species_group_id='rp_sink_species'):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
 
+        :param rpcache: rpCache object
         :param model_name: The name of the model
         :param document: The libSBML Document of the model
         :param path: The path to the SBMKL file
@@ -34,9 +54,9 @@ class rpMerge(rpGraph):
         :type species_group_id: str
 
         .. document private functions
-        .. automethod:: _findUniqueRowColumn 
+        .. automethod:: _findUniqueRowColumn
         """
-        super().__init__(model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
+        super().__init__(rpcache, model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpMerge')
         self.logger.debug('path: '+str(path))
@@ -752,7 +772,7 @@ class rpMerge(rpGraph):
             self.logger.warning('One of the two reactions does not have any EC entries.\nMeasured: '+str(meas_reac_miriam)+' \nSimulated: '+str(sim_reac_miriam))
             return 0.0
 
-    
+
     ################################## MERGE #########################################
 
 

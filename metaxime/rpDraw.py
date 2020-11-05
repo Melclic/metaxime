@@ -9,6 +9,14 @@ import svgutils.transform as sg
 
 from .rpGraph import rpGraph
 
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = [""]
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
 logging.basicConfig(
     level=logging.DEBUG,
     #level=logging.WARNING,
@@ -21,6 +29,7 @@ class rpDraw(rpGraph):
     """Class that contains a collection to draw a rpSBML file
     """
     def __init__(self,
+                 rpcache=None,
                  model_name=None,
                  document=None,
                  path=None,
@@ -33,7 +42,7 @@ class rpDraw(rpGraph):
         .. document private functions
         .. automethod:: _hierarchyPos
         """
-        super().__init__(model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
+        super().__init__(rpcache, model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
         self.logger = logging.getLogger(__name__)
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         #some drawing constants

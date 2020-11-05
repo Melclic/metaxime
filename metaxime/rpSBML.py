@@ -39,11 +39,12 @@ logging.basicConfig(
 class rpSBML(rpCache):
     """This class uses the libSBML object and handles it by adding BRSynth annotation
     """
-    def __init__(self, model_name=None, document=None, path=None):
+    def __init__(self, rpcache=None, model_name=None, document=None, path=None):
         """Constructor for the rpSBML class
 
         Note that the user can pass either a document libSBML object or a path to a SBML file. If a path is passed it overwrite the passed document object.
 
+        :param rpcache: rpCache object
         :param model_name: The Name of the model
         :param document: The libSBML document class (Default: None)
         :param path: The path of a SBML file (Default: None)
@@ -65,10 +66,25 @@ class rpSBML(rpCache):
         .. automethod:: _defaultMIRIAMAnnot
         """
         super().__init__() #pass the cache on purpose empty as to load only if needed
+        if rpcache:
+            self.rr_compounds_path = rpcache.rr_compounds_path
+            self.rr_rules_path = rpcache.rr_rules_path
+            self.rr_rxn_recipes_path = rpcache.rr_rxn_recipes_path
+            self.deprecatedCID_cid = rpcache.deprecatedCID_cid
+            self.deprecatedRID_rid = rpcache.deprecatedRID_rid
+            self.cid_strc = rpcache.cid_strc
+            self.cid_xref = rpcache.cid_xref
+            self.comp_xref = rpcache.comp_xref
+            self.xref_comp = rpcache.xref_comp
+            self.cid_name = rpcache.cid_name
+            self.chebi_cid = rpcache.chebi_cid
+            self.inchikey_cid = rpcache.inchikey_cid
+            self.rr_reactions = rpcache.rr_reactions
+            self.rr_full_reactions = rpcache.rr_full_reactions
+            self.dirname = rpcache.dirname
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
-        #self.logger.setLevel(logging.INFO)
         if model_name:
             self.model_name = model_name
         else:

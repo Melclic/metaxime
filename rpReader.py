@@ -11,10 +11,22 @@ import logging
 from rpSBML import rpSBML
 from rpCache import rpCache
 
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = ["Joan Herisson"]
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
 
-## @package rpCompletion
-#
-# Collection of functions that convert the outputs from various sources to the SBML format (rpSBML) for further analyses
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
 
 
 class Species:
@@ -37,6 +49,7 @@ class Species:
 
 class rpReader(rpCache):
     """Class that has all the functions that parse different files to convert them to rpSBML objects and files
+
     Supports: - RetroPath2.0 input
               - TSV
               - String input

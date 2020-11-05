@@ -13,6 +13,16 @@ import argparse
 from ast import literal_eval
 import json
 
+
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = []
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
+
 logging.basicConfig(
     #level=logging.DEBUG,
     level=logging.WARNING,
@@ -33,18 +43,18 @@ class rpCache:
     Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the the other steps. These should be called only when the files have changes
 
     """
-    def __init__(self, rr_compounds_path=None, rr_rules_path=None, rr_rxn_recipes_path=None, fetchInputFiles=False):
+    def __init__(self, rr_compounds_path=None, rr_rules_path=None, rr_rxn_recipes_path=None, fetch_input_files=False):
         """Cache constructor
 
         :param rr_compounds_path: Path to the compounds file
         :param rr_rules_path: Path to the rules file
         :param rr_rxn_recipes_path: Path to the reactions rules recipes
-        :param fetchInputFiles: Force download all the input cache file
+        :param fetch_input_files: Force download all the input cache file
 
         :type rr_compounds_path: str (Default: None)
         :type rr_rules_path: str (Default: None)
         :type rr_rxn_recipes_path: str (Default: None)
-        :type fetchInputFiles: bool (Default: False)
+        :type fetch_input_files: bool (Default: False)
 
         :rtype: None
         :return: None
@@ -74,11 +84,9 @@ class rpCache:
         self.inchikey_cid = {} # for key 'BZXZFDKIRZBJEP-UHFFFAOYSA-N': ['MNXM10', '10101']
         self.rr_reactions = {} # rr_reactions['RR-02-d2e7c5761b5a9b4b-04-F'] = {'MNXR139133': {'rule_id': 'RR-02-d2e7c5761b5a9b4b-04-F', 'rule_score': 0.3151075983206353, 'reac_id': 'MNXR139133', 'subs_id': 'MNXM89557', 'rel_direction': 1, 'left': {'MNXM89557': 1}, 'right': {'MNXM20': 1, 'MNXM722724': 1}}}
         self.rr_full_reactions = {} #rr_full_reactions['MNXR142257'] = {'left': {'MNXM4660': 1}, 'right': {'MNXM97172': 1}, 'direction': 0, 'main_left': ['MNXM4660'], 'main_right': ['MNXM97172']}
-        self.kegg_dG = None
-        self.cc_preprocess = None
         self.dirname = os.path.dirname(os.path.abspath( __file__ ))
-        if fetchInputFiles:
-            if not self._fetchInputFiles():
+        if fetch_input_files:
+            if not self._fetch_input_files():
                 raise ValueError
         # cache
         if not os.path.isdir(self.dirname+'/cache'):
@@ -118,7 +126,7 @@ class rpCache:
     ##########################################################
 
 
-    def _fetchInputFiles(self):
+    def _fetch_input_files(self):
         """Private function to fetch the required data, parse them and generate the pickle
 
         :rtype: bool
@@ -837,7 +845,7 @@ class rpCache:
     ##################### QUERY #####################
 
 
-    def queryCIDstr(self, cid): 
+    def queryCIDstr(self, cid):
         """Query the structure information of a chemical species
 
         :param cid: A chemical id
@@ -860,7 +868,7 @@ class rpCache:
 
     def queryChebiCID(self, chebi):
         """Query the chemical id from a chebi id
- 
+
         :param chebi: A chebi chemical id
 
         :type chebi: str
@@ -881,7 +889,7 @@ class rpCache:
 
     def queryCompXref(self, comp_id):
         """Query the compartment id
- 
+
         :param comp_id: A compartment id
 
         :type comp_id: str
@@ -900,7 +908,7 @@ class rpCache:
 
     def queryCIDxref(self, cid):
         """Query the chemical species cross-reference
- 
+
         :param cid: A chemical species id
 
         :type cid: str
@@ -919,7 +927,7 @@ class rpCache:
             return None
 
 
-    def queryCIDname(self, cid): 
+    def queryCIDname(self, cid):
         """Query the name of a chemical species
 
         :param cid: A chemical id
@@ -945,14 +953,14 @@ if __name__ == "__main__":
     parser.add_argument('-rr_compounds_path', type=str, default=None)
     parser.add_argument('-rr_rules_path', type=str, default=None)
     parser.add_argument('-rr_rxn_recipes_path', type=str, default=None)
-    parser.add_argument('-fetchInputFiles', type=str, default='True')
+    parser.add_argument('-fetch_input_files', type=str, default='True')
     params = parser.parse_args()
-    if params.fetchInputFiles==True or params.fetchInputFiles=='True' or params.fetchInputFiles=='true':
-        fetchInputFiles = True
-    elif params.fetchInputFiles==False or params.fetchInputFiles=='False' or params.fetchInputFiles=='false':
-        fetchInputFiles = False
+    if params.fetch_input_files==True or params.fetch_input_files=='True' or params.fetch_input_files=='true':
+        fetch_input_files = True
+    elif params.fetch_input_files==False or params.fetch_input_files=='False' or params.fetch_input_files=='false':
+        fetch_input_files = False
     else:
-        logging.error('Cannot interpret '+str(params.fetchInputFiles))
+        logging.error('Cannot interpret '+str(params.fetch_input_files))
         exit(1)
     if params.rr_compounds_path:
         if not os.path.exists(params.rr_compounds_path):
@@ -966,5 +974,5 @@ if __name__ == "__main__":
         if not os.path.exists(params.rr_rxn_recipes_path):
             logging.error('The file: '+str(params.rr_rxn_recipes_path)+' does not exist')
             exit(1)
-    rpcache = rpCache(params.rr_compounds_path, params.rr_rules_path, params.rr_rxn_recipes_path, fetchInputFiles)
+    rpcache = rpCache(params.rr_compounds_path, params.rr_rules_path, params.rr_rxn_recipes_path, fetch_input_files)
     rpcache.populateCache()

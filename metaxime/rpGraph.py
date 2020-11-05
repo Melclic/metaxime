@@ -8,6 +8,16 @@ import random
 
 from .rpSBML import rpSBML
 
+
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = []
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
+
 logging.basicConfig(
     level=logging.DEBUG,
     #level=logging.WARNING,
@@ -20,6 +30,7 @@ class rpGraph(rpSBML):
     """The class that hosts the networkx related functions
     """
     def __init__(self,
+                 rpcache=None
                  model_name=None,
                  document=None,
                  path=None,
@@ -31,6 +42,7 @@ class rpGraph(rpSBML):
 
         Automatically constructs the network when calling the construtor
 
+        :param rpcache: rpCache object
         :param model_name: The name of the model
         :param document: The libSBML Document of the model
         :param path: The path to the SBMKL file
@@ -49,7 +61,7 @@ class rpGraph(rpSBML):
         .. automethod:: _recursiveReacSuccessors
         .. automethod:: _recursiveReacPredecessors
         """
-        super().__init__(model_name, document, path)
+        super().__init__(rpcache, model_name, document, path)
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')
@@ -197,7 +209,6 @@ class rpGraph(rpSBML):
 
 
     ################################# Analyse and make graph #####################
-
 
 
     #TODO: add the compartments to the species and reactions node descriptions
