@@ -629,14 +629,13 @@ class rpReader(rpCache):
                 # -> special attention to the compartment
                 rpsbml.genericModel('RetroPath_Pathway_'+str(path_id)+'_'+str(alt_path_num),
                                     'RP_model_'+str(path_id)+'_'+str(alt_path_num),
-                                    self.comp_xref[compartment_id],
                                     compartment_id,
-                                    upper_flux_bound,
-                                    lower_flux_bound)
+                                    upper_flux_bound=upper_flux_bound,
+                                    lower_flux_bound=lower_flux_bound)
                 #2) Create the pathway (groups)
-                rpsbml.createPathway(pathway_id)
-                rpsbml.createPathway(species_group_id)
-                rpsbml.createPathway(sink_species_group_id)
+                rpsbml.createGroup(pathway_id)
+                rpsbml.createGroup(species_group_id)
+                rpsbml.createGroup(sink_species_group_id)
                 #3) Find all unique species and add them to the model
                 all_cid = set([i for step in steps for lr in ['left', 'right'] for i in step[lr]])
                 for cid in all_cid:
@@ -1220,8 +1219,8 @@ class rpReader(rpCache):
                                 upper_flux_bound,
                                 lower_flux_bound)
             # 2) create the pathway (groups)
-            rpsbml.createPathway(pathway_id)
-            rpsbml.createPathway(species_group_id)
+            rpsbml.createGroup(pathway_id)
+            rpsbml.createGroup(species_group_id)
             # 3) find all the unique species and add them to the model
             allChem = []
             for stepNum in data[path_id]['steps']:

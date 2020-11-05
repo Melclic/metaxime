@@ -23,14 +23,16 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
+#logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
+    #level=logging.DEBUG,
+    level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
+
 
 
 #WARNING: listOfGeneProducts and other gene products in the fbc package are not saved!!!!! TODO: need to include that information if provided
@@ -1539,9 +1541,10 @@ class rpSBML(rpCache):
         return False
     '''
 
-
-    def compareRPpathways(self, measured_sbml, pathway_id='rp_pathway'):
-        """Function to compare two SBML's RP pathways
+    #is this redundant with _dictRPpathway()? 
+    #TODO: This still needs some work... it was pulled from the comparison to the golden dataset i.e. rpFindPath
+    def isRPpathwayContained(self, measured_sbml, pathway_id='rp_pathway'):
+        """Function to determine if current rpSBML is contained within (set of) a passed rpSBML. Note that we perform exact comparison here 
 
         Function that compares the annotations of reactions and if not found, the annotations of all
         species in that reaction to try to recover the correct ones. Because we are working with
@@ -1559,25 +1562,35 @@ class rpSBML(rpCache):
         try:
             meas_rp_species = measured_sbml.readRPspecies()
             found_meas_rp_species = measured_sbml.readRPspecies()
-            for meas_step_id in meas_rp_species:
-                meas_rp_species[meas_step_id]['annotation'] = measured_sbml.model.getReaction(meas_step_id).getAnnotation()
-                found_meas_rp_species[meas_step_id]['found'] = False
-                for spe_name in meas_rp_species[meas_step_id]['reactants']:
-                    meas_rp_species[meas_step_id]['reactants'][spe_name] = measured_sbml.model.getSpecies(spe_name).getAnnotation()
-                    found_meas_rp_species[meas_step_id]['reactants'][spe_name] = False
-                for spe_name in meas_rp_species[meas_step_id]['products']:
-                    meas_rp_species[meas_step_id]['products'][spe_name] = measured_sbml.model.getSpecies(spe_name).getAnnotation()
-                    found_meas_rp_species[meas_step_id]['products'][spe_name] = False
+        except AttributeError:
+            self.logger.error('Cannot retreive the RP species for passed rpSBML')
+            return False, {}
+        #try:
+        for meas_step_id in meas_rp_species:
+            meas_rp_species[meas_step_id]['annotation'] = measured_sbml.model.getReaction(meas_step_id).getAnnotation()
+            found_meas_rp_species[meas_step_id]['found'] = False
+            for spe_name in meas_rp_species[meas_step_id]['reactants']:
+                meas_rp_species[meas_step_id]['reactants'][spe_name] = measured_sbml.model.getSpecies(spe_name).getAnnotation()
+                found_meas_rp_species[meas_step_id]['reactants'][spe_name] = False
+            for spe_name in meas_rp_species[meas_step_id]['products']:
+                meas_rp_species[meas_step_id]['products'][spe_name] = measured_sbml.model.getSpecies(spe_name).getAnnotation()
+                found_meas_rp_species[meas_step_id]['products'][spe_name] = False
+        try:
             rp_rp_species = self.readRPspecies()
-            for rp_step_id in rp_rp_species:
-                rp_rp_species[rp_step_id]['annotation'] = self.model.getReaction(rp_step_id).getAnnotation()
-                for spe_name in rp_rp_species[rp_step_id]['reactants']:
-                    rp_rp_species[rp_step_id]['reactants'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
-                for spe_name in rp_rp_species[rp_step_id]['products']:
-                    rp_rp_species[rp_step_id]['products'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
+        except AttributeError:
+            self.logger.error('Cannot retreive the RP species for the self model')
+            return False, {}
+        for rp_step_id in rp_rp_species:
+            rp_rp_species[rp_step_id]['annotation'] = self.model.getReaction(rp_step_id).getAnnotation()
+            for spe_name in rp_rp_species[rp_step_id]['reactants']:
+                rp_rp_species[rp_step_id]['reactants'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
+            for spe_name in rp_rp_species[rp_step_id]['products']:
+                rp_rp_species[rp_step_id]['products'][spe_name] = self.model.getSpecies(spe_name).getAnnotation()
+        '''
         except AttributeError:
             self.logger.error('TODO: debug, for some reason some are passed as None here')
             return False, {}
+        '''
         #compare the number of steps in the pathway
         if not len(meas_rp_species)==len(rp_rp_species):
             self.logger.warning('The pathways are not of the same length')
@@ -1686,7 +1699,7 @@ class rpSBML(rpCache):
     def createModel(self, name, model_id, meta_id=None):
         """Create libSBML model instance
 
-        Function that creates a new libSBML model instance and initiates it with the appropriate packages. Creates a cytosol compartment
+        Function that creates a new libSBML model instance and initiates it with the appropriate packages.
 
         :param name: The name of the of the model
         :param model_id: The id of the model
@@ -1729,38 +1742,51 @@ class rpSBML(rpCache):
     #TODO: set the compName as None by default. To do that you need to regenerate the compXref to
     #TODO: consider seperating it in another function if another compartment is to be created
     #TODO: use MNX ids as keys instead of the string names
-    def createCompartment(self, size, compId, compName, compXref, meta_id=None):
+    def createCompartment(self, comp_id, name=None, xref=None, size=1, meta_id=None):
         """Create libSBML compartment
 
         :param size: Size of the compartment
-        :param compId: Compartment id
-        :param compName: Compartment Name
-        :param compXref: Cross reference dictionary of the compartment
+        :param comp_id: Compartment id
+        :param name: Compartment Name
+        :param xref: Cross reference dictionary of the compartment
         :param meta_id: Meta id (Default: None)
         :type size: float
 
-        :type compId: str
-        :type compName: str
-        :type compXref: dict
+        :type comp_id: str
+        :type name: str
+        :type xref: dict
         :type meta_id: str
 
         :rtype: None
         :return: None
         """
+        if not xref:
+            xref = self.queryCompXref(comp_id)
+        self.logger.debug('xref: '+str(xref))
         comp = self.model.createCompartment()
         self._checklibSBML(comp, 'create compartment')
-        self._checklibSBML(comp.setId(compId), 'set compartment id')
-        if compName:
-            self._checklibSBML(comp.setName(compName), 'set the name for the cytoplam')
+        self._checklibSBML(comp.setId(comp_id), 'set compartment id')
+        self.logger.debug('name: '+str(name))
+        if not name:
+            if xref:
+                try:
+                    name = xref['name'][0]
+                except KeyError:
+                    name = comp_id+'_name'
+            else:
+                name = comp_id+'_name'
+        self.logger.debug('name: '+str(name))
+        self._checklibSBML(comp.setName(name), 'set the name for the cytoplam')
         self._checklibSBML(comp.setConstant(True), 'set compartment "constant"')
         self._checklibSBML(comp.setSize(size), 'set compartment "size"')
         self._checklibSBML(comp.setSBOTerm(290), 'set SBO term for the cytoplasm compartment')
         if meta_id==None:
-            meta_id = self._genMetaID(compId)
+            meta_id = self._genMetaID(comp_id)
         self._checklibSBML(comp.setMetaId(meta_id), 'set the meta_id for the compartment')
         ############################ MIRIAM ############################
         comp.setAnnotation(libsbml.XMLNode.convertStringToXMLNode(self._defaultMIRIAMAnnot(meta_id)))
-        self.addUpdateMIRIAM(comp, 'compartment', compXref, meta_id)
+        if xref:
+            self.addUpdateMIRIAM(comp, 'compartment', xref, meta_id)
 
 
     def createUnitDefinition(self, unit_id, meta_id=None):
@@ -1777,27 +1803,27 @@ class rpSBML(rpCache):
         :rtype: libsbml.UnitDefinition
         :return: Unit definition object created
         """
-        unitDef = self.model.createUnitDefinition()
-        self._checklibSBML(unitDef, 'creating unit definition')
-        self._checklibSBML(unitDef.setId(unit_id), 'setting id')
+        unit_def = self.model.createUnitDefinition()
+        self._checklibSBML(unit_def, 'creating unit definition')
+        self._checklibSBML(unit_def.setId(unit_id), 'setting id')
         if meta_id==None:
             meta_id = self._genMetaID(unit_id)
-        self._checklibSBML(unitDef.setMetaId(meta_id), 'setting meta_id')
-        #self.unitDefinitions.append(unit_id)
-        return unitDef
+        self._checklibSBML(unit_def.setMetaId(meta_id), 'setting meta_id')
+        #self.unit_definitions.append(unit_id)
+        return unit_def
 
 
-    def createUnit(self, unitDef, libsbmlunit, exponent, scale, multiplier):
+    def createUnit(self, unit_def, libsbml_unit, exponent, scale, multiplier):
         """Set or update the parameters of a libSBML unit definition
 
-        :param unitDef: libSBML Unit
-        :param libsbmlunit: String unit
+        :param unit_def: libSBML Unit
+        :param libsbml_unit: String unit
         :param exponent: Exponent unit
         :param sale: Scale of the unit
         :param multiplier: Multiplier of the unit
 
-        :type unitDef: libsbml.Unit
-        :type libsbmlunit: str
+        :type unit_def: libsbml.Unit
+        :type libsbml_unit: str
         :type exponent: int
         :type sale: int
         :type multiplier: int
@@ -1805,9 +1831,9 @@ class rpSBML(rpCache):
         :rtype: None
         :return: None
         """
-        unit = unitDef.createUnit()
+        unit = unit_def.createUnit()
         self._checklibSBML(unit, 'creating unit')
-        self._checklibSBML(unit.setKind(libsbmlunit), 'setting the kind of unit')
+        self._checklibSBML(unit.setKind(libsbml_unit), 'setting the kind of unit')
         self._checklibSBML(unit.setExponent(exponent), 'setting the exponenent of the unit')
         self._checklibSBML(unit.setScale(scale), 'setting the scale of the unit')
         self._checklibSBML(unit.setMultiplier(multiplier), 'setting the multiplier of the unit')
@@ -1839,13 +1865,17 @@ class rpSBML(rpCache):
         :rtype: libsbml.Parameter
         :return: The newly created libsbml.Parameter
         """
-        if parameter_id:
+        if not parameter_id and not (value or value==0.0):
+            self.logger.error('Cannot have both value ('+str(value)+') and parameter_id ('+str(parameter_id)+') that are None')
+            return None
+        elif parameter_id:
             param_id = parameter_id
         else:
             if value>=0:
                 param_id = 'B_'+str(round(abs(value), 4)).replace('.', '_')
             else:
                 param_id = 'B__'+str(round(abs(value), 4)).replace('.', '_')
+        #TODO: this seems to be the place where the right parameter value is not returned when merging
         if param_id in [i.getId() for i in self.model.getListOfParameters()]:
             return self.model.getParameter(param_id)
         else:
@@ -1866,49 +1896,49 @@ class rpSBML(rpCache):
     #TODO as of now not generic, works when creating a new SBML file, but no checks if modifying existing SBML file
     def createReaction(self,
                        reac_id,
-                       fluxUpperBound,
-                       fluxLowerBound,
+                       upper_flux_bound,
+                       lower_flux_bound,
                        step,
                        compartment_id,
                        reaction_smiles=None,
-                       reacXref={},
+                       xref=None, #TODO: add xref check from rpCache
                        pathway_id=None,
                        meta_id=None):
         """Create libSBML reaction
 
-        Create a reaction that is added to the self.model in the input compartment id. fluxBounds is a list of libSBML.UnitDefinition, length of exactly 2 with the first position that is the upper bound and the second is the lower bound. reactants_dict and reactants_dict are dictionnaries that hold the following parameters: name, compartment, stoichiometry
-
         :param name: Name of the reaction
-        :param fluxUpperBound: The reaction fbc upper bound
-        :param fluxLowerBound: The reaction fbc lower bound
+        :param upper_flux_bound: The reaction fbc upper bound
+        :param lower_flux_bound: The reaction fbc lower bound
         :param step: The id's of the reactant and products of the reactions. Example: {'left': [], 'right': []}
         :param compartment_id: The id of the compartment to add the reaction
-        :param reaction_smiles: The reaction rule to add to the BRSynth annotation of the reaction (Default: None)
-        :param reacXref: The dict containing the MIRIAM annotation (Default: {})
-        :param pathway_id: The Groups id of the reaction to which the reacion id will be added (Default: None)
+        :param reaction_smiles: The reaction rule to add to the BRSynth annotation of the reaction (default: None)
+        :param xref: The dict containing the MIRIAM annotation (default: None)
+        :param pathway_id: The Groups id of the reaction to which the reacion id will be added (default: None)
         :param meta_id: Meta id (Default: None)
 
         :type name: str
-        :type fluxUpperBound: float
-        :type fluxLowerBound: float
+        :type upper_flux_bound: float
+        :type lower_flux_bound: float
         :type step: dict
         :type compartment_id: str
         :type reaction_smiles: str
-        :type reacXref: dict
+        :type xref: dict
         :type pathway_id: str
         :type meta_id: str
 
         :rtype: None
         :return: None
         """
+        if not xref:
+            xref = {}
         reac = self.model.createReaction()
         self._checklibSBML(reac, 'create reaction')
         ################ FBC ####################
         reac_fbc = reac.getPlugin('fbc')
         self._checklibSBML(reac_fbc, 'extending reaction for FBC')
         #bounds
-        upper_bound = self.createReturnFluxParameter(fluxUpperBound)
-        lower_bound = self.createReturnFluxParameter(fluxLowerBound)
+        upper_bound = self.createReturnFluxParameter(upper_flux_bound)
+        lower_bound = self.createReturnFluxParameter(lower_flux_bound)
         self._checklibSBML(reac_fbc.setUpperFluxBound(upper_bound.getId()), 'setting '+str(reac_id)+' upper flux bound')
         self._checklibSBML(reac_fbc.setLowerFluxBound(lower_bound.getId()), 'setting '+str(reac_id)+' lower flux bound')
         #########################################
@@ -1943,8 +1973,9 @@ class rpSBML(rpCache):
             self._checklibSBML(pro.setStoichiometry(float(step['right'][product])),
                 'set the stoichiometry ('+str(float(step['right'][product]))+')')
         ############################ MIRIAM ############################
+        #TODO: need to insert it in another way that is more appropriate for reactions
         self._checklibSBML(reac.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
-        self.addUpdateMIRIAM(reac, 'reaction', reacXref, meta_id)
+        self.addUpdateMIRIAM(reac, 'reaction', xref, meta_id)
         ###### BRSYNTH additional information ########
         if reaction_smiles:
             self.addUpdateBRSynth(reac, 'smiles', reaction_smiles, None, True, False, False, meta_id)
@@ -1977,7 +2008,7 @@ class rpSBML(rpCache):
                       species_id,
                       compartment_id,
                       species_name=None,
-                      chemXref={},
+                      xref=None,
                       inchi=None,
                       inchikey=None,
                       smiles=None,
@@ -1994,7 +2025,7 @@ class rpSBML(rpCache):
         :param species_id: The id of the created species
         :param compartment_id: The id of the compartment to add the reaction
         :param species_name: Overwrite the default name of the created species (Default: None)
-        :param chemXref: The dict containing the MIRIAM annotation (Default: {})
+        :param xref: The dict containing the MIRIAM annotation (Default: {})
         :param inchi: The InChI string to be added to BRSynth annotation (Default: None)
         :param inchikey: The InChIkey string to be added to BRSynth annotation (Default: None)
         :param smiles: The SMLIES string to be added to BRSynth annotation (Default: None)
@@ -2005,7 +2036,7 @@ class rpSBML(rpCache):
         :type species_id: str
         :type compartment_id: str
         :type species_name: str
-        :type chemXref: dict
+        :type xref: dict
         :type inchi: str
         :type inchikey: str
         :type smiles: str
@@ -2013,9 +2044,49 @@ class rpSBML(rpCache):
         :type in_sink_group_id: str
         :type meta_id: str
 
-        :rtype: None
-        :return: None
+        :rtype: libsbml.Species
+        :return: The created or returned libSBML species object
         """
+        ###### Try to recover as much info as you can #####
+        if not xref:
+            xref = self.queryCIDxref(species_id)
+            if not xref:
+                xref = {}
+        #try to recover the species accordign to its ID
+        try:
+            spe_obj = self.model.getSpecies(species_id)
+            if not spe_obj:
+                spe_obj = self.model.getSpecies(species_id+'__64__'+str(compartment_id))
+            self._checklibSBML(spe_obj, 'Trying to retreive species by id')
+            self.logger.warning('The following species id already exists: '+str(species_id))
+            return spe_obj
+        except AttributeError:
+            pass
+        #try to recover structure information
+        #TODO: add the conversion of molecules to it
+        strct_info = None
+        if not inchi:
+            if not strct_info:
+                strct_info = self.queryCIDstr(species_id)
+            try:
+                inchi = strct_info['inchi']
+            except KeyError:
+                pass
+        if not inchikey:
+            if not strct_info:
+                strct_info = self.queryCIDstr(species_id)
+            try:
+                inchikey = strct_info['inchikey']
+            except KeyError:
+                pass
+        if not smiles:
+            if not strct_info:
+                strct_info = self.queryCIDstr(species_id)
+            try:
+                smiles = strct_info['smiles']
+            except KeyError:
+                pass
+        ####### create the species ########
         spe = self.model.createSpecies()
         self._checklibSBML(spe, 'create species')
         ##### FBC #####
@@ -2050,7 +2121,7 @@ class rpSBML(rpCache):
         #self._checklibSBML(spe.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'creating annotation')
         self._checklibSBML(spe.setAnnotation(self._defaultBothAnnot(meta_id)), 'creating annotation')
         ###### annotation ###
-        self.addUpdateMIRIAM(spe, 'species', chemXref, meta_id)
+        self.addUpdateMIRIAM(spe, 'species', xref, meta_id)
         ###### BRSYNTH additional information ########
         if smiles:
             self.addUpdateBRSynth(spe, 'smiles', smiles, None, True, False, False, meta_id)
@@ -2086,34 +2157,41 @@ class rpSBML(rpCache):
                 newM = sink_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
                 self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+        return spe
 
 
     #TODO: change the name of this function to createGroup
-    def createPathway(self, pathway_id, meta_id=None):
+    def createGroup(self, group_id, meta_id=None):
         """Create libSBML pathway
 
-        Create a pathway that is added to self.model
+        Create a group that is added to self.model with BRSynth annotations
 
-        :param pathway_id: The Groups id of the pathway id
+        :param group_id: The Groups id
         :param meta_id: Meta id (Default: None)
 
-        :type pathway_id: str
+        :type group_id: str
         :type meta_id: str
 
-        :rtype: None
-        :return: None
+        :rtype: fbc.Group
+        :return: The found or created group
         """
         groups_plugin = self.model.getPlugin('groups')
+        #test to see if the groups already exists
+        if group_id in [i.getId() for i in groups_plugin.getListOfGroups()]:
+            self.logger.warning('The group '+str(group_id)+' already exists')
+            return groups_plugin.getGroup(group_id)
         new_group = groups_plugin.createGroup()
-        self.logger.debug('setting new group id: '+str(pathway_id))
-        new_group.setId(pathway_id)
+        self.logger.debug('setting new group id: '+str(group_id))
+        new_group.setId(group_id)
         if meta_id==None:
-            meta_id = self._genMetaID(pathway_id)
+            meta_id = self._genMetaID(group_id)
         new_group.setMetaId(meta_id)
         new_group.setKind(libsbml.GROUP_KIND_COLLECTION)
         new_group.setAnnotation(self._defaultBRSynthAnnot(meta_id))
+        return new_group
 
 
+    #NOTE: this seems to be ignored at saving of the file, need to investigate further
     def createGene(self, reac, step_id, meta_id=None):
         """Create libSBML gene
 
@@ -2186,6 +2264,7 @@ class rpSBML(rpCache):
         target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
 
 
+    #TODO: add feature to overwrite the objective if the id already exists --> basically overwrite the reactions and coefficients
     def createMultiFluxObj(self, fluxobj_id, reaction_names, coefficients, is_max=True, meta_id=None):
         """Create libSBML flux objective
 
@@ -2210,22 +2289,28 @@ class rpSBML(rpCache):
             self.logger.error('The size of reaction_names is not the same as coefficients')
             return False
         fbc_plugin = self.model.getPlugin('fbc')
+        if fluxobj_id in [i.getId() for i in fbc_plugin.getListOfObjectives()]:
+            self.logger.warning('There already exists an objective with the id')
+            return fbc_plugin.getObjective(fluxobj_id)
         target_obj = fbc_plugin.createObjective()
-        target_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
-        target_obj.setId(fluxobj_id)
+        self._checklibSBML(target_obj, 'Creating a new objective')
+        self._checklibSBML(target_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'Setting annotation')
+        self._checklibSBML(target_obj.setId(fluxobj_id), 'Adding the id')
         if is_max:
             target_obj.setType('maximize')
         else:
             target_obj.setType('minimize')
-        fbc_plugin.setActiveObjectiveId(fluxobj_id) # this ensures that we are using this objective when multiple
+        self._checklibSBML(fbc_plugin.setActiveObjectiveId(fluxobj_id), 'Set as active objective') # this ensures that we are using this objective when multiple
         for reac, coef in zip(reaction_names, coefficients):
             target_flux_obj = target_obj.createFluxObjective()
-            target_flux_obj.setReaction(reac)
-            target_flux_obj.setCoefficient(coef)
+            self._checklibSBML(target_flux_obj, 'Creating a new flux objective')
+            self._checklibSBML(target_flux_obj.setReaction(reac), 'Setting the reaction for the objective')
+            self._checklibSBML(target_flux_obj.setCoefficient(coef), 'Setting the coefficients for the objective')
             if meta_id==None:
                 meta_id = self._genMetaID(str(fluxobj_id))
-            target_flux_obj.setMetaId(meta_id)
-            target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
+            self._checklibSBML(target_flux_obj.setMetaId(meta_id), 'Seting the meta id for the objective id')
+            self._checklibSBML(target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'Setting the annnotation for the objective')
+        return target_obj
 
 
     ##############################################################################################
@@ -2236,10 +2321,12 @@ class rpSBML(rpCache):
     def genericModel(self,
                      model_name,
                      model_id,
-                     compXref,
                      compartment_id,
-                     upper_flux_bound=999999,
-                     lower_flux_bound=0):
+                     comp_xref=None,
+                     comp_name=None,
+                     comp_size=1.0,
+                     upper_flux_bound=999999.0,
+                     lower_flux_bound=0.0):
         """Generate a generic model
 
         Since we will be using the same type of parameters for the RetroPath model, this function
@@ -2247,15 +2334,15 @@ class rpSBML(rpCache):
 
         :param model_name: The given name of the model
         :param model_id: The id of the model
-        :param compXref: The model MIRIAM annotation
         :param compartment_id: The id of the model compartment
+        :param compXref: The model MIRIAM annotation
         :param upper_flux_bound: The upper flux bounds unit definitions default when adding new reaction (Default: 999999.0)
         :param lower_flux_bound: The lower flux bounds unit definitions default when adding new reaction (Defaul: 0.0)
 
         :type model_name: str
         :type model_id: str
-        :type compXref: dict
         :type compartment_id: str
+        :type compXref: dict
         :type upper_flux_bound: float
         :type lower_flux_bound: float
 
@@ -2264,22 +2351,16 @@ class rpSBML(rpCache):
         """
         self.createModel(model_name, model_id)
         # mmol_per_gDW_per_hr -- flux
-        unitDef = self.createUnitDefinition('mmol_per_gDW_per_hr')
-        self.createUnit(unitDef, libsbml.UNIT_KIND_MOLE, 1, -3, 1)
-        self.createUnit(unitDef, libsbml.UNIT_KIND_GRAM, 1, 0, 1)
-        self.createUnit(unitDef, libsbml.UNIT_KIND_SECOND, 1, 0, 3600)
+        unit_def = self.createUnitDefinition('mmol_per_gDW_per_hr')
+        self.createUnit(unit_def, libsbml.UNIT_KIND_MOLE, 1, -3, 1)
+        self.createUnit(unit_def, libsbml.UNIT_KIND_GRAM, 1, 0, 1)
+        self.createUnit(unit_def, libsbml.UNIT_KIND_SECOND, 1, 0, 3600)
         # kj_per_mol -- thermodynamics
-        gibbsDef = self.createUnitDefinition('kj_per_mol')
-        self.createUnit(gibbsDef, libsbml.UNIT_KIND_JOULE, 1, 3, 1)
-        self.createUnit(gibbsDef, libsbml.UNIT_KIND_MOLE, -1, 1, 1)
+        gibbs_def = self.createUnitDefinition('kj_per_mol')
+        self.createUnit(gibbs_def, libsbml.UNIT_KIND_JOULE, 1, 3, 1)
+        self.createUnit(gibbs_def, libsbml.UNIT_KIND_MOLE, -1, 1, 1)
         ### set the bounds
-        upBound = self.createReturnFluxParameter(upper_flux_bound)
-        lowBound = self.createReturnFluxParameter(lower_flux_bound)
+        up_bound = self.createReturnFluxParameter(upper_flux_bound)
+        low_bound = self.createReturnFluxParameter(lower_flux_bound)
         #compartment
-        #TODO: try to recover the name from the Xref
-        try:
-            name = compXref['name'][0]
-        except KeyError:
-            name = compartment_id+'_name'
-        self.createCompartment(1, compartment_id, name, compXref)
-
+        self.createCompartment(compartment_id, comp_name, comp_xref, comp_size)

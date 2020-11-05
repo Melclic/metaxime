@@ -15,8 +15,8 @@ import json
 
 logging.basicConfig(
     #level=logging.DEBUG,
-    #level=logging.WARNING,
-    level=logging.ERROR,
+    level=logging.WARNING,
+    #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -441,6 +441,8 @@ class rpCache:
         """
         picklename = 'chebi_cid.pickle.gz'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            if not self.cid_xref:
+                self.getCIDxref()
             self._chebiXref()
             pickle.dump(self.chebi_cid,
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
@@ -456,6 +458,8 @@ class rpCache:
         """
         picklename = 'inchikey_cid.pickle.gz'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
+            if not self.cid_strc:
+                self.getCIDstrc()
             # open the already calculated (normally) mnxm_strc.pickle.gz
             self._inchikeyCID()
             pickle.dump(self.inchikey_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
@@ -475,6 +479,10 @@ class rpCache:
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.cid_name = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.cid_name
+
+
+    #TODO
+    #def getRIDxref(self):
 
 
     ################## RetroRules parsers ####################################
@@ -832,7 +840,7 @@ class rpCache:
     def queryCIDstr(self, cid): 
         """Query the structure information of a chemical species
 
-        :param cid: The chemical id
+        :param cid: A chemical id
 
         :type cid: str
 
@@ -853,7 +861,7 @@ class rpCache:
     def queryChebiCID(self, chebi):
         """Query the chemical id from a chebi id
  
-        :param chebi: The chemical id
+        :param chebi: A chebi chemical id
 
         :type chebi: str
 
@@ -869,6 +877,67 @@ class rpCache:
         except KeyError:
             self.logger.warning('Cache does not have CHEBI entry: '+str(chebi))
             return None
+
+
+    def queryCompXref(self, comp_id):
+        """Query the compartment id
+ 
+        :param comp_id: A compartment id
+
+        :type comp_id: str
+
+        :rtype: dict
+        :return: The list of compartment id's
+        """
+        if not self.comp_xref:
+            self.getCompXref()
+        try:
+            return self.comp_xref[comp_id]
+        except KeyError:
+            self.logger.warning('Cache does not have the compartment entry: '+str(comp_id))
+            return None
+
+
+    def queryCIDxref(self, cid):
+        """Query the chemical species cross-reference
+ 
+        :param cid: A chemical species id
+
+        :type cid: str
+
+        :rtype: dict
+        :return: The cross-reference of that species
+        """
+        if not self.cid_xref:
+            self.getCIDxref()
+        if not self.deprecatedCID_cid:
+            self.getDeprecatedCID()
+        try:
+            return self.cid_xref[self._checkCIDdeprecated(cid)]
+        except KeyError:
+            self.logger.warning('Cache does not have the chemical species: '+str(cid))
+            return None
+
+
+    def queryCIDname(self, cid): 
+        """Query the name of a chemical species
+
+        :param cid: A chemical id
+
+        :type cid: str
+
+        :rtype: str
+        :return: Common given name
+        """
+        if not self.cid_name:
+            self.getCIDname()
+        if not self.deprecatedCID_cid:
+            self.getDeprecatedCID()
+        try:
+            return self.cid_name[self._checkCIDdeprecated(cid)]
+        except KeyError:
+            self.logger.warning('Cache does have structure information for: '+str(cid))
+            return {}
 
 
 if __name__ == "__main__":
