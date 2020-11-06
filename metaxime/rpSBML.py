@@ -129,7 +129,7 @@ class rpSBML(rpCache):
         if self._isRPsbml():
             return \
                 sorted(self.getGroupsMembers('rp_pathway'))==sorted(rpsbml.getGroupsMembers('rp_pathway')) \
-            and self._dictRPpathway(self)==self._dictRPpathway(rpsbml)
+            and self._dictRPpathway()==rpsbml._dictRPpathway()
         else:
             raise ValueError('The model is not a rpSBML but a SBML')
 
@@ -1118,12 +1118,13 @@ class rpSBML(rpCache):
         :return: List of member id's of a particular group
         """
         groups = self.model.getPlugin('groups')
+        self.logger.debug('group_id: '+str(group_id))
         groups_obj = groups.getGroup(group_id)
         self._checklibSBML(groups_obj, 'retreiving groups groups_obj: '+str(group_id))
-        toRet = []
+        to_ret = []
         for member in groups_obj.getListOfMembers():
-            toRet.append(member.getIdRef())
-        return toRet
+            to_ret.append(member.getIdRef())
+        return to_ret
 
 
     def readRPrules(self, pathway_id='rp_pathway'):
@@ -1136,13 +1137,13 @@ class rpSBML(rpCache):
         :rtype: dict
         :return: Dictionnary of reaction rules (rule_id as key)
         """
-        toRet = {}
+        to_ret = {}
         for reacId in self.getGroupsMembers(pathway_id):
             reac = self.model.getReaction(reacId)
             brsynth_annot = self.readBRSYNTHAnnotation(reac.getAnnotation())
             if not brsynth_annot['rule_id']=='' and not brsynth_annot['smiles']=='':
-                toRet[brsynth_annot['rule_id']] = brsynth_annot['smiles'].replace('&gt;', '>')
-        return toRet
+                to_ret[brsynth_annot['rule_id']] = brsynth_annot['smiles'].replace('&gt;', '>')
+        return to_ret
 
 
     #TODO: merge with unique species
@@ -1181,13 +1182,13 @@ class rpSBML(rpCache):
         :return: List of unique species
         """
         rpSpecies = self.readRPspecies()
-        toRet = []
+        to_ret = []
         for i in rpSpecies:
             for y in rpSpecies[i]:
                 for z in rpSpecies[i][y]:
-                    if not z in toRet:
-                        toRet.append(z)
-        return toRet
+                    if not z in to_ret:
+                        to_ret.append(z)
+        return to_ret
         #reacMembers = self.readRPspecies(pathway_id)
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
 
@@ -1201,7 +1202,7 @@ class rpSBML(rpCache):
         try:
             annot = self.model.getAnnotation()
             self._checklibSBML(annot, 'Retreiving the annotation of model')
-            toRet = []
+            to_ret = []
             bag = annot.getChild('RDF').getChild('Description').getChild('hasTaxon').getChild('Bag')
             self._checklibSBML(bag, 'Retreiving the bag')
             for i in range(bag.getNumChildren()):
@@ -1215,11 +1216,11 @@ class rpSBML(rpCache):
                     self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
                     continue
                 if len(str_annot.split('/')[-1].split(':'))==2:
-                    cid = str_annot.split('/')[-1].split(':')[1]
+                    taxid = str_annot.split('/')[-1].split(':')[1]
                 else:
-                    cid = str_annot.split('/')[-1]
-                toRet.append(cid)
-            return toRet
+                    taxid = str_annot.split('/')[-1]
+                to_ret.append(tax_id)
+            return to_ret
         except AttributeError as e:
             self.logger.warning('Failed to retreive the taxonomy id: '+str(e))
             return []
@@ -1236,7 +1237,7 @@ class rpSBML(rpCache):
         :return: Dictionary of all the annotation of species
         """
         try:
-            toRet = {}
+            to_ret = {}
             bag = annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             for i in range(bag.getNumChildren()):
                 str_annot = bag.getChild(i).getAttrValue(0)
@@ -1248,10 +1249,10 @@ class rpSBML(rpCache):
                     cid = str_annot.split('/')[-1].split(':')[1]
                 else:
                     cid = str_annot.split('/')[-1]
-                if not dbid in toRet:
-                    toRet[dbid] = []
-                toRet[dbid].append(cid)
-            return toRet
+                if not dbid in to_ret:
+                    to_ret[dbid] = []
+                to_ret[dbid].append(cid)
+            return to_ret
         except AttributeError:
             return {}
 
@@ -1266,7 +1267,7 @@ class rpSBML(rpCache):
         :rtype: dict
         :return: Dictionary of all the BRSynth annotations
         """
-        toRet = {'dfG_prime_m': None,
+        to_ret = {'dfG_prime_m': None,
                  'dfG_uncert': None,
                  'dfG_prime_o': None,
                  'path_id': None,
@@ -1292,43 +1293,43 @@ class rpSBML(rpCache):
                 continue
             if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
                 try:
-                    toRet[ann.getName()] = {
+                    to_ret[ann.getName()] = {
                             'units': ann.getAttrValue('units'),
                             'value': float(ann.getAttrValue('value'))}
                 except ValueError:
                     self.logger.warning('Cannot interpret '+str(ann.getName())+': '+str(ann.getAttrValue('value')+' - '+str(ann.getAttrValue('units'))))
-                    toRet[ann.getName()] = {
+                    to_ret[ann.getName()] = {
                             'units': None,
                             'value': None}
             elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
                 try:
-                    #toRet[ann.getName()] = int(ann.getAttrValue('value'))
-                    toRet[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
+                    #to_ret[ann.getName()] = int(ann.getAttrValue('value'))
+                    to_ret[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
                 except ValueError:
-                    toRet[ann.getName()] = None
+                    to_ret[ann.getName()] = None
             elif ann.getName()=='rule_score' or ann.getName()=='global_score' or ann.getName()[:5]=='norm_':
                 try:
-                    #toRet[ann.getName()] = float(ann.getAttrValue('value'))
-                    toRet[ann.getName()] = {'value': float(ann.getAttrValue('value'))}
+                    #to_ret[ann.getName()] = float(ann.getAttrValue('value'))
+                    to_ret[ann.getName()] = {'value': float(ann.getAttrValue('value'))}
                 except ValueError:
-                    toRet[ann.getName()] = None
+                    to_ret[ann.getName()] = None
             elif ann.getName()=='smiles':
-                toRet[ann.getName()] = ann.getChild(0).toXMLString().replace('&gt;', '>')
+                to_ret[ann.getName()] = ann.getChild(0).toXMLString().replace('&gt;', '>')
             #lists in the annotation
             #elif ann.getName()=='selenzyme' or ann.getName()=='rule_ori_reac':
             elif ann.getName()=='selenzyme':
-                toRet[ann.getName()] = {}
+                to_ret[ann.getName()] = {}
                 for y in range(ann.getNumChildren()):
                     selAnn = ann.getChild(y)
                     try:
-                        toRet[ann.getName()][selAnn.getName()] = float(selAnn.getAttrValue('value'))
+                        to_ret[ann.getName()][selAnn.getName()] = float(selAnn.getAttrValue('value'))
                     except ValueError:
-                        toRet[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
+                        to_ret[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
             else:
-                toRet[ann.getName()] = ann.getChild(0).toXMLString()
+                to_ret[ann.getName()] = ann.getChild(0).toXMLString()
         #to delete empty
-        return {k: v for k, v in toRet.items() if v is not None}
-        #return toRet
+        return {k: v for k, v in to_ret.items() if v is not None}
+        #return to_ret
 
 
     def readReactionSpecies(self, reaction):
@@ -1343,16 +1344,16 @@ class rpSBML(rpCache):
         """
         #TODO: check that reaction is either an sbml species; if not check that its a string and that
         # it exists in the rpsbml model
-        toRet = {'left': {}, 'right': {}}
+        to_ret = {'left': {}, 'right': {}}
         #reactants
         for i in range(reaction.getNumReactants()):
             reactant_ref = reaction.getReactant(i)
-            toRet['left'][reactant_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
+            to_ret['left'][reactant_ref.getSpecies()] = int(reactant_ref.getStoichiometry())
         #products
         for i in range(reaction.getNumProducts()):
             product_ref = reaction.getProduct(i)
-            toRet['right'][product_ref.getSpecies()] = int(product_ref.getStoichiometry())
-        return toRet
+            to_ret['right'][product_ref.getSpecies()] = int(product_ref.getStoichiometry())
+        return to_ret
 
 
     ######################### INQUIRE ###################################
@@ -2127,10 +2128,11 @@ class rpSBML(rpCache):
         #same writting convention as COBRApy
         self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
         self.logger.debug('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
-        if species_name==None:
+        self.logger.debug('species_name: '+str(species_name))
+        if not species_name:
             self._checklibSBML(spe.setName(species_id), 'setting name for the metabolite '+str(species_id))
         else:
             self._checklibSBML(spe.setName(species_name), 'setting name for the metabolite '+str(species_name))
@@ -2152,7 +2154,7 @@ class rpSBML(rpCache):
         #### GROUPS #####
         #TODO: check that it actually exists
         self.logger.debug('species_group_id: '+str(species_group_id))
-        if not species_group_id==None:
+        if species_group_id:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(species_group_id)
             if not hetero_group:
@@ -2165,7 +2167,7 @@ class rpSBML(rpCache):
         #TODO: check that it actually exists
         #add the species to the sink species
         self.logger.debug('in_sink_group_id: '+str(in_sink_group_id))
-        if not in_sink_group_id==None:
+        if in_sink_group_id:
             groups_plugin = self.model.getPlugin('groups')
             sink_group = groups_plugin.getGroup(in_sink_group_id)
             if not sink_group:
