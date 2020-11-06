@@ -83,123 +83,12 @@ class rpReader(rpCache):
     ############################# PRIVATE FUNCTIONS #######################
     #######################################################################
 
-    ######## pubchem
-
-    def _pubChemLimit(self):
-        """Function to wait until the allowed number of requests can be made to pubChem
-
-        No more than 5 requests per second.
-        No more than 400 requests per minute.
-        No longer than 300 second running time per minute.
-        Requests exceeding limits are rejected (HTTP 503 error)
-
-        :rtype: None
-        :return: None
-        """
-        if self.pubchem_min_start==0.0:
-            self.pubchem_min_start = time.time()
-        self.pubchem_min_count += 1
-        #### requests per minute ####
-        if self.pubchem_min_count>=500 and time.time()-self.pubchem_min_start<=60.0:
-            logger.warning('Reached 500 requests per minute for pubchem... waiting a minute')
-            time.sleep(60.0)
-            self.pubchem_min_start = time.time()
-            self.pubchem_min_count = 0
-        elif time.time()-self.pubchem_min_start>60.0:
-            self.pubchem_min_start = time.time()
-            self.pubchem_min_count = 0
+    #######################################################################
+    ############################# PUBLIC FUNCTIONS ########################
+    #######################################################################
 
 
-    def _pubchemStrctSearch(self, strct, itype='inchi'):
-        """Try to retreive the xref from an inchi structure using pubchem
-
-        :param strct: The input structure
-        :param itype: The type of input. Valid options: inchi, inchikey, smiles
-
-        :type strct: str
-        :type itype: str
-
-        :rtype: dict
-        :return: The resulting cross reference and structures
-        """
-        self._pubChemLimit()
-        try:
-            r = requests.post('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/'+str(itype)+'/xrefs/SBURL/JSON', data={itype: strct})
-            res_list = r.json()
-        except json.decoder.JSONDecodeError:
-            logger.warning('JSON decode error')
-            return {}
-        try:
-            res_list = res_list['InformationList']['Information']
-        except KeyError:
-            logger.warning('pubchem JSON keyerror: '+str(res_list))
-            return {}
-        xref = {}
-        if len(res_list)==1:
-            _pubChemLimit()
-            try:
-                prop = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/'+str(res_list[0]['CID'])+'/property/IUPACName,InChI,InChIKey,CanonicalSMILES/JSON')
-                prop_list = prop.json()
-            except json.decoder.JSONDecodeError:
-                logger.warning('JSON decode error')
-                return {}
-            try:
-                name = prop_list['PropertyTable']['Properties'][0]['IUPACName']
-                inchi = prop_list['PropertyTable']['Properties'][0]['InChI']
-                inchikey = prop_list['PropertyTable']['Properties'][0]['InChIKey']
-                smiles = prop_list['PropertyTable']['Properties'][0]['CanonicalSMILES']
-            except KeyError:
-                logger.warning('pubchem JSON keyerror: '+str(prop_list))
-                return {}
-            #TODO: need to determine how long cobra cannot handle this
-            #TODO: determine if names that are too long is the problem and if not remove this part
-            if len(name)>30:
-                _pubChemLimit()
-                try:
-                    syn = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/'+str(res_list[0]['CID'])+'/synonyms/JSON')
-                    syn_lst = syn.json()
-                except json.decoder.JSONDecodeError:
-                    logger.warning('pubchem JSON decode error')
-                    return {}
-                try:
-                    syn_lst = syn_lst['InformationList']['Information'][0]['Synonym']
-                    syn_lst = [x for x in syn_lst if not 'CHEBI' in x and not x.isupper()]
-                    name = syn_lst[0] #need a better way instead of just the firs tone
-                except KeyError:
-                    logger.warning('pubchem JSON keyerror: '+str(syn.json()))
-                    return {}
-                except IndexError:
-                    name = ''
-            xref['pubchem'] = [str(res_list[0]['CID'])]
-            for url in res_list[0]['SBURL']:
-                if 'https://biocyc.org/compound?orgid=META&id=' in url:
-                    if 'biocyc' not in xref:
-                        xref['biocyc'] = []
-                    xref['biocyc'].append(url.replace('https://biocyc.org/compound?orgid=META&id=', ''))
-                if 'http://www.hmdb.ca/cidbolites/' in url:
-                    if 'hmdb' not in xref:
-                        xref['hmdb'] = []
-                    xref['hmdb'].append(url.replace('http://www.hmdb.ca/cidbolites/', ''))
-                if 'http://www.genome.jp/dbget-bin/www_bget?cpd:' in url:
-                    if 'kegg_c' not in xref:
-                        xref['kegg_c'] = []
-                    xref['kegg_c'].append(url.replace('http://www.genome.jp/dbget-bin/www_bget?cpd:', ''))
-                if 'http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:' in url:
-                    if 'chebi' not in xref:
-                        xref['chebi'] = []
-                    xref['chebi'].append(url.replace('http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:', ''))
-        elif len(res_list)==0:
-            logger.warning('Could not find results for: '+str(strct))
-            return {}
-        else:
-            logger.warning('There are more than one result for '+str(strct)+'... Ignoring')
-            return {}
-        return {'name': name, 'inchi': inchi, 'inchikey': inchikey, 'smiles': smiles, 'xref': xref}
-
-
-    ###############################################################
     ############################ RP2paths #########################
-    ###############################################################
 
 
     def rp2ToSBML(self,
