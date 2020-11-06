@@ -75,11 +75,11 @@ class rpCache:
                                   'MNXM57425': 'MNXM9',
                                   'MNXM137': 'MNXM588022'}
         self.deprecatedRID_rid = {} #same structure as deprecatedCID_cid
+        self.deprecatedComp_comp = {}
         #structure of the below looks like this: {'formula': 'C18H29O3', 'smiles': 'CCC=CCC1C(=O)CCC1CCCCCCCC(=O)O', 'inchi': 'InChI=1S/C18H30O3/c1-2-3-7-11-16-15(13-14-17(16)19)10-8-5-4-6-9-12-18(20)21/h3,7,15-16H,2,4-6,8-14H2,1H3,(H,20,21)', 'inchikey': 'BZXZFDKIRZBJEP-UHFFFAOYSA-N'}
         self.cid_strc = {} #cid_strc['MNXM1'] = {'formula': 'H', 'smiles': '[H+]', 'inchi': 'InChI=1S/p+1', 'inchikey': 'GPRLSGONYQIRFK-UHFFFAOYSA-N'}
         self.cid_xref = {} #cid_xref['MNXM287765'] = {'slm': ['000474284'], 'mnx': ['MNXM287765']}
         self.comp_xref = {}
-        self.xref_comp = {}
         self.cid_name = {} #TODO: add valid names to the cid's
         #self.rid_name = {} #TODO: add valid reaction names
         self.chebi_cid = {} # for chebi_cid['88281']: 'MXM2323'
@@ -389,12 +389,32 @@ class rpCache:
             return rid
 
 
+    def _checkCompDeprecated(self, comp_id):
+        """Check if the compartment id is deprecated
+
+        :param comp_id: The compartment id
+
+        :type comp_id: str
+
+        :rtype: str
+        :return: The compartment id
+        """
+        if not self.deprecatedComp_comp:
+            self.getCompXref()
+        try:
+            return self.deprecatedComp_comp[comp_id]
+        except KeyError:
+            return comp_id
+
+
     def _chebiXref(self):
         """Generate the chebi cross reference
 
         :rtype: None
         :return: None
         """
+        if not self.cid_xref:
+            self.getCIDxref()
         for cid in self.cid_xref:
             if 'chebi' in self.cid_xref[cid]:
                 for c in self.cid_xref[cid]['chebi']:
@@ -407,6 +427,10 @@ class rpCache:
         :rtype: None
         :return: None
         """
+        if not self.cid_strc:
+            self.getCIDstrc()
+        if not self.inchikey_cid:
+            self.getInchiKeyCID()
         for cid in self.cid_strc:
             if not self.cid_strc[cid]['inchikey'] in self.inchikey_cid:
                 self.inchikey_cid[self.cid_strc[cid]['inchikey']] = []
@@ -522,11 +546,11 @@ class rpCache:
         filename = 'comp_xref.tsv'
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename1)) or not os.path.isfile(os.path.join(self.dirname, 'cache', picklename2)):
             self.mnxCompXref(self.dirname+'/input_cache/comp_xref.tsv')
-            pickle.dump(self.xref_comp, gzip.open(os.path.join(self.dirname, 'cache', picklename1),'wb'))
+            pickle.dump(self.deprecatedComp_comp, gzip.open(os.path.join(self.dirname, 'cache', picklename1),'wb'))
             pickle.dump(self.comp_xref, gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'wb'))
-        self.xref_comp = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename1), 'rb'))
+        self.deprecatedComp_comp = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename1), 'rb'))
         self.comp_xref = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename2), 'rb'))
-        return self.xref_comp, self.comp_xref
+        return self.deprecatedComp_comp, self.comp_xref
 
 
     def getFullReactions(self):
@@ -807,8 +831,8 @@ class rpCache:
                         if not dbCompId in self.comp_xref[mnxc][dbName]:
                             self.comp_xref[mnxc][dbName].append(dbCompId)
                         #create the reverse dict
-                        if not dbCompId in self.xref_comp:
-                            self.xref_comp[dbCompId] = mnxc
+                        if not dbCompId in self.deprecatedComp_comp:
+                            self.deprecatedComp_comp[dbCompId] = mnxc
         except FileNotFoundError:
             self.logger.error('comp_xref file not found')
             return {}
@@ -1019,12 +1043,12 @@ class rpCache:
         :return: The list of compartment id's
         """
         if not self.comp_xref:
-            self.getCompXref()
+            self.getCompXref(comp_id)
         try:
             return self.comp_xref[comp_id]
         except KeyError:
             self.logger.warning('Cache does not have the compartment entry: '+str(comp_id))
-            return None
+            return {}
 
 
     def queryCIDxref(self, cid):
@@ -1045,7 +1069,7 @@ class rpCache:
             return self.cid_xref[self._checkCIDdeprecated(cid)]
         except KeyError:
             self.logger.warning('Cache does not have the chemical species: '+str(cid))
-            return None
+            return {}
 
 
     def queryCIDname(self, cid):
@@ -1068,7 +1092,24 @@ class rpCache:
             self.logger.warning('Cache does have structure information for: '+str(cid))
             return {}
 
-   
+
+    def queryInchiKeyCID(self, inchikey):
+        """Query the chemical id for the inchikey
+
+        :param inchikey: An inchikey
+
+        :type inchikey: str
+
+        :rtype: str
+        :return: Chemical ID
+        """
+        if not self.inchikey_cid:
+            self.getInchiKeyCID()
+        try:
+            return self._checkCIDdeprecated([i for i in self.inchikey_cid[inchikey] if i[:3]=='MNX'][0])
+        except KeyError:
+            self.logger.warning('Cache does have the following CID for the inchikey: '+str(inchikey))
+            return None
 
 
 if __name__ == "__main__":

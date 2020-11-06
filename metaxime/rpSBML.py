@@ -75,10 +75,10 @@ class rpSBML(rpCache):
         if rpcache:
             self.deprecatedCID_cid = rpcache.deprecatedCID_cid
             self.deprecatedRID_rid = rpcache.deprecatedRID_rid
+            self.deprecatedComp_comp = rpcache.deprecatedComp_comp
             self.cid_strc = rpcache.cid_strc
             self.cid_xref = rpcache.cid_xref
             self.comp_xref = rpcache.comp_xref
-            self.xref_comp = rpcache.xref_comp
             self.cid_name = rpcache.cid_name
             self.chebi_cid = rpcache.chebi_cid
             self.inchikey_cid = rpcache.inchikey_cid
