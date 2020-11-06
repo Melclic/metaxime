@@ -22,8 +22,8 @@ __status__ = "Development"
 
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
+    #level=logging.DEBUG,
+    level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -138,24 +138,139 @@ class rpReader(rpCache):
             raise ValueError('Max number of subpaths cannot be less than 0: '+str(max_subpaths_filter))
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
-        rp_strc = self.compounds(rp2paths_compounds)
-        rp_transformation, sink_molecules = self.transformations(rp2_pathways)
-        return self.rp2pathsToSBML(rp_strc,
-                                   rp_transformation,
-                                   sink_molecules,
-                                   rp2paths_pathways,
-                                   out_dir,
-                                   upper_flux_bound,
-                                   lower_flux_bound,
-                                   max_subpaths_filter,
-                                   pathway_id,
-                                   compartment_id,
-                                   species_group_id,
-                                   sink_species_group_id,
-                                   pubchem_search)
+        rp_strc = self.readRp2Compounds(rp2paths_compounds)
+        rp_transformations, sink_molecules = self.readRpPathways(rp2_pathways)
+        # TODO: make sure that you account for the fact that each reaction may have multiple associated reactions
+        rp_paths = self.readRp2PathsPathways(rp2paths_pathways)
+        sink_species = []
+        # for each line or rp2paths_pathways:
+        #     generate comb
+        #     for each combinant:
+        #         rank
+        #         process
+        #         add cofactors
+        #         dedup
+        #### pathToSBML ####
+        compartment_id = self._checkCompDeprecated(compartment_id)
+        for path_num in rp_paths:
+            # first level is the list of lists of sub_steps
+            # second is itertools all possible combinations using product
+            alt_path_num = 1
+            # sopX subpaths of the current rp2path pathway
+            list_rpsbml = []
+            for comb_path in list(itertools.product(*[[(i,y) for y in rp_paths[path_num][i]] for i in rp_paths[path_num]])):
+                steps = []
+                for i, y in comb_path:
+                    steps.append(rp_paths[path_num][i][y])
+                path_id = steps[0]['path_id']
+                rpsbml = rpSBML(model_name='rp_'+str(path_id)+'_'+str(alt_path_num), rpcache=self.rpcache)
+                #1) Create a generic Model, ie the structure and unit definitions that we will use the most
+                ##### TODO: give the user more control over a generic model creation:
+                # -> special attention to the compartment
+                rpsbml.genericModel('RetroPath_Pathway_'+str(path_id)+'_'+str(alt_path_num),
+                                    'RP_model_'+str(path_id)+'_'+str(alt_path_num),
+                                    compartment_id,
+                                    upper_flux_bound=upper_flux_bound,
+                                    lower_flux_bound=lower_flux_bound)
+                #2) Create the pathway (groups)
+                path_group = rpsbml.createGroup(pathway_id)
+                rpsbml.addUpdateBRSynth(path_group, 'path_id', path_id, None, False, False, False)
+                rpsbml.addUpdateBRSynth(path_group, 'sub_path_id', alt_path_num, None, False, False, False)
+                rpsbml.createGroup(species_group_id)
+                rpsbml.createGroup(sink_species_group_id)
+                #3) Find all unique species and add them to the model
+                all_cid = set([i for step in steps for lr in ['left', 'right'] for i in step[lr]])
+                for cid in all_cid:
+                    cid = self._checkCIDdeprecated(cid)
+                    species = Species(cid=cid)
+                    # inchi
+                    try:
+                        species.inchi = rp_strc[cid]['inchi']
+                    except KeyError:
+                        pass
+                    #inchikey
+                    try:
+                        species.inchikey = rp_strc[cid]['inchikey']
+                    except KeyError:
+                        pass
+                    #smiles
+                    try:
+                        species.smiles = rp_strc[cid]['smiles']
+                    except KeyError:
+                        pass
+                    if species in self.species_obj_dict:
+                        species = self.species_obj_dict[self.species_obj_dict.index(species)]
+                    else:
+                        self._gatherSpeciesInfo(species, pubchem_search)
+                    #pass the information to create the species
+                    #rpsbml = self._addSpecies(rpsbml, cid, sink_molecules, compartment_id, chem_name, spe, species_group_id, sink_species_group_id)
+                    #create the species according to the type of group they belong to
+                    if not species in self.species_obj_dict:
+                        self.species_obj_dict.append(species)
+                    if cid in sink_molecules:
+                        rpsbml.createSpecies(cid,
+                                             compartment_id,
+                                             species.name,
+                                             species.xref,
+                                             species.inchi,
+                                             species.inchikey,
+                                             species.smiles,
+                                             species_group_id,
+                                             sink_species_group_id)
+                    else:
+                        rpsbml.createSpecies(cid,
+                                             compartment_id,
+                                             species.name,
+                                             species.xref,
+                                             species.inchi,
+                                             species.inchikey,
+                                             species.smiles,
+                                             species_group_id)
+                #4) Add the complete reactions and their annotations
+                for step in steps:
+                    # add the substep to the model
+                    #step['sub_step'] = alt_path_num
+                    rpsbml.createReaction('RP'+str(step['step']), # parameter 'name' of the reaction deleted : 'RetroPath_Reaction_'+str(step['step']),
+                                          upper_flux_bound,
+                                          lower_flux_bound,
+                                          step,
+                                          compartment_id,
+                                          rp_transformations[step['transformation_id']]['rule'],
+                                          {'ec': rp_transformations[step['transformation_id']]['ec']},
+                                          pathway_id)
+                #5) Adding the consumption of the target
+                target_step = {'rule_id': None,
+                               'left': {[i for i in all_cid if i[:6]=='TARGET'][0]: 1}, #warning this is dangerous
+                               'right': {},
+                               'step': None,
+                               #'sub_step': None,
+                               #'path_id': None,
+                               'transformation_id': None,
+                               'rule_score': None,
+                               'rule_ori_reac': None}
+                rpsbml.createReaction('RP1_sink',
+                                      upper_flux_bound,
+                                      lower_flux_bound,
+                                      target_step,
+                                      compartment_id)
+                #6) Adding the cofactors
+                self._addCofactors(rpsbml, compartment_id, pathway_id, pubchem_search)
+                #7) Insert the new rpsbml object in list if it does not exist
+                #NOTE: sorting or bisect is a O^N problem, so no difference
+                if not rpsbml in list_rpsbml:
+                    list_rpsbml.append(rpsbml)
+                    list_rpsbml.sort(reverse=True)
+                    # 8) Keep only topX
+                    list_rpsbml = list_rpsbml[:max_subpaths_filter]
+                alt_path_num += 1
+            # Write results to files
+            for rpsbml in list_rpsbml:
+                self.logger.debug('out_dir: '+str(out_dir))
+                rpsbml.writeSBML(out_dir)
+        return True
 
 
-    def compounds(self, path):
+    def readRp2Compounds(self, path):
         """Function to parse the compounds.txt file
 
         Extract the smile and the structure of each compounds of RP2Path output. Method to parse all the RP output compounds.
@@ -206,7 +321,7 @@ class rpReader(rpCache):
         return rp_strc
 
 
-    def transformations(self, path):
+    def readRpPathways(self, path):
         """Function to parse the scope.csv file
 
         Extract the reaction rules from the retroPath2.0 output using the scope.csv file
@@ -218,7 +333,7 @@ class rpReader(rpCache):
         :rtype: tuple
         :return: The RetroPath transformation and the list of sink molecules
         """
-        rp_transformation = {}
+        rp_transformations = {}
         sink_molecules = []
         #### we might pass binary in the REST version
         reader = None
@@ -232,19 +347,19 @@ class rpReader(rpCache):
                 return {}
         next(reader)
         for row in reader:
-            if not row[1] in rp_transformation:
-                rp_transformation[row[1]] = {}
-                rp_transformation[row[1]]['rule'] = row[2]
-                rp_transformation[row[1]]['ec'] = [i.replace(' ', '') for i in row[11][1:-1].split(',') if not i.replace(' ', '')=='NOEC']
+            if not row[1] in rp_transformations:
+                rp_transformations[row[1]] = {}
+                rp_transformations[row[1]]['rule'] = row[2]
+                rp_transformations[row[1]]['ec'] = [i.replace(' ', '') for i in row[11][1:-1].split(',') if not i.replace(' ', '')=='NOEC']
             if row[7]=='1':
                 for i in row[8].replace(']', '').replace('[', '').replace(' ', '').split(','):
                     sink_molecules.append(i)
-        # logger.info(rp_transformation)
+        # logger.info(rp_transformations)
         # logger.info(sink_molecules)
-        return rp_transformation, list(set(sink_molecules))
+        return rp_transformations, list(set(sink_molecules))
 
 
-    def readRp2Paths(self, rp2paths_pathways):
+    def readRp2PathsPathways(self, rp2paths_pathways):
         """Function that reads the pathway output of rp2paths
 
         :param rp2paths_pathways: The path to the rp2paths pathway output
@@ -292,22 +407,22 @@ class rpReader(rpCache):
             ruleIds = tmp_rr_reactions
             sub_path_step = 1
             for singleRule in ruleIds:
-                tmpReac = {'rule_id': singleRule.split('__')[0],
-                           'rule_ori_reac': singleRule.split('__')[1],
-                           'rule_score': self.rr_reactions[singleRule.split('__')[0]][singleRule.split('__')[1]]['rule_score'],
-                           'right': {},
-                           'left': {},
-                           'path_id': int(row[0]),
-                           'step': path_step,
-                           'transformation_id': row[1][:-2]}
+                tmp_reac = {'rule_id': singleRule.split('__')[0],
+                            'rule_ori_reac': singleRule.split('__')[1],
+                            'rule_score': self.rr_reactions[singleRule.split('__')[0]][singleRule.split('__')[1]]['rule_score'],
+                            'right': {},
+                            'left': {},
+                            'path_id': int(row[0]),
+                            'step': path_step,
+                            'transformation_id': row[1][:-2]}
                 ############ LEFT ##############
                 for l in row[3].split(':'):
                     tmp_l = l.split('.')
-                    #tmpReac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
+                    #tmp_reac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
                     cid = '' #TODO: change this
                     cid = self._checkCIDdeprecated(tmp_l[1])
                     try:
-                        tmpReac['left'][cid] = int(tmp_l[0])
+                        tmp_reac['left'][cid] = int(tmp_l[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_l[0] to int ('+str(tmp_l[0])+')')
                         #return {}
@@ -315,11 +430,11 @@ class rpReader(rpCache):
                 ############## RIGHT ###########
                 for r in row[4].split(':'):
                     tmp_r = r.split('.')
-                    #tmpReac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
+                    #tmp_reac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
                     cid = '' #TODO change this
                     cid = self._checkCIDdeprecated(tmp_r[1])
                     try:
-                        tmpReac['right'][cid] = int(tmp_r[0])
+                        tmp_reac['right'][cid] = int(tmp_r[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_r[0] to int ('+str(tmp_r[0])+')')
                         return False
@@ -328,7 +443,7 @@ class rpReader(rpCache):
                     rp_paths[int(row[0])] = {}
                 if not int(path_step) in rp_paths[int(row[0])]:
                     rp_paths[int(row[0])][int(path_step)] = {}
-                rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmpReac
+                rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmp_reac
                 sub_path_step += 1
         return rp_paths
 
@@ -349,7 +464,7 @@ class rpReader(rpCache):
         species.cid = self._checkCIDdeprecated(species.cid)
         if not species.cid and species.inchikey:
             species.cid = self.queryInchiKeyCID(species.inchikey)
-        if not species.id:
+        if not species.cid:
             self.logger.error('There must be a cid of the Species object')
             return False
         #common name of the species
@@ -429,187 +544,6 @@ class rpReader(rpCache):
                     species.inchikey = strc_conv[s]
                 elif s=='smiles' and not species.smiles:
                     species.smiles = strc_conv[s]
-        return True
-
-
-    def rp2pathsToSBML(self,
-                       rp_strc,
-                       rp_transformation,
-                       sink_molecules,
-                       rp2paths_pathways,
-                       out_folder,
-                       upper_flux_bound=999999.0,
-                       lower_flux_bound=0.0,
-                       max_subpaths_filter=10,
-                       pathway_id='rp_pathway',
-                       compartment_id='MNXC3',
-                       species_group_id='central_species',
-                       sink_species_group_id='rp_sink_species',
-                       pubchem_search=False):
-        """Function to convert the already parsed rp2paths file to SBML files
-
-        Reading the RP2path output and extract all the information for each pathway RP2path Metabolic pathways from out_paths.csv create all the different values for heterologous paths from the RP2path out_paths.csv file. Note that path_step are in reverse order here
-
-        :param rp_strc: The structures dictionary from RetroPath2.0
-        :param rp_transformation: The transformation dictionary from RetroPath2.0
-        :param sink_molecules: The dictionary of sink molecules from RetroPath2.0
-        :param rp2paths_pathways: The rp2paths result file
-        :param out_folder: A folder to output the results (Default: None)
-        :param upper_flux_bound: The default upper flux bound (Default: 999999)
-        :param lower_flux_bound: The default lower flux bound (Default: 0)
-        :param max_subpaths_filter: The maximal number of rules associated with each step (Default: 10)
-        :param pathway_id: The Groups heterologous pathway id (Default: rp_pathway)
-        :param compartment_id: The compartment SBML id (Default: MNXC3)
-        :param species_group_id: The Groups id of the central species (Default: central_species)
-        :param sink_species_group_id: The Groups id of the rp_sink_species (Default: rp_sink_species)
-        :param pubchem_search: Use the pubchem database to search for missing cross reference (Default: False)
-
-        :type rp_strc: str
-        :type rp_transformation: str
-        :type sink_molecules: str
-        :type rp2paths_pathways: str
-        :type out_folder: str
-        :type upper_flux_bound: int
-        :type lower_flux_bound: int
-        :type max_subpaths_filter: int
-        :type pathway_id: str
-        :type compartment_id: str
-        :type species_group_id: str
-        :type sink_species_group_id: str
-        :type pubchem_search: bool
-
-        :rtype: dict
-        :return: The dictionary of the rp2paths results or False boolean if fails
-        """
-        # TODO: make sure that you account for the fact that each reaction may have multiple associated reactions
-        rp_paths = self.readRp2Paths(rp2paths_pathways)
-        sink_species = []
-        # for each line or rp2paths_pathways:
-        #     generate comb
-        #     for each combinant:
-        #         rank
-        #         process
-        #         add cofactors
-        #         dedup
-        #### pathToSBML ####
-        try:
-            compartment_id = self._checkCompDeprecated(compartment_id)
-        except KeyError:
-            logger.error('Could not Xref compartment_id ('+str(compartment_id)+')')
-            return False
-        for pathNum in rp_paths:
-            # first level is the list of lists of sub_steps
-            # second is itertools all possible combinations using product
-            alt_path_num = 1
-            # sopX subpaths of the current rp2path pathway
-            list_rpsbml = []
-            for comb_path in list(itertools.product(*[[(i,y) for y in rp_paths[pathNum][i]] for i in rp_paths[pathNum]])):
-                steps = []
-                for i, y in comb_path:
-                    steps.append(rp_paths[pathNum][i][y])
-                path_id = steps[0]['path_id']
-                rpsbml = rpSBML(model_name='rp_'+str(path_id)+'_'+str(alt_path_num), rpcache=self.rpcache)
-                #1) Create a generic Model, ie the structure and unit definitions that we will use the most
-                ##### TODO: give the user more control over a generic model creation:
-                # -> special attention to the compartment
-                rpsbml.genericModel('RetroPath_Pathway_'+str(path_id)+'_'+str(alt_path_num),
-                                    'RP_model_'+str(path_id)+'_'+str(alt_path_num),
-                                    compartment_id,
-                                    upper_flux_bound=upper_flux_bound,
-                                    lower_flux_bound=lower_flux_bound)
-                #2) Create the pathway (groups)
-                rpsbml.createGroup(pathway_id)
-                rpsbml.createGroup(species_group_id)
-                rpsbml.createGroup(sink_species_group_id)
-                #3) Find all unique species and add them to the model
-                all_cid = set([i for step in steps for lr in ['left', 'right'] for i in step[lr]])
-                for cid in all_cid:
-                    cid = self._checkCIDdeprecated(cid)
-                    species = Species(cid=cid)
-                    # inchi
-                    try:
-                        species.inchi = rp_strc[cid]['inchi']
-                    except KeyError:
-                        pass
-                    #inchikey
-                    try:
-                        species.inchikey = rp_strc[cid]['inchikey']
-                    except KeyError:
-                        pass
-                    #smiles
-                    try:
-                        species.smiles = rp_strc[cid]['smiles']
-                    except KeyError:
-                        pass
-                    if species in self.species_obj_dict:
-                        species = self.species_obj_dict[self.species_obj_dict.index(species)]
-                    else:
-                        self._gatherSpeciesInfo(species, pubchem_search)
-                    #pass the information to create the species
-                    #rpsbml = self._addSpecies(rpsbml, cid, sink_molecules, compartment_id, chem_name, spe, species_group_id, sink_species_group_id)
-                    #create the species according to the type of group they belong to
-                    if not species in self.species_obj_dict:
-                        self.species_obj_dict.append(species)
-                    if cid in sink_molecules:
-                        rpsbml.createSpecies(cid,
-                                             compartment_id,
-                                             species.name,
-                                             species.xref,
-                                             species.inchi,
-                                             species.inchikey,
-                                             species.smiles,
-                                             species_group_id,
-                                             sink_species_group_id)
-                    else:
-                        rpsbml.createSpecies(cid,
-                                             compartment_id,
-                                             species.name,
-                                             species.xref,
-                                             species.inchi,
-                                             species.inchikey,
-                                             species.smiles,
-                                             species_group_id)
-                #4) Add the complete reactions and their annotations
-                for step in steps:
-                    # add the substep to the model
-                    step['sub_step'] = alt_path_num
-                    rpsbml.createReaction('RP'+str(step['step']), # parameter 'name' of the reaction deleted : 'RetroPath_Reaction_'+str(step['step']),
-                                          upper_flux_bound,
-                                          lower_flux_bound,
-                                          step,
-                                          compartment_id,
-                                          rp_transformation[step['transformation_id']]['rule'],
-                                          {'ec': rp_transformation[step['transformation_id']]['ec']},
-                                          pathway_id)
-                #5) Adding the consumption of the target
-                target_step = {'rule_id': None,
-                               'left': {[i for i in all_cid if i[:6]=='TARGET'][0]: 1}, #warning this is dangerous
-                               'right': {},
-                               'step': None,
-                               'sub_step': None,
-                               'path_id': None,
-                               'transformation_id': None,
-                               'rule_score': None,
-                               'rule_ori_reac': None}
-                rpsbml.createReaction('RP1_sink',
-                                      upper_flux_bound,
-                                      lower_flux_bound,
-                                      target_step,
-                                      compartment_id)
-                #6) Adding the cofactors
-                self._addCofactors(rpsbml, compartment_id, pathway_id, pubchem_search)
-                #7) Insert the new rpsbml object in list if it does not exist
-                #NOTE: sorting or bisect is a O^N problem, so no difference
-                if not rpsbml in list_rpsbml:
-                    list_rpsbml.append(rpsbml)
-                    list_rpsbml.sort(reverse=True)
-                    # 8) Keep only topX
-                    list_rpsbml = list_rpsbml[:max_subpaths_filter]
-                alt_path_num += 1
-            # Write results to files
-            for rpsbml in list_rpsbml:
-                self.logger.debug('out_folder: '+str(out_folder))
-                rpsbml.writeSBML(out_folder)
         return True
 
 
@@ -824,7 +758,7 @@ class rpReader(rpCache):
         #This keeps the IDs conversions to the pathway
         pathway_cmp = {}
         spe_conv = {}
-        rpsbml_dict = rpsbml.asdict(pathway_id)
+        rpsbml_dict = rpsbml.asDict(pathway_id)
         rp_path = rpsbml.outPathsDict(pathway_id)
         ori_rp_path = copy.deepcopy(rp_path)
         #We reverse the loop to ID the intermediate CMP to their original ones
