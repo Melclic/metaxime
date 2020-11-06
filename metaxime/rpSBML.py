@@ -2005,12 +2005,12 @@ class rpSBML(rpCache):
             self.addUpdateBRSynth(reac, 'rule_ori_reac', step['rule_ori_reac'], None, True, False, False, meta_id)
         if step['rule_score']:
             self.addUpdateBRSynth(reac, 'rule_score', step['rule_score'], None, False, False, False, meta_id)
-        if step['path_id']:
-            self.addUpdateBRSynth(reac, 'path_id', step['path_id'], None, False, False, False, meta_id)
+        #if step['path_id']:
+        #    self.addUpdateBRSynth(reac, 'path_id', step['path_id'], None, False, False, False, meta_id)
         if step['step']:
             self.addUpdateBRSynth(reac, 'step_id', step['step'], None, False, False, False, meta_id)
-        if step['sub_step']:
-            self.addUpdateBRSynth(reac, 'sub_step_id', step['sub_step'], None, False, False, False, meta_id)
+        #if step['sub_step']:
+        #    self.addUpdateBRSynth(reac, 'sub_step_id', step['sub_step'], None, False, False, False, meta_id)
         #### GROUPS #####
         if not pathway_id==None:
             groups_plugin = self.model.getPlugin('groups')

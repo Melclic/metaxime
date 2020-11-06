@@ -138,10 +138,10 @@ class rpReader(rpCache):
             raise ValueError('Max number of subpaths cannot be less than 0: '+str(max_subpaths_filter))
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
-        rp_strc = self.compounds(rp2paths_compounds)
-        rp_transformation, sink_molecules = self.transformations(rp2_pathways)
+        rp_strc = self.readRp2Compounds(rp2paths_compounds)
+        rp_transformations, sink_molecules = self.readRpPathways(rp2_pathways)
         # TODO: make sure that you account for the fact that each reaction may have multiple associated reactions
-        rp_paths = self.readRp2Paths(rp2paths_pathways)
+        rp_paths = self.readRp2PathsPathways(rp2paths_pathways)
         sink_species = []
         # for each line or rp2paths_pathways:
         #     generate comb
@@ -173,7 +173,9 @@ class rpReader(rpCache):
                                     upper_flux_bound=upper_flux_bound,
                                     lower_flux_bound=lower_flux_bound)
                 #2) Create the pathway (groups)
-                rpsbml.createGroup(pathway_id)
+                path_group = rpsbml.createGroup(pathway_id)
+                self.addUpdateBRSynth(path_group, 'step_id', path_id, None, False, False, False)
+                self.addUpdateBRSynth(path_group, 'sub_step_id', alt_path_num, None, False, False, False)
                 rpsbml.createGroup(species_group_id)
                 rpsbml.createGroup(sink_species_group_id)
                 #3) Find all unique species and add them to the model
@@ -227,22 +229,22 @@ class rpReader(rpCache):
                 #4) Add the complete reactions and their annotations
                 for step in steps:
                     # add the substep to the model
-                    step['sub_step'] = alt_path_num
+                    #step['sub_step'] = alt_path_num
                     rpsbml.createReaction('RP'+str(step['step']), # parameter 'name' of the reaction deleted : 'RetroPath_Reaction_'+str(step['step']),
                                           upper_flux_bound,
                                           lower_flux_bound,
                                           step,
                                           compartment_id,
-                                          rp_transformation[step['transformation_id']]['rule'],
-                                          {'ec': rp_transformation[step['transformation_id']]['ec']},
+                                          rp_transformations[step['transformation_id']]['rule'],
+                                          {'ec': rp_transformations[step['transformation_id']]['ec']},
                                           pathway_id)
                 #5) Adding the consumption of the target
                 target_step = {'rule_id': None,
                                'left': {[i for i in all_cid if i[:6]=='TARGET'][0]: 1}, #warning this is dangerous
                                'right': {},
                                'step': None,
-                               'sub_step': None,
-                               'path_id': None,
+                               #'sub_step': None,
+                               #'path_id': None,
                                'transformation_id': None,
                                'rule_score': None,
                                'rule_ori_reac': None}
@@ -263,12 +265,12 @@ class rpReader(rpCache):
                 alt_path_num += 1
             # Write results to files
             for rpsbml in list_rpsbml:
-                self.logger.debug('out_folder: '+str(out_folder))
-                rpsbml.writeSBML(out_folder)
+                self.logger.debug('out_dir: '+str(out_dir))
+                rpsbml.writeSBML(out_dir)
         return True
 
 
-    def compounds(self, path):
+    def readRp2Compounds(self, path):
         """Function to parse the compounds.txt file
 
         Extract the smile and the structure of each compounds of RP2Path output. Method to parse all the RP output compounds.
@@ -319,7 +321,7 @@ class rpReader(rpCache):
         return rp_strc
 
 
-    def transformations(self, path):
+    def readRpPathways(self, path):
         """Function to parse the scope.csv file
 
         Extract the reaction rules from the retroPath2.0 output using the scope.csv file
@@ -331,7 +333,7 @@ class rpReader(rpCache):
         :rtype: tuple
         :return: The RetroPath transformation and the list of sink molecules
         """
-        rp_transformation = {}
+        rp_transformations = {}
         sink_molecules = []
         #### we might pass binary in the REST version
         reader = None
@@ -345,19 +347,19 @@ class rpReader(rpCache):
                 return {}
         next(reader)
         for row in reader:
-            if not row[1] in rp_transformation:
-                rp_transformation[row[1]] = {}
-                rp_transformation[row[1]]['rule'] = row[2]
-                rp_transformation[row[1]]['ec'] = [i.replace(' ', '') for i in row[11][1:-1].split(',') if not i.replace(' ', '')=='NOEC']
+            if not row[1] in rp_transformations:
+                rp_transformations[row[1]] = {}
+                rp_transformations[row[1]]['rule'] = row[2]
+                rp_transformations[row[1]]['ec'] = [i.replace(' ', '') for i in row[11][1:-1].split(',') if not i.replace(' ', '')=='NOEC']
             if row[7]=='1':
                 for i in row[8].replace(']', '').replace('[', '').replace(' ', '').split(','):
                     sink_molecules.append(i)
-        # logger.info(rp_transformation)
+        # logger.info(rp_transformations)
         # logger.info(sink_molecules)
-        return rp_transformation, list(set(sink_molecules))
+        return rp_transformations, list(set(sink_molecules))
 
 
-    def readRp2Paths(self, rp2paths_pathways):
+    def readRp2PathsPathways(self, rp2paths_pathways):
         """Function that reads the pathway output of rp2paths
 
         :param rp2paths_pathways: The path to the rp2paths pathway output
@@ -405,22 +407,22 @@ class rpReader(rpCache):
             ruleIds = tmp_rr_reactions
             sub_path_step = 1
             for singleRule in ruleIds:
-                tmpReac = {'rule_id': singleRule.split('__')[0],
-                           'rule_ori_reac': singleRule.split('__')[1],
-                           'rule_score': self.rr_reactions[singleRule.split('__')[0]][singleRule.split('__')[1]]['rule_score'],
-                           'right': {},
-                           'left': {},
-                           'path_id': int(row[0]),
-                           'step': path_step,
-                           'transformation_id': row[1][:-2]}
+                tmp_reac = {'rule_id': singleRule.split('__')[0],
+                            'rule_ori_reac': singleRule.split('__')[1],
+                            'rule_score': self.rr_reactions[singleRule.split('__')[0]][singleRule.split('__')[1]]['rule_score'],
+                            'right': {},
+                            'left': {},
+                            'path_id': int(row[0]),
+                            'step': path_step,
+                            'transformation_id': row[1][:-2]}
                 ############ LEFT ##############
                 for l in row[3].split(':'):
                     tmp_l = l.split('.')
-                    #tmpReac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
+                    #tmp_reac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
                     cid = '' #TODO: change this
                     cid = self._checkCIDdeprecated(tmp_l[1])
                     try:
-                        tmpReac['left'][cid] = int(tmp_l[0])
+                        tmp_reac['left'][cid] = int(tmp_l[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_l[0] to int ('+str(tmp_l[0])+')')
                         #return {}
@@ -428,11 +430,11 @@ class rpReader(rpCache):
                 ############## RIGHT ###########
                 for r in row[4].split(':'):
                     tmp_r = r.split('.')
-                    #tmpReac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
+                    #tmp_reac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
                     cid = '' #TODO change this
                     cid = self._checkCIDdeprecated(tmp_r[1])
                     try:
-                        tmpReac['right'][cid] = int(tmp_r[0])
+                        tmp_reac['right'][cid] = int(tmp_r[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_r[0] to int ('+str(tmp_r[0])+')')
                         return False
@@ -441,7 +443,7 @@ class rpReader(rpCache):
                     rp_paths[int(row[0])] = {}
                 if not int(path_step) in rp_paths[int(row[0])]:
                     rp_paths[int(row[0])][int(path_step)] = {}
-                rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmpReac
+                rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmp_reac
                 sub_path_step += 1
         return rp_paths
 

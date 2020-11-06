@@ -1007,7 +1007,7 @@ class rpCache:
         try:
             return self.cid_strc[self._checkCIDdeprecated(cid)]
         except KeyError:
-            self.logger.warning('Cache does have structure information for: '+str(cid))
+            self.logger.debug('Cache does have structure information for: '+str(cid))
             return {}
 
 
@@ -1028,7 +1028,7 @@ class rpCache:
         try:
             return self._checkCIDdeprecated(self.chebi_cid[chebi])
         except KeyError:
-            self.logger.warning('Cache does not have CHEBI entry: '+str(chebi))
+            self.logger.debug('Cache does not have CHEBI entry: '+str(chebi))
             return None
 
 
@@ -1047,7 +1047,7 @@ class rpCache:
         try:
             return self.comp_xref[comp_id]
         except KeyError:
-            self.logger.warning('Cache does not have the compartment entry: '+str(comp_id))
+            self.logger.debug('Cache does not have the compartment entry: '+str(comp_id))
             return {}
 
 
@@ -1068,7 +1068,7 @@ class rpCache:
         try:
             return self.cid_xref[self._checkCIDdeprecated(cid)]
         except KeyError:
-            self.logger.warning('Cache does not have the chemical species: '+str(cid))
+            self.logger.debug('Cache does not have the chemical species: '+str(cid))
             return {}
 
 
@@ -1089,7 +1089,7 @@ class rpCache:
         try:
             return self.cid_name[self._checkCIDdeprecated(cid)]
         except KeyError:
-            self.logger.warning('Cache does have structure information for: '+str(cid))
+            self.logger.debug('Cache does have structure information for: '+str(cid))
             return {}
 
 
@@ -1108,7 +1108,7 @@ class rpCache:
         try:
             return self._checkCIDdeprecated([i for i in self.inchikey_cid[inchikey] if i[:3]=='MNX'][0])
         except KeyError:
-            self.logger.warning('Cache does have the following CID for the inchikey: '+str(inchikey))
+            self.logger.debug('Cache does have the following CID for the inchikey: '+str(inchikey))
             return None
 
 
