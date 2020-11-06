@@ -360,6 +360,8 @@ class rpCache:
         :rtype: str
         :return: The valid CID
         """
+        if not self.deprecatedCID_cid:
+            self.getDeprecatedCID()
         try:
             return self.deprecatedCID_cid[cid]
         except KeyError:
@@ -379,6 +381,8 @@ class rpCache:
         :rtype: str
         :return: The valid RID
         """
+        if not self.deprecatedRID_rid:
+            self.getDeprecatedRID()
         try:
             return self.deprecatedRID_rid[rid]
         except KeyError:
@@ -962,7 +966,7 @@ class rpCache:
     ##################### QUERY #####################
 
 
-    def queryCIDstr(self, cid):
+    def queryCIDstrc(self, cid):
         """Query the structure information of a chemical species
 
         :param cid: A chemical id
@@ -1063,6 +1067,8 @@ class rpCache:
         except KeyError:
             self.logger.warning('Cache does have structure information for: '+str(cid))
             return {}
+
+   
 
 
 if __name__ == "__main__":

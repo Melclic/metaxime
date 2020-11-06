@@ -8,8 +8,9 @@ import json
 from io import StringIO
 import copy
 import logging
-from rpSBML import rpSBML
-from rpCache import rpCache
+
+from .rpSBML import rpSBML
+from .rpCache import rpCache
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"
@@ -58,37 +59,34 @@ class rpReader(rpCache):
     .. automethod:: _pubChemLimit
     .. automethod:: _pubchemStrctSearch
     """
-    def __init__(self):
+    def __init__(self, rpcache=None):
         """Constructor for the class
         """
-        #load the cache
+        #we do this for speed - although given inheritance you would think that the data is loaded twice, the MEM addresses are passed here
         super().__init__()
+        if rpcache:
+            super().__init__()
+            self.deprecatedCID_cid = rpcache.deprecatedCID_cid
+            self.deprecatedRID_rid = rpcache.deprecatedRID_rid
+            self.cid_strc = rpcache.cid_strc
+            self.cid_xref = rpcache.cid_xref
+            self.comp_xref = rpcache.comp_xref
+            self.xref_comp = rpcache.xref_comp
+            self.cid_name = rpcache.cid_name
+            self.chebi_cid = rpcache.chebi_cid
+            self.inchikey_cid = rpcache.inchikey_cid
+            self.rr_reactions = rpcache.rr_reactions
+            self.rr_full_reactions = rpcache.rr_full_reactions
+        self.rpcache = rpcache
         self.logger = logging.getLogger(__name__)
         self.logger.info('Starting instance of rpReader')
-        self.cid_strc = self.getCIDstrc()
-        self.rr_reactions = self.getRRreactions()
-        self.deprecatedCID_cid = self.getDeprecatedCID()
-        self.cid_xref = self.getCIDxref()
-        self.chebi_cid = self.getChebiCID()
-        self.xref_comp, self.comp_xref = self.getCompXref()
-        self.rr_full_reaction = self.getFullReactions()
-        self.deprecatedRID_rid = self.getDeprecatedRID()
-        self.inchikey_cid = self.getInchiKeyCID()
-        self.cid_name = self.getCIDname()
         #species
         self.species_obj_dict = []
 
 
     #######################################################################
-    ############################# PRIVATE FUNCTIONS #######################
+    ######################### Rp2paths and RetroPath2 #####################
     #######################################################################
-
-    #######################################################################
-    ############################# PUBLIC FUNCTIONS ########################
-    #######################################################################
-
-
-    ############################ RP2paths #########################
 
 
     def rp2ToSBML(self,
@@ -96,8 +94,8 @@ class rpReader(rpCache):
                   rp2paths_compounds,
                   rp2paths_pathways,
                   out_dir,
-                  upper_flux_bound=999999,
-                  lower_flux_bound=0,
+                  upper_flux_bound=999999.0,
+                  lower_flux_bound=0.0,
                   max_subpaths_filter=100,
                   pathway_id='rp_pathway',
                   compartment_id='MNXC3',
@@ -141,8 +139,8 @@ class rpReader(rpCache):
             raise ValueError('Max number of subpaths cannot be less than 0: '+str(max_subpaths_filter))
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
-        rp_strc = self._compounds(rp2paths_compounds)
-        rp_transformation, sink_molecules = self._transformation(rp2_pathways)
+        rp_strc = self.compounds(rp2paths_compounds)
+        rp_transformation, sink_molecules = self.transformations(rp2_pathways)
         return self.rp2pathsToSBML(rp_strc,
                                    rp_transformation,
                                    sink_molecules,
@@ -158,7 +156,7 @@ class rpReader(rpCache):
                                    pubchem_search)
 
 
-    def _compounds(self, path):
+    def compounds(self, path):
         """Function to parse the compounds.txt file
 
         Extract the smile and the structure of each compounds of RP2Path output. Method to parse all the RP output compounds.
@@ -170,7 +168,6 @@ class rpReader(rpCache):
         :rtype: dict
         :return: Dictionnary of compounds results
         """
-        #self.rp_strc = {}
         rp_strc = {}
         try:
             if isinstance(path, bytes):
@@ -180,8 +177,11 @@ class rpReader(rpCache):
             next(reader)
             for row in reader:
                 rp_strc[row[0]] = {'smiles': row[1]}  #, 'structure':row[1].replace('[','').replace(']','')
+                strc_info = None
                 try:
-                    rp_strc[row[0]]['inchi'] = self.cid_strc[row[0]]['inchi']
+                    if not strc_info:
+                        strc_info = self.queryCIDstrc(row[0])
+                    rp_strc[row[0]]['inchi'] = strc_info['inchi']
                 except KeyError:
                     #try to generate them yourself by converting them directly
                     try:
@@ -190,7 +190,9 @@ class rpReader(rpCache):
                     except NotImplementedError as e:
                         logger.warning('Could not convert the following SMILES to InChI: '+str(row[1]))
                 try:
-                    rp_strc[row[0]]['inchikey'] = self.cid_strc[row[0]]['inchikey']
+                    if not strc_info:
+                        strc_info = self.queryCIDstrc(row[0])
+                    rp_strc[row[0]]['inchikey'] = strc_info['inchikey']
                     #try to generate them yourself by converting them directly
                     #TODO: consider using the inchi writing instead of the SMILES notation to find the inchikey
                 except KeyError:
@@ -205,7 +207,7 @@ class rpReader(rpCache):
         return rp_strc
 
 
-    def _transformation(self, path):
+    def transformations(self, path):
         """Function to parse the scope.csv file
 
         Extract the reaction rules from the retroPath2.0 output using the scope.csv file
@@ -243,7 +245,7 @@ class rpReader(rpCache):
         return rp_transformation, list(set(sink_molecules))
 
 
-    def _readPaths(self, rp2paths_pathways):
+    def readRp2Paths(self, rp2paths_pathways):
         """Function that reads the pathway output of rp2paths
 
         :param rp2paths_pathways: The path to the rp2paths pathway output
@@ -310,13 +312,10 @@ class rpReader(rpCache):
                 ############ LEFT ##############
                 for l in row[3].split(':'):
                     tmp_l = l.split('.')
+                    #tmpReac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
+                    cid = '' #TODO: change this
+                    cid = self._checkCIDdeprecated(tmp_l[1])
                     try:
-                        #tmpReac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
-                        cid = '' #TODO: change this
-                        if tmp_l[1] in self.deprecatedCID_cid:
-                            cid = self.deprecatedCID_cid[tmp_l[1]]
-                        else:
-                            cid = tmp_l[1]
                         tmpReac['left'][cid] = int(tmp_l[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_l[0] to int ('+str(tmp_l[0])+')')
@@ -325,17 +324,14 @@ class rpReader(rpCache):
                 ############## RIGHT ###########
                 for r in row[4].split(':'):
                     tmp_r = r.split('.')
+                    #tmpReac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
+                    cid = '' #TODO change this
+                    cid = self._checkCIDdeprecated(tmp_r[1])
                     try:
-                        #tmpReac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
-                        cid = '' #TODO change this
-                        if tmp_r[1] in self.deprecatedCID_cid:
-                            cid = self.deprecatedCID_cid[tmp_r[1]]  #+':'+self.rr_reactions[tmpReac['rule_id']]['left']
-                        else:
-                            cid = tmp_r[1]  #+':'+self.rr_reactions[tmpReac['rule_id']]['left']
                         tmpReac['right'][cid] = int(tmp_r[0])
                     except ValueError:
                         logger.error('Cannot convert tmp_r[0] to int ('+str(tmp_r[0])+')')
-                        return {}
+                        return False
                 #################################
                 if not int(row[0]) in rp_paths:
                     rp_paths[int(row[0])] = {}
@@ -373,7 +369,8 @@ class rpReader(rpCache):
         #common name of the species
         if not species.name:
             try:
-                species.name = self.cid_strc[species.cid]['name'].replace("'", "")
+                #species.name = self.cid_strc[species.cid]['name'].replace("'", "")
+                species.name = self.queryCIDname(species.cid)
             except KeyError:
                 species.name = None
         ###Try to fill from cache
@@ -385,9 +382,12 @@ class rpReader(rpCache):
         otype = set()
         in_strct = None
         itype = None
+        strc_info = None
         if not species.inchi:
             try:
-                species.inchi = self.cid_strc[species.cid]['inchi']
+                if not strc_info:
+                    strc_info = self.queryCIDstrc(species.cid)
+                species.inchi = strc_info['inchi']
                 if not in_strct:
                     in_strct = species.inchi
                     itype = 'inchi'
@@ -395,7 +395,9 @@ class rpReader(rpCache):
                 otype.add('inchi')
         if not species.smiles:
             try:
-                species.smiles = self.cid_strc[species.cid]['smiles']
+                if not strc_info:
+                    strc_info = self.queryCIDstrc(species.cid)
+                species.smiles = strc_info['smiles']
                 if not in_strct:
                     in_strct = species.smiles
                     itype = 'smiles'
@@ -403,7 +405,9 @@ class rpReader(rpCache):
                 otype.add('smiles')
         if not species.inchikey:
             try:
-                species.inchikey = self.cid_strc[species.cid]['inchikey']
+                if not strc_info:
+                    strc_info = self.queryCIDstrc(species.cid)
+                species.inchikey = strc_info['inchikey']
                 if not in_strct:
                     in_strct = species.inchikey
                     itype = 'inchikey'
@@ -455,8 +459,8 @@ class rpReader(rpCache):
                        sink_molecules,
                        rp2paths_pathways,
                        out_folder,
-                       upper_flux_bound=999999,
-                       lower_flux_bound=0,
+                       upper_flux_bound=999999.0,
+                       lower_flux_bound=0.0,
                        max_subpaths_filter=10,
                        pathway_id='rp_pathway',
                        compartment_id='MNXC3',
@@ -499,7 +503,7 @@ class rpReader(rpCache):
         :return: The dictionary of the rp2paths results or False boolean if fails
         """
         # TODO: make sure that you account for the fact that each reaction may have multiple associated reactions
-        rp_paths = self._readPaths(rp2paths_pathways)
+        rp_paths = self.readRp2Paths(rp2paths_pathways)
         sink_species = []
         # for each line or rp2paths_pathways:
         #     generate comb
@@ -525,7 +529,7 @@ class rpReader(rpCache):
                 for i, y in comb_path:
                     steps.append(rp_paths[pathNum][i][y])
                 path_id = steps[0]['path_id']
-                rpsbml = rpSBML('rp_'+str(path_id)+'_'+str(alt_path_num))
+                rpsbml = rpSBML(model_name='rp_'+str(path_id)+'_'+str(alt_path_num), rpcache=self.rpcache)
                 #1) Create a generic Model, ie the structure and unit definitions that we will use the most
                 ##### TODO: give the user more control over a generic model creation:
                 # -> special attention to the compartment
@@ -614,7 +618,7 @@ class rpReader(rpCache):
                                       target_step,
                                       compartment_id)
                 #6) Adding the cofactors
-                self.addCofactors(rpsbml, compartment_id, pathway_id, pubchem_search)
+                self._addCofactors(rpsbml, compartment_id, pathway_id, pubchem_search)
                 #7) Insert the new rpsbml object in list if it does not exist
                 #NOTE: sorting or bisect is a O^N problem, so no difference
                 if not rpsbml in list_rpsbml:
@@ -746,7 +750,7 @@ class rpReader(rpCache):
             return rr_string
 
 
-    def addCofactorsStep(self, step, pathway_cmp):
+    def _addCofactorsStep(self, step, pathway_cmp):
         """Add the cofactors to monocomponent reactions
 
         :param step: Step in a pathway
@@ -821,7 +825,7 @@ class rpReader(rpCache):
         return True
 
 
-    def addCofactors(self, rpsbml, compartment_id='MNXC3', pathway_id='rp_pathway', pubchem_search=False):
+    def _addCofactors(self, rpsbml, compartment_id='MNXC3', pathway_id='rp_pathway', pubchem_search=False):
         """Function to reconstruct the heterologous pathway
 
         Read each pathway information and RetroRules information to construct heterologous pathways and add the cofactors
@@ -848,7 +852,7 @@ class rpReader(rpCache):
         #We reverse the loop to ID the intermediate CMP to their original ones
         for step_num in sorted(list(rp_path), reverse=True):
         #for step_num in sorted(list(rp_path)):
-            if self.addCofactorsStep(rp_path[step_num], pathway_cmp):
+            if self._addCofactorsStep(rp_path[step_num], pathway_cmp):
                 ###add the new cofactors to the SBML
                 #remove the original species from the monocomponent reaction
                 reactants = set(set(rp_path[step_num]['left'].keys())-set(ori_rp_path[step_num]['left'].keys()))
@@ -1094,7 +1098,7 @@ class rpReader(rpCache):
                   inFile,
                   output_folder=None,
                   upper_flux_bound=99999,
-                  lower_flux_bound=0,
+                  lower_flux_bound=0.0,
                   compartment_id='MNXC3',
                   pathway_id='rp_pathway',
                   species_group_id='central_species',
@@ -1110,7 +1114,7 @@ class rpReader(rpCache):
             except KeyError:
                 logger.error('Could not Xref compartment_id ('+str(compartment_id)+')')
                 return False
-            rpsbml = rpSBML.rpSBML(header_name+'_'+str(path_id))
+            rpsbml = rpSBML.rpSBML(model_name=header_name+'_'+str(path_id), rpcache=self.rpcache)
             # 1) create a generic Model, ie the structure and unit definitions that we will use the most
             ##### TODO: give the user more control over a generic model creation:
             # -> special attention to the compartment

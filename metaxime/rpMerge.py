@@ -28,14 +28,14 @@ class rpMerge(rpGraph):
     """Class containing all the functions required to merge two SBML files together or two rpSBML objects
     """
     def __init__(self,
-                 rpcache=None,
-                 model_name=None,
-                 document=None,
-                 path=None,
                  is_gem_sbml=False,
                  pathway_id='rp_pathway',
                  central_species_group_id='central_species',
-                 sink_species_group_id='rp_sink_species'):
+                 sink_species_group_id='rp_sink_species',
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
@@ -56,7 +56,14 @@ class rpMerge(rpGraph):
         .. document private functions
         .. automethod:: _findUniqueRowColumn
         """
-        super().__init__(rpcache, model_name, document, path, is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
+        super().__init__(is_gem_sbml,
+                         pathway_id,
+                         central_species_group_id,
+                         sink_species_group_id,
+                         model_name,
+                         document,
+                         path,
+                         rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpMerge')
         self.logger.debug('path: '+str(path))

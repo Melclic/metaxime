@@ -13,9 +13,9 @@ from metaxime import rpSBML
 class TestRPSBML(unittest.TestCase):
     def setUp(self):
         #load a rpSBML file
-        self.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
-        self.gem = rpSBML('gem', path=os.path.join('data', 'gem.xml'))
-        self.data = json.load(open(os.path.join('data', 'data.json'), 'r'))
+        self.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
+        self.gem = rpSBML('gem', path=os.path.join('data', 'rpsbml', 'gem.xml'))
+        self.data = json.load(open(os.path.join('data', 'rpsbml', 'data.json'), 'r'))
 
     def test_isRPsbml(self):
         self.assertTrue(self.rpsbml._isRPsbml())
@@ -95,7 +95,7 @@ class TestRPSBML(unittest.TestCase):
         self.assertEqual(self.rpsbml.findCreateObjective(['RP1_sink'], [1.0]), 'obj_fraction')
         #the create part
         with tempfile.TemporaryDirectory() as tmp_output_folder:
-            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             self.assertEqual(rpsbml.findCreateObjective(['RP2'], [1.0]), 'obj_RP2')
             self.assertTrue(rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.sbml')))
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbml'), 'rb').read()).hexdigest(), '66cb235c127e2bb07c6c13bea7bc6df2')
@@ -182,14 +182,14 @@ class TestRPSBML(unittest.TestCase):
         #create feature
         new = rpSBML('test')
         new.createModel('test_name', 'test_id')
-        param = new.createReturnFluxParameter(8888)
+        param = new.createReturnFluxParameter(8888.0)
         self.assertEqual(param.id, 'B_8888')
         self.assertEqual(param.value, 8888.0)
 
     def test_createReaction(self):
         #TODO: add detection
         with tempfile.TemporaryDirectory() as tmp_output_folder:
-            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             step = {'rule_id': None,
                    'left': {'MNXM89557': 1},
                    'right': {},
@@ -211,26 +211,26 @@ class TestRPSBML(unittest.TestCase):
     def test_createSpecies(self):
         #create new species
         with tempfile.TemporaryDirectory() as tmp_output_folder:
-            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             spe = rpsbml.createSpecies('test', 'MNXC3')
             self.assertEqual(spe.getId(), 'test__64__MNXC3')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))            
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '7d3291b8b2fe43ed9066b9baf0889fc6')
         #recover already existing species
-        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         spe = rpsbml.createSpecies('MNXM6', 'MNXC3')
         self.assertEqual(spe.getId(), 'MNXM6__64__MNXC3')
             
     def test_createGroup(self):
         #create new group
         with tempfile.TemporaryDirectory() as tmp_output_folder:
-            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             gro = rpsbml.createGroup('test')
             self.assertEqual(gro.getId(), 'test')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))            
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), 'd39a236d397fa3a480bd9a8e3eb63678')
         #recover already existing group
-        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         gro = rpsbml.createGroup('rp_pathway', 'MNXC3')
         self.assertEqual(gro.getId(), 'rp_pathway')
         
@@ -239,13 +239,13 @@ class TestRPSBML(unittest.TestCase):
     def test_createMultiFluxObj(self):
         #create new group
         with tempfile.TemporaryDirectory() as tmp_output_folder:
-            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+            rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             flux_obj = rpsbml.createMultiFluxObj('test', ['RP1'], [1.0])
             self.assertEqual(flux_obj.getId(), 'test')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '844dd8e5c344783d43bca1331f057ad4')
         #recover already existing group
-        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml.xml'))
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         flux_obj = rpsbml.createMultiFluxObj('obj_fraction', ['RP1'], [1.0])
         self.assertEqual(flux_obj.getId(), 'obj_fraction')
         

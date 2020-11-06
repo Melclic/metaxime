@@ -30,14 +30,14 @@ class rpGraph(rpSBML):
     """The class that hosts the networkx related functions
     """
     def __init__(self,
-                 rpcache=None
-                 model_name=None,
-                 document=None,
-                 path=None,
                  is_gem_sbml=False,
                  pathway_id='rp_pathway',
                  central_species_group_id='central_species',
-                 sink_species_group_id='rp_sink_species'):
+                 sink_species_group_id='rp_sink_species',
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None):
         """Constructor of the class
 
         Automatically constructs the network when calling the construtor
@@ -61,7 +61,10 @@ class rpGraph(rpSBML):
         .. automethod:: _recursiveReacSuccessors
         .. automethod:: _recursiveReacPredecessors
         """
-        super().__init__(rpcache, model_name, document, path)
+        super().__init__(model_name,
+                         document,
+                         path,
+                         rpcache)
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpGraph')

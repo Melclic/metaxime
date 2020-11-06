@@ -39,7 +39,11 @@ logging.basicConfig(
 class rpSBML(rpCache):
     """This class uses the libSBML object and handles it by adding BRSynth annotation
     """
-    def __init__(self, rpcache=None, model_name=None, document=None, path=None):
+    def __init__(self,
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None):
         """Constructor for the rpSBML class
 
         Note that the user can pass either a document libSBML object or a path to a SBML file. If a path is passed it overwrite the passed document object.
@@ -65,11 +69,10 @@ class rpSBML(rpCache):
         .. automethod:: _defaultBRSynthAnnot
         .. automethod:: _defaultMIRIAMAnnot
         """
-        super().__init__() #pass the cache on purpose empty as to load only if needed
+        #we do this for speed - although given inheritance you would think that the data is loaded twice, the MEM addresses are passed here
+        #even if its a different instance of rpCache
+        super().__init__()
         if rpcache:
-            self.rr_compounds_path = rpcache.rr_compounds_path
-            self.rr_rules_path = rpcache.rr_rules_path
-            self.rr_rxn_recipes_path = rpcache.rr_rxn_recipes_path
             self.deprecatedCID_cid = rpcache.deprecatedCID_cid
             self.deprecatedRID_rid = rpcache.deprecatedRID_rid
             self.cid_strc = rpcache.cid_strc
@@ -81,7 +84,6 @@ class rpSBML(rpCache):
             self.inchikey_cid = rpcache.inchikey_cid
             self.rr_reactions = rpcache.rr_reactions
             self.rr_full_reactions = rpcache.rr_full_reactions
-            self.dirname = rpcache.dirname
         self.logger = logging.getLogger(__name__)
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
@@ -489,7 +491,7 @@ class rpSBML(rpCache):
                 continue
             try:
                 for mnx in miriam_dict['metanetx']:
-                    inchikey = self.queryCIDstr(mnx)['inchikey']
+                    inchikey = self.queryCIDstrcc(mnx)['inchikey']
                     if inchikey:
                         self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
                     else:
@@ -498,7 +500,7 @@ class rpSBML(rpCache):
             except KeyError:
                 try:
                     for chebi in miriam_dict['chebi']:
-                        inchikey = self.queryCIDstr(self.queryChebiCID(chebi))['inchikey']
+                        inchikey = self.queryCIDstrcc(self.queryChebiCID(chebi))['inchikey']
                         if inchikey:
                             self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
                         else:
@@ -2083,21 +2085,21 @@ class rpSBML(rpCache):
         strct_info = None
         if not inchi:
             if not strct_info:
-                strct_info = self.queryCIDstr(species_id)
+                strct_info = self.queryCIDstrc(species_id)
             try:
                 inchi = strct_info['inchi']
             except KeyError:
                 pass
         if not inchikey:
             if not strct_info:
-                strct_info = self.queryCIDstr(species_id)
+                strct_info = self.queryCIDstrc(species_id)
             try:
                 inchikey = strct_info['inchikey']
             except KeyError:
                 pass
         if not smiles:
             if not strct_info:
-                strct_info = self.queryCIDstr(species_id)
+                strct_info = self.queryCIDstrc(species_id)
             try:
                 smiles = strct_info['smiles']
             except KeyError:
