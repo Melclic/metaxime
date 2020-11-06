@@ -1272,7 +1272,7 @@ class rpSBML(rpCache):
                  'dfG_prime_o': None,
                  'path_id': None,
                  'step_id': None,
-                 'sub_step_id': None,
+                 'sub_path_id': None,
                  'rule_score': None,
                  'smiles': None,
                  'inchi': None,
@@ -1447,9 +1447,9 @@ class rpSBML(rpCache):
                     'rule_ori_reac': brsynthAnnot['rule_ori_reac'],
                     'right': speciesReac['right'],
                     'left': speciesReac['left'],
-                    'path_id': brsynthAnnot['path_id'],
-                    'step': brsynthAnnot['step_id'],
-                    'sub_step': brsynthAnnot['sub_step_id']}
+                    #'path_id': brsynthAnnot['path_id'],
+                    'step': brsynthAnnot['step_id']}
+                    #'sub_step': brsynthAnnot['sub_step_id']}
             self.logger.debug('Step: '+str(step))
             pathway[brsynthAnnot['step_id']['value']] = step
         return pathway
