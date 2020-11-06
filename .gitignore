@@ -1,6 +1,5 @@
 *.swp
 .DS_Store
-*.tar
 input_cache_brenda/
 input_cache_mnx/
 input_cache/
@@ -18,6 +17,4 @@ marvin_linux_20.9.deb
 package.json
 package-lock.json
 node_modules
-*.tar
-*.tar.xz
 .ipynb_checkpoints/
