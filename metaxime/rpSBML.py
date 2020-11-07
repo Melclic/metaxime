@@ -26,8 +26,8 @@ __status__ = "Development"
 #logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
+    level=logging.DEBUG,
+    #level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -92,12 +92,11 @@ class rpSBML(rpCache):
         else:
             self.model_name = 'not_defined'
         self.mean_rules_score = 0.0
-        if document==None and path==None:
-            self.model = None
-            self.document = None
+        self.model = model
+        self.document = document
+        self.path = path
         #document takes priority
-        elif document:
-            self.path = None
+        if document:
             self.model = self.document.getModel()
             #enabling the extra packages if they do not exists when reading a model
             if not self.model.isPackageEnabled('groups'):
@@ -117,7 +116,6 @@ class rpSBML(rpCache):
             if self._isRPsbml():
                 self.mean_rules_score = self._computeMeanRulesScore()
         elif path:
-            self.path = path
             self.readSBML(path)
             if self._isRPsbml():
                 self.mean_rules_score = self._computeMeanRulesScore()
@@ -428,9 +426,10 @@ class rpSBML(rpCache):
 
     #TODO: need to find if this is used
     def updateBRSynthPathway(self, rpsbml_dict, pathway_id='rp_pathway'):
-        """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the differences.
+        """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the normalisation and global_score differences
 
-        Used by rpGlobalScore
+        Originally used by rpGlobalScore and is used to update the normalised and global score.... Should make about all
+        NOTE: this may be dangerous to use when the two rpSBMK do not have the same number of reactions
 
         :param rpsbml_dict: Heterologous dict
         :param pathway_id: The Groups id of the heterologous pathway
@@ -443,39 +442,49 @@ class rpSBML(rpCache):
         """
         self.logger.debug('rpsbml_dict: '+str(rpsbml_dict))
         groups = self.model.getPlugin('groups')
+        self._checklibSBML(groups, 'Retreiving the groups extension')
         rp_pathway = groups.getGroup(pathway_id)
-        for bd_id in rpsbml_dict['pathway']['brsynth']:
-            if bd_id[:5]=='norm_' or bd_id=='global_score':
-                try:
-                    value = rpsbml_dict['pathway']['brsynth'][bd_id]['value']
-                except KeyError:
-                    self.logger.warning('The entry '+str(db_id)+' doesnt contain value')
-                    self.logger.warning('No" value", using the root')
-                try:
-                    units = rpsbml_dict['pathway']['brsynth'][bd_id]['units']
-                except KeyError:
-                    units = None
-                self.addUpdateBRSynth(rp_pathway, bd_id, value, units, False)
-        for reac_id in rpsbml_dict['reactions']:
-            reaction = self.model.getReaction(reac_id)
-            if reaction==None:
-                self.logger.warning('Skipping updating '+str(reac_id)+', cannot retreive it')
-                continue
-            for bd_id in rpsbml_dict['reactions'][reac_id]['brsynth']:
-                if bd_id[:5]=='norm_':
+        self._checklibSBML(rp_pathway, 'Retreiving the heterolgous pathway: '+str(pathway_id))
+        #self.logger.debug('--> pathway')
+        if 'pathway' in rpsbml_dict:
+            if 'brsynth' in rpsbml_dict['pathway']:
+                for brsynth_id in rpsbml_dict['pathway']['brsynth']:
+                    #self.logger.debug('\tbrsynth_id: '+str(brsynth_id))
+                    #if brsynth_id[:5]=='norm_' or brsynth_id=='global_score':
                     try:
-                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]['value']
-                    except KeyError:
-                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]
-                        self.logger.warning('No" value", using the root')
+                        value = rpsbml_dict['pathway']['brsynth'][brsynth_id]['value']
+                    except TypeError:
+                        self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
                     try:
-                        units = rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]['units']
-                    except KeyError:
+                        units = rpsbml_dict['pathway']['brsynth'][brsynth_id]['units']
+                    except (KeyError, TypeError):
                         units = None
-                    self.addUpdateBRSynth(reaction, bd_id, value, units, False)
+                    self._checklibSBML(self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, False), 'updating brsynth annotation value: '+str(value))
+        #self.logger.debug('--> reactions')
+        if 'reactions' in rpsbml_dict:
+            for reac_id in rpsbml_dict['reactions']:
+                #self.logger.debug('reac_id: '+str(reac_id))
+                try:
+                    reaction = self.model.getReaction(reac_id)
+                    self._checklibSBML(reaction, 'Retreiving the reaction: '+str(reac_id))
+                except AttributeError:
+                    self.logger.warning('Skipping updating '+str(reac_id)+', cannot retreive it')
+                    continue
+                for brsynth_id in rpsbml_dict['reactions'][reac_id]['brsynth']:
+                    #if brsynth_id[:5]=='norm_':
+                    #self.logger.debug('\tbrsynth_id: '+str(brsynth_id))
+                    try:
+                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['value']
+                    except TypeError:
+                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]
+                        self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
+                    try:
+                        units = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['units']
+                    except (KeyError, TypeError):
+                        units = None
+                    self._checklibSBML(self.addUpdateBRSynth(reaction, brsynth_id, value, units, False), 'updating the reaction brsynth annotation value: '+str(value))
 
 
-    #TODO: not a fan of passing a class object 
     def addMIRIAMinchiKey(self):
         """Check the MIRIAM annotation for MetaNetX or CHEBI id's and try to recover the inchikey from cache and add it to MIRIAM
 
@@ -491,21 +500,21 @@ class rpSBML(rpCache):
                 continue
             try:
                 for mnx in miriam_dict['metanetx']:
-                    inchikey = self.queryCIDstrcc(mnx)['inchikey']
+                    inchikey = self.queryCIDstrc(mnx)['inchikey']
                     if inchikey:
                         self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
+                        break
                     else:
                         self.logger.warning('The inchikey is empty for: '+str(spe.id))
-                    continue
             except KeyError:
                 try:
                     for chebi in miriam_dict['chebi']:
-                        inchikey = self.queryCIDstrcc(self.queryChebiCID(chebi))['inchikey']
+                        inchikey = self.queryCIDstrc(self.queryChebiCID(chebi))['inchikey']
                         if inchikey:
                             self.addUpdateMIRIAM(spe, 'species', {'inchikey': [inchikey]})
+                            break
                         else:
                             self.logger.warning('The inchikey is empty for: '+str(spe.id))
-                        continue
                 except KeyError:
                     self.logger.warning('Cannot find the inchikey for: '+str(spe.id))
         return True
@@ -642,7 +651,7 @@ class rpSBML(rpCache):
         :rtype: bool
         :return: Sucess or failure of the function
         """
-        self.logger.debug('############### '+str(annot_header)+' ################')
+        #self.logger.debug('############### '+str(annot_header)+' ################')
         if isList:
             annotation = '''<annotation>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
@@ -692,7 +701,7 @@ class rpSBML(rpCache):
       </rdf:RDF>
     </annotation>'''
         annot_obj = libsbml.XMLNode.convertStringToXMLNode(annotation)
-        if annot_obj==None:
+        if not annot_obj:
             self.logger.error('Cannot conver this string to annotation object: '+str(annotation))
             return False
         #### retreive the annotation object
@@ -712,7 +721,7 @@ class rpSBML(rpCache):
         isfound_target = False
         #self.logger.debug(brsynth_annot.toXMLString())
         for i in range(brsynth_annot.getNumChildren()):
-            self.logger.debug(annot_header+' -- '+str(brsynth_annot.getChild(i).getName()))
+            #self.logger.debug(annot_header+' -- '+str(brsynth_annot.getChild(i).getName()))
             if annot_header==brsynth_annot.getChild(i).getName():
                 isfound_target = True
                 '''
@@ -723,30 +732,30 @@ class rpSBML(rpCache):
                 isfound_source = False
                 source_brsynth_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth')
                 for y in range(source_brsynth_annot.getNumChildren()):
-                    self.logger.debug('\t'+annot_header+' -- '+str(source_brsynth_annot.getChild(y).getName()))
+                    #self.logger.debug('\t'+annot_header+' -- '+str(source_brsynth_annot.getChild(y).getName()))
                     if str(annot_header)==str(source_brsynth_annot.getChild(y).getName()):
                         isfound_source = True
-                        self.logger.debug('Adding annotation to the brsynth annotation: '+str(source_brsynth_annot.getChild(y).toXMLString()))
+                        #self.logger.debug('Adding annotation to the brsynth annotation: '+str(source_brsynth_annot.getChild(y).toXMLString()))
                         towrite_annot = source_brsynth_annot.getChild(y)
-                        self.logger.debug(brsynth_annot.toXMLString())
+                        #self.logger.debug(brsynth_annot.toXMLString())
                         self._checklibSBML(brsynth_annot.addChild(towrite_annot), ' 1 - Adding annotation to the brsynth annotation')
-                        self.logger.debug(brsynth_annot.toXMLString())
+                        #self.logger.debug(brsynth_annot.toXMLString())
                         break
                 if not isfound_source:
                     self.logger.error('Cannot find '+str(annot_header)+' in source annotation')
         if not isfound_target:
-            self.logger.debug('Cannot find '+str(annot_header)+' in target annotation')
+            #self.logger.debug('Cannot find '+str(annot_header)+' in target annotation')
             isfound_source = False
             source_brsynth_annot = annot_obj.getChild('RDF').getChild('BRSynth').getChild('brsynth')
             for y in range(source_brsynth_annot.getNumChildren()):
-                self.logger.debug('\t'+annot_header+' -- '+str(source_brsynth_annot.getChild(y).getName()))
+                #self.logger.debug('\t'+annot_header+' -- '+str(source_brsynth_annot.getChild(y).getName()))
                 if str(annot_header)==str(source_brsynth_annot.getChild(y).getName()):
                     isfound_source = True
-                    self.logger.debug('Adding annotation to the brsynth annotation: '+str(source_brsynth_annot.getChild(y).toXMLString()))
+                    #self.logger.debug('Adding annotation to the brsynth annotation: '+str(source_brsynth_annot.getChild(y).toXMLString()))
                     towrite_annot = source_brsynth_annot.getChild(y)
-                    self.logger.debug(brsynth_annot.toXMLString())
+                    #self.logger.debug(brsynth_annot.toXMLString())
                     self._checklibSBML(brsynth_annot.addChild(towrite_annot), '2 - Adding annotation to the brsynth annotation')
-                    self.logger.debug(brsynth_annot.toXMLString())
+                    #self.logger.debug(brsynth_annot.toXMLString())
                     break
             if not isfound_source:
                 self.logger.error('Cannot find '+str(annot_header)+' in source annotation')
@@ -853,8 +862,8 @@ class rpSBML(rpCache):
                 self.logger.warning('Cannot return MIRIAM attribute')
                 pass
         #add or ignore
-        self.logger.debug('inside: '+str(inside))
-        self.logger.debug('xref: '+str(xref))
+        #self.logger.debug('inside: '+str(inside))
+        #self.logger.debug('xref: '+str(xref))
         #toadd = self._compareXref(inside, xref)
         #### replace the function by the code since used only once ###### 
         toadd = copy.deepcopy(xref)
@@ -867,9 +876,9 @@ class rpSBML(rpCache):
                     toadd[database_id] = list_diff
             except KeyError:
                 pass
-        if toadd==None:
+        if not toadd:
             toadd = []
-        self.logger.debug('toadd: '+str(toadd))
+        #self.logger.debug('toadd: '+str(toadd))
         ##########################
         for database_id in toadd:
             for species_id in toadd[database_id]:
@@ -910,7 +919,7 @@ class rpSBML(rpCache):
                         continue
         if isReplace:
             ori_miriam_annot = sbase_obj.getAnnotation()
-            if ori_miriam_annot==None:
+            if not ori_miriam_annot:
                 sbase_obj.unsetAnnotation()
                 sbase_obj.setAnnotation(miriam_annot)
             else:
@@ -980,6 +989,7 @@ class rpSBML(rpCache):
         if not os.path.isfile(path):
             self.logger.error('Invalid input file')
             raise FileNotFoundError
+        self.path = path
         document = libsbml.readSBMLFromFile(path)
         self._checklibSBML(document, 'reading input file')
         errors = document.getNumErrors()
@@ -1282,7 +1292,7 @@ class rpSBML(rpCache):
                  'rule_ori_reac': None,
                  'rule_score': None,
                  'global_score': None}
-        if annot==None:
+        if not annot:
             self.logger.warning('The passed annotation is not BRSYNTH')
             return {}
         bag = annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
@@ -1749,7 +1759,7 @@ class rpSBML(rpCache):
         self._checklibSBML(self.model.setId(model_id), 'setting the model ID')
         model_fbc = self.model.getPlugin('fbc')
         model_fbc.setStrict(True)
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(model_id)
         self._checklibSBML(self.model.setMetaId(meta_id), 'setting model meta_id')
         self._checklibSBML(self.model.setName(name), 'setting model name')
@@ -1799,7 +1809,7 @@ class rpSBML(rpCache):
         self._checklibSBML(comp.setConstant(True), 'set compartment "constant"')
         self._checklibSBML(comp.setSize(size), 'set compartment "size"')
         self._checklibSBML(comp.setSBOTerm(290), 'set SBO term for the cytoplasm compartment')
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(comp_id)
         self._checklibSBML(comp.setMetaId(meta_id), 'set the meta_id for the compartment')
         ############################ MIRIAM ############################
@@ -1825,7 +1835,7 @@ class rpSBML(rpCache):
         unit_def = self.model.createUnitDefinition()
         self._checklibSBML(unit_def, 'creating unit definition')
         self._checklibSBML(unit_def.setId(unit_id), 'setting id')
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(unit_id)
         self._checklibSBML(unit_def.setMetaId(meta_id), 'setting meta_id')
         #self.unit_definitions.append(unit_id)
@@ -1905,7 +1915,7 @@ class rpSBML(rpCache):
             self._checklibSBML(newParam.setValue(value), 'setting value')
             self._checklibSBML(newParam.setUnits(unit), 'setting units')
             self._checklibSBML(newParam.setSBOTerm(625), 'setting SBO term')
-            if meta_id==None:
+            if not meta_id:
                 meta_id = self._genMetaID(parameter_id)
             self._checklibSBML(newParam.setMetaId(meta_id), 'setting meta ID')
             #self.parameters.append(parameter_id)
@@ -1967,7 +1977,7 @@ class rpSBML(rpCache):
         #TODO: consider having the two parameters as input to the function
         self._checklibSBML(reac.setReversible(True), 'set reaction reversibility flag')
         self._checklibSBML(reac.setFast(False), 'set reaction "fast" attribute')
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(reac_id)
         self._checklibSBML(reac.setMetaId(meta_id), 'setting species meta_id')
         #TODO: check that the species exist
@@ -2012,7 +2022,7 @@ class rpSBML(rpCache):
         #if step['sub_step']:
         #    self.addUpdateBRSynth(reac, 'sub_step_id', step['sub_step'], None, False, False, False, meta_id)
         #### GROUPS #####
-        if not pathway_id==None:
+        if pathway_id:
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(pathway_id)
             if not hetero_group:
@@ -2203,7 +2213,7 @@ class rpSBML(rpCache):
         new_group = groups_plugin.createGroup()
         self.logger.debug('setting new group id: '+str(group_id))
         new_group.setId(group_id)
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(group_id)
         new_group.setMetaId(meta_id)
         new_group.setKind(libsbml.GROUP_KIND_COLLECTION)
@@ -2234,7 +2244,7 @@ class rpSBML(rpCache):
         #fbc_plugin = reac.getPlugin("fbc")
         gp = fbc_plugin.createGeneProduct()
         gp.setId(geneName)
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(str(geneName))
         gp.setMetaId(meta_id)
         gp.setLabel('gene_'+str(step_id))
@@ -2278,7 +2288,7 @@ class rpSBML(rpCache):
         target_flux_obj = target_obj.createFluxObjective()
         target_flux_obj.setReaction(reaction_name)
         target_flux_obj.setCoefficient(coefficient)
-        if meta_id==None:
+        if not meta_id:
             meta_id = self._genMetaID(str(fluxobj_id))
         target_flux_obj.setMetaId(meta_id)
         target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id))
@@ -2326,7 +2336,7 @@ class rpSBML(rpCache):
             self._checklibSBML(target_flux_obj, 'Creating a new flux objective')
             self._checklibSBML(target_flux_obj.setReaction(reac), 'Setting the reaction for the objective')
             self._checklibSBML(target_flux_obj.setCoefficient(coef), 'Setting the coefficients for the objective')
-            if meta_id==None:
+            if not meta_id:
                 meta_id = self._genMetaID(str(fluxobj_id))
             self._checklibSBML(target_flux_obj.setMetaId(meta_id), 'Seting the meta id for the objective id')
             self._checklibSBML(target_flux_obj.setAnnotation(self._defaultBRSynthAnnot(meta_id)), 'Setting the annnotation for the objective')

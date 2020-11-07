@@ -64,6 +64,12 @@ class TestRPSBML(unittest.TestCase):
     def test_defaultMIRIAMAnnot(self):
         self.assertEqual(self.rpsbml._defaultMIRIAMAnnot('test'), self.data['defaultmiriamannot'])
 
+    def test_updateBRSynthPathway(self):
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'updatebrsynthpathway.xml'))
+        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.23925506171963057)
+        rpsbml.updateBRSynthPathway(self.rpsbml.asDict())
+        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.5760957019721074)
+
     def test_addMIRIAMinchiKey(self):
         #no inchikeys should be added
         self.assertTrue(self.rpsbml.addMIRIAMinchiKey())

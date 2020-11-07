@@ -8,23 +8,62 @@ import logging
 from .rpSBML import rpSBML
 
 #TODO: add the pareto frontier optimisation as an automatic way to calculate the optimal fluxes
-class rpFBA(rpSBML):
+class rpFBA(rpMerge):
     """Class to simulate an rpsbml object using different FBA types and objective functions
     """
-    def __init__(self, model_name=None, document=None, path=None, rpcache=None):
+    def __init__(self,
+                 gem_sbml_path=None
+                 del_sp_pro=False,
+                 del_sp_react=True,
+                 upper_flux_bound=999999.0,
+                 lower_flux_bound=0.0,
+                 compartment_id='MNXC3'
+                 is_gem_sbml=False,
+                 pathway_id='rp_pathway',
+                 central_species_group_id='central_species',
+                 sink_species_group_id='rp_sink_species',
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None):
         """Default constructor
+
+        The class inherits from rpMerge. The unique parameter of this class is gem_sbml_path, that determines the path to the GEM model file
+        that the internal SBML will merge to (controlled by path). The uppser and lower fluxes and compartment_id control the creation of novel reactions
+        when faced with single parent species that we will fill. Note that if both del_sp_pro and del_sp_react are False, then these are ignored since
+        single parent species are simply deleted. The different group_id are specified due to the rpGraph package (not that important). The rest of the
+        input parameters relate to rpSBML (model_name, document, path....).
+
+        NOTE: that is_gem_sbml is specified for the CURRENT model and not the passed one through gem_sbml_path
 
         .. document private functions
         .. automethod:: _convertToCobra
         .. automethod:: _writeAnalysisResults
         """
-        #load the rpSBML
-        super().__init__(model_name, document, pathm rpcache)
+        super().__init__(is_gem_sbml,
+                         pathway_id,
+                         central_species_group_id,
+                         sink_species_group_id,
+                         model_name,
+                         document,
+                         path,
+                         rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpFBA')
+        self.species_source_target = None
+        self.reactions_source_target = None
         #TODO enable FBC if not done so
-        self.cobraModel = None
-        #self._convertToCobra()
+        if self.model:
+            if gem_sbml_path:
+                self.mergeModels(gem_sbml_path,
+                                 del_sp_pro,
+                                 del_sp_react,
+                                 upper_flux_bound,
+                                 lower_flux_bound,
+                                 compartment_id)
+            self.cobra_model = self._convertToCobra()
+        else:
+            self.cobra_model = None
 
 
     ##########################################################
@@ -38,20 +77,21 @@ class rpFBA(rpSBML):
         :return: Success or failure of the function
         :rtype: bool
         """
+        cobra_model = None
         try:
             with tempfile.TemporaryDirectory() as tmp_output_folder:
                 self.writeSBML(tmp_output_folder)
                 #logging.info(glob.glob(tmp_output_folder+'/*'))
                 #logging.info(cobra.io.validate_sbml_model(glob.glob(tmp_output_folder+'/*')[0]))
-                self.cobraModel = cobra.io.read_sbml_model(glob.glob(tmp_output_folder+'/*')[0], use_fbc_package=True)
-            #self.cobraModel = cobra.io.read_sbml_model(self.document.toXMLNode().toXMLString(), use_fbc_package=True)
+                cobra_model = cobra.io.read_sbml_model(glob.glob(tmp_output_folder+'/*')[0], use_fbc_package=True)
+            #self.cobra_model = cobra.io.read_sbml_model(self.document.toXMLNode().toXMLString(), use_fbc_package=True)
             #use CPLEX
-            # self.cobraModel.solver = 'cplex'
+            # self.cobra_model.solver = 'cplex'
         except cobra.io.sbml.CobraSBMLError as e:
             self.logger.error(e)
             self.logger.error('Cannot convert the libSBML model to Cobra')
             return False
-        return True
+        return cobra_model
 
 
     def _writeAnalysisResults(self, objective_id, cobra_results, pathway_id='rp_pathway'):
@@ -71,12 +111,14 @@ class rpFBA(rpSBML):
         self.logger.debug('----- Setting the results for '+str(objective_id)+ ' -----')
         groups = self.model.getPlugin('groups')
         self._checklibSBML(groups, 'Getting groups plugin')
-        rp_pathway = groups.getGroup(pathway_id)
-        if rp_pathway==None:
+        try:
+            rp_pathway = groups.getGroup(pathway_id)
+            self._checklibSBML(rp_pathway, 'retreiving the group: '+str(pathway_id))
+        except AttributeError:
             self.logger.warning('The group '+str(pathway_id)+' does not exist... creating it')
             self.createPathway(pathway_id)
             rp_pathway = groups.getGroup(pathway_id)
-        self._checklibSBML(rp_pathway, 'Getting RP pathway')
+            self._checklibSBML(rp_pathway, 'Getting RP pathway')
         #write the results to the rp_pathway
         self.logger.debug('Set '+str(pathway_id)+' with '+str('fba_'+str(objective_id))+' to '+str(cobra_results.objective_value))
         self.addUpdateBRSynth(rp_pathway, 'fba_'+str(objective_id), str(cobra_results.objective_value), 'mmol_per_gDW_per_hr', False)
@@ -98,18 +140,105 @@ class rpFBA(rpSBML):
                 self.logger.debug('Set the reaction '+str(flux_obj.getReaction())+' a flux_value of '+str(cobra_results.fluxes.get(flux_obj.getReaction())))
         #write all the results to the reactions of pathway_id
         for member in rp_pathway.getListOfMembers():
-            reac = self.model.getReaction(member.getIdRef())
-            if reac==None:
+            try:
+                self._checklibSBML(self.model.getReaction(member.getIdRef()), 'retreiving the reaction: '+str(member.getIdRef()))
+            except AttributeError:
                 self.logger.error('Cannot retreive the following reaction: '+str(member.getIdRef()))
-                #return False
                 continue
             self.logger.debug('Set the reaction '+str(member.getIdRef())+' a '+str('fba_'+str(objective_id))+' of '+str(cobra_results.fluxes.get(reac.getId())))
             self.addUpdateBRSynth(reac, 'fba_'+str(objective_id), str(cobra_results.fluxes.get(reac.getId())), 'mmol_per_gDW_per_hr', False)
 
 
     ##################################################################
-    ######################## Model runs ##############################
+    ######################## PUBLIC FUNCTIONS ########################
     ##################################################################
+
+
+    def mergeModels(self,
+                    gem_sbml_path,
+                    del_sp_pro=False,
+                    del_sp_react=True,
+                    upper_flux_bound=999999.0,
+                    lower_flux_bound=0.0,
+                    compartment_id='MNXC3'):
+        if not del_sp_pro==False and not del_sp_pro:
+            d_s_p = self.del_sp_pro
+        else:
+            d_s_p = del_sp_pro
+        if not del_sp_react==False and not del_sp_react:
+            d_s_r = self.del_sp_react
+        else:
+            d_s_r = del_sp_react
+        if not upper_flux_bound==0.0 and not upper_flux_bound:
+            u_f_b = self.upper_flux_bound
+        else:
+            u_f_b = upper_flux_bound
+        if not lower_flux_bound==0.0 and not lower_flux_bound:
+            l_f_b = self.lower_flux_bound
+        else:
+            l_f_b = lower_flux_bound
+        if not compartment_id:
+            c_i = self.compartment_id
+        else:
+            c_i = compartment_id
+        self.species_source_target, self.reactions_source_target = super().mergeModels(gem_sbml_path, d_s_p, d_s_r, u_f_b, l_f_b, c_i)
+
+
+    def writeSBML(self, path=None, keep_merged=True):
+        """Export the metabolic network to a SBML filem either the fully merged versin or the rpSBML only version
+
+        :param path: Path to the output SBML file
+
+        :type path: str
+
+        :raises FileNotFoundError: If the file cannot be found
+        :raises AttributeError: If the libSBML command encounters an error or the input value is None
+
+        :rtype: bool
+        :return: Success or failure of the command
+        """
+        ####### check the path #########
+        #need to determine where are the path id's coming from
+        if not keep_merged:
+            if not self.path:
+                self.logger.error('Must have path initiated to return the non-merged version of the model')
+                return False
+            #open the original file once again
+            skinny_rpmerge = rpMerge(is_gem_sbml=self.is_gem_sbml,
+                                     pathway_id=self.pathway_id,
+                                     central_species_group_id=self.central_species_group_id,
+                                     sink_species_group_id=self.sink_species_group_id,
+                                     model_name=self.model_name,
+                                     document=self.document,
+                                     path=self.path,
+                                     cache=self.rpcache):
+            #TODO: need to add the newly created reaction from the merge to the skinny rpSBML version
+            #overwrite the original BRSynth annotations with the new ones
+            skinny_rpmerge.updateBRSynthPathway(self.asDict())
+            #WARNING: This will not keep the created reactions at the gafilling single parent process
+            #add the objectives and overwtie as well
+            source_fbc = self.model.getPlugin('fbc')
+            self._checklibSBML(source_fbc, 'Getting source FBC')
+            target_fbc = skinny_rpmerge.model.getPlugin('fbc')
+            self._checklibSBML(target_fbc, 'Getting target FBC')
+            target_objID = [i.getId() for i in target_fbc.getListOfObjectives()]
+            for source_obj in source_fbc.getListOfObjectives():
+                source_obj_id = source_obj.getId()
+                if source_obj.getId() in target_objID:
+                    target_obj = target_fbc.getObjective(source_obj.getId())
+                    self._checklibSBML(target_obj, 'Getting target objective')
+                    self._checklibSBML(target_obj.setAnnotation(source_obj.getAnnotation()), 'setting annotation')
+                    for target_fluxObj in target_obj.getListOfFluxObjectives():
+                        for source_fluxObj in source_obj.getListOfFluxObjectives():
+                            if target_fluxObj.getReaction()==source_fluxObj.getReaction():
+                                self._checklibSBML(target_fluxObj.setAnnotation(source_fluxObj.getAnnotation()), 'setting annotation')
+                else:
+                    self._checklibSBML(target_fbc.addObjective(source_obj), 'Adding objective')
+            #rpsbml.createMultiFluxObj('obj_RP1_sink', ['RP1_sink'], [1])
+            target_fbc.setActiveObjectiveId(source_obj_id) #tmp random assigenement of objective
+            return skinny_rpmerge.writeSBML(path)
+        else:
+            return super().writeSBML(path)
 
 
     def runMultiObjective(self,
@@ -140,11 +269,18 @@ class rpFBA(rpSBML):
         objective_id = self.findCreateObjective(reactions, coefficients, is_max)
         self._checklibSBML(fbc_plugin.setActiveObjectiveId(objective_id),
                 'Setting active objective '+str(objective_id))
-        if not self._convertToCobra():
-            return False
-        cobra_results = self.cobraModel.optimize()
+        if not self.cobra_model:
+            self.cobra_model = self._convertToCobra()
+        if not self.cobra_model:
+            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
+            return 0.0, False
+        cobra_results = self.cobra_model.optimize()
         self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
-        return True
+        return 0.0, True
+
+
+    #TODO
+    #def runMultiObjectiveParsimonou
 
 
     def runFBA(self, reaction_id, coefficient=1.0, is_max=True, pathway_id='rp_pathway', objective_id=None):
@@ -171,9 +307,12 @@ class rpFBA(rpSBML):
         #run the FBA
         self._checklibSBML(fbc_plugin.setActiveObjectiveId(objective_id),
                 'Setting active objective '+str(objective_id))
-        if not self._convertToCobra():
+        if not self.cobra_model:
+            self.cobra_model = self._convertToCobra()
+        if not self.cobra_model:
+            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
-        cobra_results = self.cobraModel.optimize()
+        cobra_results = self.cobra_model.optimize()
         self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         return cobra_results.objective_value, True
 
@@ -204,9 +343,12 @@ class rpFBA(rpSBML):
         #run the FBA
         self._checklibSBML(fbc_plugin.setActiveObjectiveId(objective_id),
                 'Setting active objective '+str(objective_id))
-        if not self._convertToCobra():
+        if not self.cobra_model:
+            self.cobra_model = self._convertToCobra()
+        if not self.cobra_model:
+            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
-        cobra_results = pfba(self.cobraModel, fraction_of_optimum)
+        cobra_results = pfba(self.cobra_model, fraction_of_optimum)
         self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         return cobra_results.objective_value, True
 
@@ -264,11 +406,12 @@ class rpFBA(rpSBML):
             #self.runFBA(source_reaction, source_coefficient, is_max, pathway_id)
             self._checklibSBML(fbc_plugin.setActiveObjectiveId(source_obj_id),
                     'Setting active objective '+str(source_obj_id))
-            if not self._convertToCobra():
-                self.logger.error('Converting libSBML to CobraPy returned False')
+            if not self.cobra_model:
+                self.cobra_model = self._convertToCobra()
+            if not self.cobra_model:
                 self._writeAnalysisResults(source_obj_id, 0.0, pathway_id)
                 return 0.0, False
-            cobra_results = self.cobraModel.optimize()
+            cobra_results = self.cobra_model.optimize()
             self._writeAnalysisResults(source_obj_id, cobra_results, pathway_id)
             # cobra_results.objective_value
             fbc_obj = fbc_plugin.getObjective(source_obj_id)
@@ -295,7 +438,7 @@ class rpFBA(rpSBML):
             #although this may not be the greatest idea, set flux to 0.0 when cobrapy error
             self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
-        cobra_results = self.cobraModel.optimize()
+        cobra_results = self.cobra_model.optimize()
         self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         ##### print the biomass results ######
         #self.logger.debug('Biomass: '+str(cobra_results.fluxes.biomass))

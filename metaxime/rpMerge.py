@@ -43,7 +43,7 @@ class rpMerge(rpGraph):
         :param rpcache: rpCache object
         :param model_name: The name of the model
         :param document: The libSBML Document of the model
-        :param path: The path to the SBMKL file
+        :param path: The path to the SBML file
         :param is_gem_sbml: Determine if its a full GEM model or not
         :param pathway_id: The Groups id of the heterologous pathway
         :param central_specues_group_id: The Groups id of the central species
@@ -292,12 +292,15 @@ class rpMerge(rpGraph):
     ##################################################################################
 
 
+    #TODO: add an option to add the reactions to rp_pathway such that the skimmy version of the model may 
+    #keep the new reactions
     def checkSingleParent(self,
                           del_sp_pro=False,
                           del_sp_react=False,
                           upper_flux_bound=999999.0,
                           lower_flux_bound=0.0,
-                          compartment_id='MNXC3'):
+                          compartment_id='MNXC3',
+                          pathway_id=None):
         """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
 
         :param del_sp_pro: Define if to delete the products or create reaction that consume it
@@ -323,6 +326,7 @@ class rpMerge(rpGraph):
             for pro in produced_species_nid:
                 self.logger.debug('Deleting product species: '+str(pro))
                 self._checklibSBML(self.removeSpecies(pro), 'removing the following product species: '+str(pro))
+                #TODO: remove the mention of it from any reactions that contain it
         else:
             for pro in produced_species_nid:
                 self.logger.debug('Creating reaction to consume: '+str(pro))
@@ -341,11 +345,13 @@ class rpMerge(rpGraph):
                                     upper_flux_bound,
                                     lower_flux_bound,
                                     step,
-                                    compartment_id)
+                                    compartment_id,
+                                    pathway_id=pathway_id)
         if del_sp_react:
             for react in consumed_species_nid:
                 self.logger.debug('Deleting reactant species: '+str(react))
                 self._checklibSBML(self.removeSpecies(react), 'removing the following reactant species: '+str(react))
+                #TODO: remove the mention of it from any reactions that contain it
         else:
             for react in consumed_species_nid:
                 self.logger.debug('Creating reaction to produce: '+str(react))
@@ -364,7 +370,8 @@ class rpMerge(rpGraph):
                                     upper_flux_bound,
                                     lower_flux_bound,
                                     step,
-                                    compartment_id)
+                                    compartment_id,
+                                    pathway_id=pathway_id)
         return True
 
 
@@ -791,7 +798,8 @@ class rpMerge(rpGraph):
                     del_sp_react=True,
                     upper_flux_bound=999999.0,
                     lower_flux_bound=0.0,
-                    compartment_id='MNXC3'):
+                    compartment_id='MNXC3',
+                    pathway_id=None):
         """Merge two models species and reactions using the annotations to recognise the same species and reactions. The 
 
         The source model (input model) has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
@@ -1238,7 +1246,7 @@ class rpMerge(rpGraph):
         #regenerate the graph with the new species added
         self._makeGraph(is_gem_sbml=True)
         #detect single parent species and deal with them
-        self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id)
+        self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id, pathway_id)
         """
         ########### OUTPUT ##############
         #if the output is specified, then generate the different 
