@@ -323,7 +323,7 @@ class rpSBML(rpCache):
         """
         return self._nameToSbmlId(md5(str(name).encode('utf-8')).hexdigest())
 
-    
+
     '''
     def _compareXref(self, current, toadd):
         """Compare two dictionaries of lists that describe the cross-reference and return the difference
@@ -429,7 +429,7 @@ class rpSBML(rpCache):
     #TODO: need to find if this is used
     def updateBRSynthPathway(self, rpsbml_dict, pathway_id='rp_pathway'):
         """Given a dict of the same as rpsbml_dict (output of rpSBML.asdict), update the differences.
-        
+
         Used by rpGlobalScore
 
         :param rpsbml_dict: Heterologous dict

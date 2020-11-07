@@ -299,8 +299,8 @@ class rpReader(rpCache):
                 except KeyError:
                     #try to generate them yourself by converting them directly
                     try:
-                        resConv = self._convert_depiction(idepic=row[1], itype='smiles', otype={'inchi'})
-                        rp_strc[row[0]]['inchi'] = resConv['inchi']
+                        res_conv = self._convert_depiction(idepic=row[1], itype='smiles', otype={'inchi'})
+                        rp_strc[row[0]]['inchi'] = res_conv['inchi']
                     except NotImplementedError as e:
                         logger.warning('Could not convert the following SMILES to InChI: '+str(row[1]))
                 try:
@@ -311,8 +311,8 @@ class rpReader(rpCache):
                     #TODO: consider using the inchi writing instead of the SMILES notation to find the inchikey
                 except KeyError:
                     try:
-                        resConv = self._convert_depiction(idepic=row[1], itype='smiles', otype={'inchikey'})
-                        rp_strc[row[0]]['inchikey'] = resConv['inchikey']
+                        res_conv = self._convert_depiction(idepic=row[1], itype='smiles', otype={'inchikey'})
+                        rp_strc[row[0]]['inchikey'] = res_conv['inchikey']
                     except NotImplementedError as e:
                         logger.warning('Could not convert the following SMILES to InChI key: '+str(row[1]))
         except (TypeError, FileNotFoundError) as e:
@@ -469,10 +469,7 @@ class rpReader(rpCache):
             return False
         #common name of the species
         if not species.name:
-            try:
-                species.name = self.queryCIDname(species.cid)
-            except KeyError:
-                species.name = None
+            species.name = self.queryCIDname(species.cid)
         ###Try to fill from cache
         if not species.xref:
             species.xref = self.queryCIDxref(species.cid)
@@ -552,7 +549,7 @@ class rpReader(rpCache):
     #############################################################################################
 
 
-    def completeReac(self, step, rr_reac, full_reac, mono_side, rr_string, pathway_cmp):
+    def _completeReac(self, step, rr_reac, full_reac, mono_side, rr_string, pathway_cmp):
         """Given a dictionary describing a monocomponent reaction, add the cofactors by comparing it with the original reaction
 
         :param step: Dictionnary describing the reaction
@@ -678,12 +675,12 @@ class rpReader(rpCache):
         reac_smiles_right = step['reaction_rule'].split('>>')[1]
         if self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['rel_direction']==-1:
             try:
-                isSuccess, reac_smiles_left = self.completeReac(step['right'],
-                                                                self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['left'],
-                                                                self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['right'],
-                                                                True,
-                                                                reac_smiles_left,
-                                                                pathway_cmp)
+                isSuccess, reac_smiles_left = self._completeReac(step['right'],
+                                                                 self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['left'],
+                                                                 self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['right'],
+                                                                 True,
+                                                                 reac_smiles_left,
+                                                                 pathway_cmp)
                 if not isSuccess:
                     logger.warning('Could not recognise reaction rule for step (1): '+str(step))
                     return False
@@ -691,12 +688,12 @@ class rpReader(rpCache):
                 logger.warning('Could not find the full reaction for reaction (1): '+str(step))
                 return False
             try:
-                isSuccess, reac_smiles_right = self.completeReac(step['left'],
-                                                                 self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['right'],
-                                                                 self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['left'],
-                                                                 False,
-                                                                 reac_smiles_right,
-                                                                 pathway_cmp)
+                isSuccess, reac_smiles_right = self._completeReac(step['left'],
+                                                                  self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['right'],
+                                                                  self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['left'],
+                                                                  False,
+                                                                  reac_smiles_right,
+                                                                  pathway_cmp)
                 if not isSuccess:
                     logger.warning('Could not recognise reaction rule for step (2): '+str(step))
                     return False
@@ -705,12 +702,12 @@ class rpReader(rpCache):
                 return False
         elif self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['rel_direction']==1:
             try:
-                isSuccess, reac_smiles_left = self.completeReac(step['right'],
-                                                                self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['left'],
-                                                                self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['left'],
-                                                                True,
-                                                                reac_smiles_left,
-                                                                pathway_cmp)
+                isSuccess, reac_smiles_left = self._completeReac(step['right'],
+                                                                 self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['left'],
+                                                                 self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['left'],
+                                                                 True,
+                                                                 reac_smiles_left,
+                                                                 pathway_cmp)
                 if not isSuccess:
                     logger.error('Could not recognise reaction rule for step (3): '+str(step))
                     return False
@@ -718,12 +715,12 @@ class rpReader(rpCache):
                 logger.warning('Could not find the full reaction for reaction (3): '+str(step))
                 return False
             try:
-                isSuccess, reac_smiles_right = self.completeReac(step['left'],
-                                                                 self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['right'],
-                                                                 self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['right'],
-                                                                 False,
-                                                                 reac_smiles_right,
-                                                                 pathway_cmp)
+                isSuccess, reac_smiles_right = self._completeReac(step['left'],
+                                                                  self.rr_reactions[step['rule_id']][step['rule_ori_reac']]['right'],
+                                                                  self.rr_full_reactions[self._checkRIDdeprecated(step['rule_ori_reac'])]['right'],
+                                                                  False,
+                                                                  reac_smiles_right,
+                                                                  pathway_cmp)
                 if not isSuccess:
                     logger.error('Could not recognise reaction rule for step (4): '+str(step))
                     return False
@@ -849,13 +846,13 @@ class rpReader(rpCache):
     # to SBML
     #
     # @param self object pointer
-    # @param inFile The input JSON file
+    # @param in_file The input JSON file
     # @param mnx_header Reorganise the results around the target MNX products
     # @return Dictionnary of SBML
-    def _parseTSV(self, inFile, remove_inchi_4p=False, mnx_header=False):
+    def _parseTSV(self, in_file, remove_inchi_4p=False, mnx_header=False):
         data = {}
         try:
-            for row in csv.DictReader(open(inFile), delimiter='\t'):
+            for row in csv.DictReader(open(in_file), delimiter='\t'):
                 ######## path_id ######
                 try:
                     path_id = int(row['pathway_ID'])
@@ -864,7 +861,7 @@ class rpReader(rpCache):
                     continue
                 if not path_id in data:
                     data[path_id] = {}
-                    data[path_id]['isValid'] = True
+                    data[path_id]['is_valid'] = True
                     data[path_id]['steps'] = {}
                 ####### target #########
                 if not 'target' in data[path_id]:
@@ -879,7 +876,7 @@ class rpReader(rpCache):
                     step_id = int(row['step'])
                 except ValueError:
                     logger.error('Cannot convert step ID: '+str(row['step']))
-                    data[path_id]['isValid'] = False
+                    data[path_id]['is_valid'] = False
                     continue
                 if step_id==0:
                     continue
@@ -921,11 +918,11 @@ class rpReader(rpCache):
                                 tmp['dbref'][db_name].append(db_cid)
                             else:
                                 logger.warning('Ignoring the folowing product dbref ('+str(name)+'): '+str(dbref))
-                                data[path_id]['isValid'] = False
+                                data[path_id]['is_valid'] = False
                         data[path_id]['steps'][step_id]['substrates'].append(tmp)
                 else:
                     logger.warning('Not equal length between substrate names, their structure or dbref ('+str(name)+'): '+str(row['substrate_name'])+' <--> '+str(row['substrate_structure'])+' <--> '+str(row['substrate_dbref']))
-                    data[path_id]['isValid'] = False
+                    data[path_id]['is_valid'] = False
                     continue
                 ##### products #########
                 data[path_id]['steps'][step_id]['products'] = []
@@ -960,12 +957,12 @@ class rpReader(rpCache):
                                     tmp['dbref'][db_name] = []
                                 tmp['dbref'][db_name].append(db_cid)
                             else:
-                                data[path_id]['isValid'] = False
+                                data[path_id]['is_valid'] = False
                                 logger.warning('Ignoring the folowing product dbref ('+str(name)+'): '+str(dbref))
                         data[path_id]['steps'][step_id]['products'].append(tmp)
                 else:
                     logger.warning('Not equal length between substrate names, their structure or dbref ('+str(name)+'): '+str(row['product_name'])+' <--> '+str(row['product_structure'])+' <--> '+str(row['product_dbref']))
-                    data[path_id]['isValid'] = False
+                    data[path_id]['is_valid'] = False
                 if not row['uniprot']=='':
                     data[path_id]['steps'][step_id]['uniprot'] = row['uniprot'].replace(' ', '').split(';')
                 if not row['EC_number']=='':
@@ -973,14 +970,14 @@ class rpReader(rpCache):
                 data[path_id]['steps'][step_id]['enzyme_id'] = [i.replace(' ', '') for i in row['enzyme_identifier'].split(';')]
                 data[path_id]['steps'][step_id]['enzyme_name'] = row['enzyme_name'].split(';')
         except FileNotFoundError:
-            logger.error('Cannot open the file: '+str(inFile))
+            logger.error('Cannot open the file: '+str(in_file))
         #now loop through all of them and remove the invalid paths
         to_ret = copy.deepcopy(data)
         for path_id in data.keys():
-            if to_ret[path_id]['isValid']==False:
+            if to_ret[path_id]['is_valid']==False:
                 del to_ret[path_id]
             else:
-                del to_ret[path_id]['isValid']
+                del to_ret[path_id]['is_valid']
         #reorganise the results around the target products mnx
         if not mnx_header:
             return to_ret
@@ -1003,22 +1000,22 @@ class rpReader(rpCache):
     # Parse the TSV file to SBML format and adds them to the sbml_paths
     #
     # @param self Object pointer
-    # @param inFile Input file
+    # @param in_file Input file
     # @param compartment_id compartment of the
     # TODO: update this with the new SBML groups
     def TSVtoSBML(self,
-                  inFile,
+                  in_file,
                   output_folder=None,
-                  upper_flux_bound=99999,
+                  upper_flux_bound=99999.0,
                   lower_flux_bound=0.0,
                   compartment_id='MNXC3',
                   pathway_id='rp_pathway',
                   species_group_id='central_species',
                   header_name=''):
-        data = self._parseTSV(inFile)
+        data = self._parseTSV(in_file)
         sbml_paths = {}
         if header_name=='':
-            header_name = inFile.split('/')[-1].replace('.tsv', '').replace('.csv', '')
+            header_name = in_file.split('/')[-1].replace('.tsv', '').replace('.csv', '')
         # TODO: need to exit at this loop
         for path_id in data:
             try:
@@ -1040,14 +1037,14 @@ class rpReader(rpCache):
             rpsbml.createGroup(pathway_id)
             rpsbml.createGroup(species_group_id)
             # 3) find all the unique species and add them to the model
-            allChem = []
-            for stepNum in data[path_id]['steps']:
+            all_chem = []
+            for step_num in data[path_id]['steps']:
                 # because of the nature of the input we need to remove duplicates
-                for i in data[path_id]['steps'][stepNum]['substrates']+data[path_id]['steps'][stepNum]['products']:
-                    if not i in allChem:
-                        allChem.append(i)
+                for i in data[path_id]['steps'][step_num]['substrates']+data[path_id]['steps'][step_num]['products']:
+                    if not i in all_chem:
+                        all_chem.append(i)
             # add them to the SBML
-            for chem in allChem:
+            for chem in all_chem:
                 # PROBLEM: as it stands one expects the cid to be MNX
                 if 'mnx' in chem['dbref']:
                     # must list the different models
@@ -1062,17 +1059,17 @@ class rpReader(rpCache):
                     except KeyError:
                         # TODO: need to find a better way
                         logger.warning('Cannot determine MNX or CHEBI entry, using random')
-                        tmpDB_name = list(chem['dbref'].keys())[0]
+                        tmp_db_name = list(chem['dbref'].keys())[0]
                         cid = chem['dbref'][list(chem['dbref'].keys())[0]][0]
-                        cid = str(tmpDB_name)+'_'+str(cid)
+                        cid = str(tmp_db_name)+'_'+str(cid)
                     # break
                 # try to conver the inchi into the other structures
                 smiles = None
                 inchikey = None
                 try:
-                    resConv = self._convert_depiction(idepic=chem['inchi'], itype='inchi', otype={'smiles','inchikey'})
-                    smiles = resConv['smiles']
-                    inchikey = resConv['inchikey']
+                    res_conv = self._convert_depiction(idepic=chem['inchi'], itype='inchi', otype={'smiles','inchikey'})
+                    smiles = res_conv['smiles']
+                    inchikey = res_conv['inchikey']
                 except NotImplementedError as e:
                     logger.warning('Could not convert the following InChI: '+str(chem['inchi']))
                 # create a new species
@@ -1092,24 +1089,24 @@ class rpReader(rpCache):
                 strc_info = None
                 try:
                     if not strc_info:
-                        strc_info = queryCIDstrc(cid)
+                        strc_info = self.queryCIDstrc(cid)
                     spe_inchi = strc_info['inchi']
                 except KeyError:
                     spe_inchi = chem['inchi']
                 # inchikey
                 try:
                     if not strc_info:
-                        strc_info = queryCIDstrc(cid)
+                        strc_info = self.queryCIDstrc(cid)
                     spe_inchikey = strc_info['inchikey']
                 except KeyError:
-                    spe_inchikey =  resConv['inchikey']
+                    spe_inchikey =  res_conv['inchikey']
                 # smiles
                 try:
                     if not strc_info:
-                        strc_info = queryCIDstrc(cid)
+                        strc_info = self.queryCIDstrc(cid)
                     spe_smiles = strc_info['smiles']
                 except KeyError:
-                    spe_smiles = resConv['smiles']
+                    spe_smiles = res_conv['smiles']
                 # pass the information to create the species
                 rpsbml.createSpecies(cid,
                                      compartment_id,
@@ -1122,9 +1119,9 @@ class rpReader(rpCache):
             # 4) add the complete reactions and their annotations
             # create a new group for the measured pathway
             # need to convert the validation to step for reactions
-            for stepNum in data[path_id]['steps']:
-                toSend = {'left': {}, 'right': {}, 'rule_id': None, 'rule_ori_reac': None, 'rule_score': None, 'path_id': path_id, 'step': stepNum, 'sub_step': None}
-                for chem in data[path_id]['steps'][stepNum]['substrates']:
+            for step_num in data[path_id]['steps']:
+                to_send = {'left': {}, 'right': {}, 'rule_id': None, 'rule_ori_reac': None, 'rule_score': None, 'path_id': path_id, 'step': step_num, 'sub_step': None}
+                for chem in data[path_id]['steps'][step_num]['substrates']:
                     if 'mnx' in chem['dbref']:
                         cid = sorted(chem['dbref']['mnx'], key=lambda x : int(x.replace('MNXM', '')))[0]
                         # try CHEBI
@@ -1137,11 +1134,11 @@ class rpReader(rpCache):
                         except KeyError:
                             # TODO: need to find a better way
                             logger.warning('Cannot determine MNX or CHEBI entry, using random')
-                            tmpDB_name = list(chem['dbref'].keys())[0]
+                            tmp_db_name = list(chem['dbref'].keys())[0]
                             cid = chem['dbref'][list(chem['dbref'].keys())[0]][0]
-                            cid = str(tmpDB_name)+'_'+str(cid)
-                    toSend['left'][cid] = 1
-                for chem in data[path_id]['steps'][stepNum]['products']:
+                            cid = str(tmp_db_name)+'_'+str(cid)
+                    to_send['left'][cid] = 1
+                for chem in data[path_id]['steps'][step_num]['products']:
                     if 'mnx' in chem['dbref']:
                         cid = sorted(chem['dbref']['mnx'], key=lambda x : int(x.replace('MNXM', '')))[0]
                         # try CHEBI
@@ -1153,29 +1150,29 @@ class rpReader(rpCache):
                         except KeyError:
                             # TODO: need to find a better way
                             logger.warning('Cannot determine MNX or CHEBI entry, using random')
-                            tmpDB_name = list(chem['dbref'].keys())[0]
+                            tmp_db_name = list(chem['dbref'].keys())[0]
                             cid = chem['dbref'][list(chem['dbref'].keys())[0]][0]
-                            cid = str(tmpDB_name)+'_'+str(cid)
-                    toSend['right'][cid] = 1
+                            cid = str(tmp_db_name)+'_'+str(cid)
+                    to_send['right'][cid] = 1
                         # break
                 # if all are full add it
                 reac_xref = {}
-                if 'ec_numbers' in data[path_id]['steps'][stepNum]:
-                    reac_xref['ec'] = data[path_id]['steps'][stepNum]['ec_numbers']
-                if 'uniprot' in data[path_id]['steps'][stepNum]:
-                    reac_xref['uniprot'] = data[path_id]['steps'][stepNum]['uniprot']
+                if 'ec_numbers' in data[path_id]['steps'][step_num]:
+                    reac_xref['ec'] = data[path_id]['steps'][step_num]['ec_numbers']
+                if 'uniprot' in data[path_id]['steps'][step_num]:
+                    reac_xref['uniprot'] = data[path_id]['steps'][step_num]['uniprot']
                 logger.debug('#########################################')
-                logger.debug(toSend)
+                logger.debug(to_send)
                 logger.debug('#########################################')
-                rpsbml.createReaction(header_name+'_Step'+str(stepNum),
+                rpsbml.createReaction(header_name+'_Step'+str(step_num),
                                       upper_flux_bound,
                                       lower_flux_bound,
-                                      toSend,
+                                      to_send,
                                       compartment_id,
                                       None,
                                       reac_xref,
                                       pathway_id)
-                if stepNum==1:
+                if step_num==1:
                     # adding the consumption of the target
                     target_step = {'rule_id': None,
                                    'left': {},
@@ -1186,7 +1183,7 @@ class rpReader(rpCache):
                                    'transformation_id': None,
                                    'rule_score': None,
                                    'rule_ori_reac': None}
-                    for chem in data[path_id]['steps'][stepNum]['products']:
+                    for chem in data[path_id]['steps'][step_num]['products']:
                         try:
                             # smallest MNX
                             cid = sorted(chem['dbref']['mnx'], key=lambda x : int(x.replace('MNXM', '')))[0]
@@ -1197,9 +1194,9 @@ class rpReader(rpCache):
                                 cid = 'CHEBI_'+str(cid)
                             except KeyError:
                                 logger.warning('Cannot determine MNX or CHEBI entry, using random')
-                                tmpDB_name = list(chem['dbref'].keys())[0]
+                                tmp_db_name = list(chem['dbref'].keys())[0]
                                 cid = chem['dbref'][list(chem['dbref'].keys())[0]][0]
-                                cid = str(tmpDB_name)+'_'+str(cid)
+                                cid = str(tmp_db_name)+'_'+str(cid)
                         target_step['left'][cid] = 1
                     rpsbml.createReaction(header_name+'_Step1_sink',
                                           upper_flux_bound,

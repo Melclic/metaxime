@@ -15,7 +15,16 @@ from rpSBML import rpSBML
 class rpEquilibrator(rpSBML):
     """Class containing collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
     """
-    def __init__(self, model_name=None, document=None, path=None, cc=None, ph=7.5, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    def __init__(self,
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None,
+                 cc=None,
+                 ph=7.5,
+                 ionic_strength=200,
+                 pMg=10.0,
+                 temp_k=298.15):
         """Constructor class for rpEquilibrator
 
         :param ph: pH of the cell input from the rpSBML model input (Default: 7.5)
@@ -35,7 +44,7 @@ class rpEquilibrator(rpSBML):
         .. automethod:: _reactionCmpQuery
         .. automethod:: _reactionStrQuery
         """
-        super().__init__(model_name, document, path)
+        super().__init__(model_name, document, path, rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpEquilibrator')
         if not cc:

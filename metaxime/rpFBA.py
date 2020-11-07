@@ -5,13 +5,13 @@ import tempfile
 import glob
 import logging
 
-from rpSBML import rpSBML
+from .rpSBML import rpSBML
 
 #TODO: add the pareto frontier optimisation as an automatic way to calculate the optimal fluxes
 class rpFBA(rpSBML):
     """Class to simulate an rpsbml object using different FBA types and objective functions
     """
-    def __init__(self, model_name=None, document=None, path=None):
+    def __init__(self, model_name=None, document=None, path=None, rpcache=None):
         """Default constructor
 
         .. document private functions
@@ -19,7 +19,7 @@ class rpFBA(rpSBML):
         .. automethod:: _writeAnalysisResults
         """
         #load the rpSBML
-        super().__init__(model_name, document, path)
+        super().__init__(model_name, document, pathm rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpFBA')
         #TODO enable FBC if not done so

@@ -822,14 +822,18 @@ class rpMerge(rpGraph):
         if type(input_model)==libsbml.Model:
             source_model = input_model
         elif type(input_model)==rpSBML:
+            input_model.addMIRIAMinchiKey()
             source_model = input_model.model
         elif type(input_model)==rpMerge:
+            input_model.addMIRIAMinchiKey()
             source_model = input_model.model
         elif type(input_model)==rpGraph:
+            input_model.addMIRIAMinchiKey()
             source_model = input_model.model
         elif type(input_model)==str:
             if os.path.exists(input_model):
                 rpsbml = rpSBML(path=input_model)
+                rpsbml.addMIRIAMinchiKey()
                 source_model = rpsbml.model
             else:
                 self.logger.error('The input model was detected to be a string and thus path, but the file does not seem to exists: '+str(source_model))
@@ -837,6 +841,7 @@ class rpMerge(rpGraph):
         else:
             self.logger.error('The input must be either a libsbml.SBMLDocument, libsbml.Model or the path to a model')
             return False
+        self.addMIRIAMinchiKey()
         #self.model = target_document.getModel()
         #Find the ID's of the similar self.model species
         ################ MODEL FBC ########################

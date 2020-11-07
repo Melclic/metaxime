@@ -12,12 +12,19 @@ import os
 class rpSelenzyme(rpSBML):
     """Class to handle calling the Selenzyme service
     """
-    def __init__(self, model_name=None, document=None, path=None, pc=None, uniprot_aaLenght=None, cache_tar_path='input_cache/rpselenzyme_data.tar.xz'):
+    def __init__(self,
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None,
+                 pc=None,
+                 uniprot_aaLenght=None,
+                 cache_tar_path='input_cache/rpselenzyme_data.tar.xz'):
         """Class constructor
 
         :param pc: The cache of Selenzyme preLoad object
         """
-        super().__init__(model_name, document, path)
+        super().__init__(model_name, document, path, rpcache)
         self.logger = logging.getLogger(__name__)
         self.uniprot_aaLenght = None
         self.pc = None
