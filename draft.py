@@ -1,12 +1,91 @@
 ########################## MAC ###########################
 
 from metaxime import rpSBML
+import hashlib
 import json
+import libsbml
 
-rpsbml = rpSBML('test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpsbml.xml')
-gem = rpSBML('test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/gem.xml')
+rpsbml = rpSBML(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpsbml/rpsbml.xml')
+gem = rpSBML(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpsbml/gem.xml')
 
-data = json.load(open('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/data.json', 'r'))
+rpsbml1 = rpSBML(model_name='test', path='/Users/melchior/Downloads/rpglobalscore_77/rp_9_1.sbml.xml')
+#rpsbml1.updateBRSynthPathway(rpsbml.asDict())
+#rpsbml1.writeSBML('/Users/melchior/Downloads/test.xml')
+
+rpsbml1_dict = rpsbml1.asDict()
+rpsbml1_dict['pathway']['brsynth']['global_score']['value']
+
+rpsbml_dict = rpsbml.asDict()
+rpsbml_dict['pathway']['brsynth']['global_score']['value']
+
+rpsbml1.updateBRSynthPathway(rpsbml.asDict())
+
+rpsbml1_mod_dict = rpsbml1.asDict()
+rpsbml1_dict['pathway']['brsynth']['global_score']['value']
+rpsbml_dict['pathway']['brsynth']['global_score']['value']
+rpsbml1_mod_dict['pathway']['brsynth']['global_score']['value']
+
+'/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpgraph/data.json'
+
+from metaxime import rpGraph
+import hashlib
+import json
+import libsbml
+
+rpgraph = rpGraph(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpgraph/rpsbml.xml')
+rpgraph_compare = rpGraph(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpgraph/rpsbml_compare.xml')
+rpGraph.compare(rpgraph, rpgraph_compare)
+
+
+rpsbml = rpSBML(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpmerge/rpsbml.xml')
+gem = rpSBML(model_name='test', path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpmerge/gem.xml')
+
+
+from metaxime import rpMerge
+import hashlib
+rpMerge.mergeSBMLFiles('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpmerge/rpsbml.xml', '/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpmerge/gem.xml', '/Users/melchior/Downloads/test.xml')
+
+from metaxime import rpFBA
+import hashlib
+rpfba = rpFBA(rpsbml_path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpfba/rpsbml.xml', gem_sbml_path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpfba/gem.xml')
+
+rpfba.writeSBML('/Users/melchior/Downloads/merged.xml')
+hashlib.md5(open('/Users/melchior/Downloads/merged.xml', 'rb').read()).hexdigest()
+'0e755a7ae4605279df728b5dab176181'
+
+
+from metaxime import rpFBA
+import hashlib
+rpfba = rpFBA(rpsbml_path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpfba/rpsbml.xml', gem_sbml_path='/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpfba/gem.xml')
+rpfba.runFractionReaction('biomass', 1.0, 'RP1_sink', 1.0)
+rpfba.writeSBML('/Users/melchior/Downloads/merged.xml', False)
+
+
+from metaxime import rpEquilibrator
+
+
+rpgraph.compare(rpgraph_compare)
+
+
+data = json.load(open('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpgraph/data.json', 'r'))
+
+
+json.dump(data, open('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpgraph/data.json', 'w'))
+
+
+
+
+
+
+
+data = json.load(open('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpsbml/data.json', 'r'))
+
+
+
+
+
+
+
 
 json.dump(data, open('/Users/melchior/workspace/melclic/metaxime/metaxime/test/data/data.json', 'w'))
 
@@ -34,6 +113,15 @@ open('/Users/melchior/Downloads/test.svg', 'w').write(svg)
 
 ###################### LINUX ##################################
 
+from metaxime import rpReader
+rpReader.rp2ToCollection('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp_pathways.csv', '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp2paths_compounds.csv', '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp2paths_pathways.csv', '/home/mdulac/Downloads/test_out.rpcol')
+
+
+
+
+
+
+json.dump(data, open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/data.json', 'w'))
 
 from metaxime import rpSBML
 import hashlib
