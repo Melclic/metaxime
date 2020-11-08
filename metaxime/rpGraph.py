@@ -1,10 +1,10 @@
-import networkx as nx
-from networkx.readwrite import json_graph
 import logging
 import os
 import itertools
 import numpy as np
 import random
+import networkx as nx
+from networkx.readwrite import json_graph
 
 from .rpSBML import rpSBML
 

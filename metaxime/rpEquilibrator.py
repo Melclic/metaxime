@@ -1,13 +1,13 @@
-from equilibrator_api import ComponentContribution, Q_
-from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
-from equilibrator_assets.group_decompose import GroupDecompositionError
-import equilibrator_cache
-from equilibrator_pathway import Pathway
 import logging
 import numpy as np
 import json
 import tempfile
 import os
+from equilibrator_api import ComponentContribution, Q_
+from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
+from equilibrator_assets.group_decompose import GroupDecompositionError
+import equilibrator_cache
+from equilibrator_pathway import Pathway
 
 from .rpSBML import rpSBML
 
@@ -78,7 +78,7 @@ class rpEquilibrator(rpSBML):
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.mnx_default_conc = json.load(open('data/mnx_default_conc.json', 'r'))
+        self.mnx_default_conc = json.load(open(os.path.join(os.getcwd(), 'data', 'mnx_default_conc.json'), 'r'))
         self.calc_cmp = {}
 
 
@@ -126,11 +126,11 @@ class rpEquilibrator(rpSBML):
             except AttributeError:
                 self.logger.error('Cannot retreive the id')
                 return False
-            return spe_id
+            return spe_id.split('__')[0]
         elif ret_type=='xref':
             try:
                 annot = libsbml_species.getAnnotation()
-                self._checklibSBML(annot)
+                self._checklibSBML(annot, 'Getting annotation')
             except AttributeError:
                 self.logger.error('Cannot retreive the annotation')
                 return False

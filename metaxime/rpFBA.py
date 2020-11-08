@@ -1,5 +1,3 @@
-import cobra
-from cobra.flux_analysis import pfba
 import libsbml
 import tempfile
 import glob
@@ -30,6 +28,8 @@ logging.basicConfig(
 
 #TODO: add the pareto frontier optimisation as an automatic way to calculate the optimal fluxes
 class rpFBA(rpMerge):
+    import cobra
+    from cobra.flux_analysis import pfba
     """Class to simulate an rpsbml object using different FBA types and objective functions
     """
     def __init__(self,

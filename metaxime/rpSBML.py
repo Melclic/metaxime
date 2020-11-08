@@ -1202,7 +1202,7 @@ class rpSBML(rpCache):
         #return set(set(ori_rp_path['products'].keys())|set(ori_rp_path['reactants'].keys()))
 
 
-    def readTaxonAnnotation(self):
+    def readTaxonomy(self):
         """Return he taxonomy ID from an annotation
 
         :rtype: list

@@ -7,6 +7,7 @@ from .rpDraw import rpDraw
 from .rpReader import rpReader
 from .rpFBA import rpFBA
 from .rpEquilibrator import rpEquilibrator
+from .rpSelenzyme import rpSelenzyme
 
 __all__ = [
     'rpSBML',
@@ -16,5 +17,6 @@ __all__ = [
     'rpDraw',
     'rpReader',
     'rpFBA',
-    'rpEquilibrator'
+    'rpEquilibrator',
+    'rpSelenzyme'
 ]

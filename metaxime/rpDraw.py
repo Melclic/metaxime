@@ -1,5 +1,3 @@
-from rdkit.Chem import MolFromInchi
-from rdkit.Chem import Draw
 import copy
 import json
 import re
@@ -245,6 +243,8 @@ class rpDraw(rpGraph):
     #
     #
     def drawChemicalList(self, id_inchi, subplot_size=[200, 200]):
+        from rdkit.Chem import MolFromInchi
+        from rdkit.Chem import Draw
         toRet = {}
         inchi_list = list(set([id_inchi[i] for i in id_inchi]))
         list_mol = [MolFromInchi(inchi) for inchi in inchi_list]
