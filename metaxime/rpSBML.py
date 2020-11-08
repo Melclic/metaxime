@@ -92,9 +92,9 @@ class rpSBML(rpCache):
         else:
             self.model_name = 'not_defined'
         self.mean_rules_score = 0.0
-        self.model = model
         self.document = document
         self.path = path
+        self.model = None
         #document takes priority
         if document:
             self.model = self.document.getModel()
@@ -1001,18 +1001,17 @@ class rpSBML(rpCache):
                 raise FileNotFoundError
             else:
                 self.logger.warning('libSBML reading warning: '+str(err.getShortMessage()))
-        model = document.getModel()
-        if not model:
+        self.model = document.getModel()
+        if not self.model:
             self.logger.error('Either the file was not read correctly or the SBML is empty')
             raise FileNotFoundError
         self.document = document
-        self.model = model
         if self._isRPsbml():
             self.mean_rules_score = self._computeMeanRulesScore()
         if model_name:
             self.model_name = model_name
         elif not self.model_name:
-            self.model_name = model.getId().replace('model_', '').lower()
+            self.model_name = self.model.getId().replace('model_', '').lower()
         #enabling the extra packages if they do not exists when reading a model
         if not self.model.isPackageEnabled('groups'):
             self._checklibSBML(self.model.enablePackage(

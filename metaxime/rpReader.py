@@ -1,6 +1,7 @@
 import csv
 import requests
 import itertools
+import tempfile
 import re
 import time
 import os
@@ -86,6 +87,45 @@ class rpReader(rpCache):
     #######################################################################
     ######################### Rp2paths and RetroPath2 #####################
     #######################################################################
+
+
+    @staticmethod
+    def rp2ToCollection(rp2_pathways,
+                        rp2paths_compounds,
+                        rp2paths_pathways,
+                        out_path_collec,
+                        upper_flux_bound=999999.0,
+                        lower_flux_bound=0.0,
+                        max_subpaths_filter=100,
+                        pathway_id='rp_pathway',
+                        compartment_id='MNXC3',
+                        species_group_id='central_species',
+                        sink_species_group_id='rp_sink_species',
+                        pubchem_search=False):
+        rpcache = rpCache()
+        rpcache.populateCache()
+        rpreader = rpReader(rpcache)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            os.mkdir(os.path.join(tmp_output_folder, 'models'))
+            status = rpreader.rp2ToSBML(rp2_pathways,
+                                        rp2paths_compounds,
+                                        rp2paths_pathways,
+                                        os.path.join(tmp_output_folder, 'models'),
+                                        upper_flux_bound,
+                                        lower_flux_bound,
+                                        max_subpaths_filter,
+                                        pathway_id,
+                                        compartment_id,
+                                        species_group_id,
+                                        sink_species_group_id=,
+                                        pubchem_search)
+            if not out_path_collec.endswith('.rpcol'):
+                out_path_collec += '.rpcol'
+            if os.path.exists(out_path_collec):
+                logging.warning('The path '+str(out_path_collec)+' already exists... overwriting it')
+            with tarfile.open(out_path_collec, "w:xz") as tar:
+                tar.add(tmp_output_folder, arcname=os.path.basename(tmp_output_folder))
+        return status
 
 
     def rp2ToSBML(self,

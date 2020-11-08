@@ -127,13 +127,13 @@ class rpMerge(rpGraph):
         if not os.path.exists(path_source):
             logging.error('Target SBML file is invalid: '+str(path_source))
             return False
-        source_rpsbml = rpMerge('source',
+        source_rpsbml = rpMerge(model_name='source',
                                 path=path_source,
                                 is_gem_sbml=is_source_gem,
                                 pathway_id=pathway_id,
                                 central_species_group_id=central_species_group_id,
                                 sink_species_group_id=sink_species_group_id)
-        target_rpsbml = rpMerge('target',
+        target_rpsbml = rpMerge(model_name='target',
                                 path=path_target,
                                 is_gem_sbml=is_target_gem,
                                 pathway_id=pathway_id,
@@ -294,13 +294,13 @@ class rpMerge(rpGraph):
 
     #TODO: add an option to add the reactions to rp_pathway such that the skimmy version of the model may 
     #keep the new reactions
-    def checkSingleParent(self,
-                          del_sp_pro=False,
-                          del_sp_react=False,
-                          upper_flux_bound=999999.0,
-                          lower_flux_bound=0.0,
-                          compartment_id='MNXC3',
-                          pathway_id=None):
+    def _checkSingleParent(self,
+                           del_sp_pro=False,
+                           del_sp_react=False,
+                           upper_flux_bound=999999.0,
+                           lower_flux_bound=0.0,
+                           compartment_id='MNXC3',
+                           pathway_id=None):
         """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
 
         :param del_sp_pro: Define if to delete the products or create reaction that consume it
@@ -380,13 +380,13 @@ class rpMerge(rpGraph):
 
     # TODO: need to remove from the list reactions simulated reactions that have matched
     # TODO: Remove. This assumes that reactions can match multiple times, when in fact its impossible
-    def compareReactions(self, species_match, target_rpsbml, source_rpsbml):
+    def _compareReactions(self, species_match, target_rpsbml, source_rpsbml):
         """Compare the reactions of two SBML files
 
         Compare that all the measured species of a reactions are found within sim species to match with a reaction.
         We assume that there cannot be two reactions that have the same species and reactants. This is maintained by SBML
 
-        :param species_match: The species match dictionary returned by compareSpecies()
+        :param species_match: The species match dictionary returned by _compareSpecies()
         :param target_rpsbml: The target rpSBMl object
         :param source_rpsbml: The source rpSBML object
 
@@ -504,7 +504,7 @@ class rpMerge(rpGraph):
 
 
     #TODO: change this with a flag so that all the reactants and products are the same
-    def containedReaction(self, species_source_target, source_reaction, target_reaction):
+    def _containedReaction(self, species_source_target, source_reaction, target_reaction):
         """Compare individual reactions and see if the source reaction is contained within the target one
 
         species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
@@ -566,7 +566,7 @@ class rpMerge(rpGraph):
 
 
     #TODO: change this with a flag so that all the reactants and products are the same
-    def compareReaction(self, species_source_target, source_reaction, target_reaction):
+    def _compareReaction(self, species_source_target, source_reaction, target_reaction):
         """Compare two reactions and elect that they are the same if they have exactly the same reactants and products
 
         species_source_target: {'MNXM4__64__MNXC3': {'M_o2_c': 1.0}, 'MNXM10__64__MNXC3': {'M_nadh_c': 1.0}, 'CMPD_0000000003__64__MNXC3': {}, 'TARGET_0000000001__64__MNXC3': {}, 'MNXM188__64__MNXC3': {'M_anth_c': 1.0}, 'BC_32877__64__MNXC3': {'M_nh4_c': 0.8}, 'BC_32401__64__MNXC3': {'M_nad_c': 0.2}, 'BC_26705__64__MNXC3': {'M_h_c': 1.0}, 'BC_20662__64__MNXC3': {'M_co2_c': 1.0}}
@@ -636,7 +636,7 @@ class rpMerge(rpGraph):
 
     # TODO: for all the measured species compare with the simualted one. Then find the measured and simulated species that match the best and exclude the 
     # simulated species from potentially matching with another
-    def compareSpecies(self, comp_source_target, source_model, target_model):
+    def _compareSpecies(self, comp_source_target, source_model, target_model):
         """Match all the measured chemical species to the simulated chemical species between two SBML
 
         :param comp_source_target: The comparison dictionary between the compartment of two SBML files
@@ -738,7 +738,7 @@ class rpMerge(rpGraph):
     ######################### EC NUMBER ####################################
 
 
-    def compareEC(meas_reac_miriam, sim_reac_miriam):
+    def _compareEC(meas_reac_miriam, sim_reac_miriam):
         """Compare two MIRIAM annotations and find the similarity of their EC number
 
         :param meas_reac_miriam: The annotation object of the source
@@ -1007,7 +1007,7 @@ class rpMerge(rpGraph):
         self.logger.debug('targetObjectiveID: '+str(targetObjectiveID))
         self.logger.debug('sourceObjectiveID: '+str(sourceObjectiveID))
         ################ SPECIES ####################
-        species_source_target = self.compareSpecies(comp_source_target, source_model, self.model)
+        species_source_target = self._compareSpecies(comp_source_target, source_model, self.model)
         self.logger.debug('species_source_target: '+str(species_source_target))
         target_species_ids = [i.id for i in self.model.getListOfSpecies()]
         for source_species in species_source_target:
@@ -1076,7 +1076,7 @@ class rpMerge(rpGraph):
         for source_reaction in source_model.getListOfReactions():
             is_found = False
             for target_reaction in self.model.getListOfReactions():
-                score, match = self.compareReaction(species_source_target, source_reaction, target_reaction)
+                score, match = self._compareReaction(species_source_target, source_reaction, target_reaction)
                 if match:
                     self.logger.debug('Source reaction '+str(source_reaction)+' matches with target reaction '+str(target_reaction))
                     #source_reaction[source_reaction.getId()] = target_reaction.getId()
@@ -1246,7 +1246,7 @@ class rpMerge(rpGraph):
         #regenerate the graph with the new species added
         self._makeGraph(is_gem_sbml=True)
         #detect single parent species and deal with them
-        self.checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id, pathway_id)
+        self._checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id, pathway_id)
         """
         ########### OUTPUT ##############
         #if the output is specified, then generate the different 

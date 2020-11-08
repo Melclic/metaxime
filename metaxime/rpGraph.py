@@ -518,24 +518,26 @@ class rpGraph(rpSBML):
     ## Compare two rpgraph hypergraphs and return a score using a simple walk
     #
     # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
-    def compare(source_rpgraph, target_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+    @staticmethod
+    def compare(target_rpgraph, source_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
         """Compare two rpgraph hypergraphs and return a score using a simple walk
 
         This function uses the gmatch4py package that implements a number of graph comparison 
 
         """
         import gmatch4py as gm
+        #source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         #NOTE: here we use the greedy edit distance method but others may be used... 
         ged = gm.GreedyEditDistance(1,1,1,1)
         #ged = gm.GraphEditDistance(1,1,1,1)
         result = ged.compare([i[0] for i in source_compare_graphs]+[i[0] for i in target_compare_graphs], None)
-        rpGraph.logger.debug('result: \n'+str([list(i) for i in result]))
+        logging.debug('result: \n'+str([list(i) for i in result]))
         #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
         weights = np.array([sum(i[1])/7.0 for i in source_compare_graphs]+[sum(i[1])/7.0 for i in target_compare_graphs])
         weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
-        rpGraph.logger.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
+        logging.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
         #weighted_distance = np.array([i*weights for i in ged.distance(result)])
         #rpGraph.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
         filtered_weighted_similarity =  []
@@ -550,9 +552,8 @@ class rpGraph(rpSBML):
                 else:
                     tmp.append(0.0)
             filtered_weighted_similarity.append(tmp)
-        rpGraph.logger.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
+        logging.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
         return max(map(max, filtered_weighted_similarity))
-
 
 
     def orderedRetroReactions(self):
@@ -615,5 +616,3 @@ class rpGraph(rpSBML):
                 self.logger.debug('Found solution: '+str(succ_res))
                 return succ_res
         return []
-
-
