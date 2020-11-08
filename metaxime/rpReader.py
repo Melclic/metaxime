@@ -2,6 +2,7 @@ import csv
 import requests
 import itertools
 import tempfile
+import tarfile
 import re
 import time
 import os
@@ -117,14 +118,14 @@ class rpReader(rpCache):
                                         pathway_id,
                                         compartment_id,
                                         species_group_id,
-                                        sink_species_group_id=,
+                                        sink_species_group_id,
                                         pubchem_search)
             if not out_path_collec.endswith('.rpcol'):
                 out_path_collec += '.rpcol'
             if os.path.exists(out_path_collec):
                 logging.warning('The path '+str(out_path_collec)+' already exists... overwriting it')
             with tarfile.open(out_path_collec, "w:xz") as tar:
-                tar.add(tmp_output_folder, arcname=os.path.basename(tmp_output_folder))
+                tar.add(tmp_output_folder, arcname='rpsbml_collection')
         return status
 
 
