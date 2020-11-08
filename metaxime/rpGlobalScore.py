@@ -19,11 +19,15 @@ self.logger.basicConfig(
 )
 
 
-class rpGlobalScore:
+class rpGlobalScore(rpSBML):
     """Class combining all the different characteristics of a pathway and calculate the global score
     """
-    def __init__(rpSBML):
-        super().__init__()
+    def __init__(self
+                 model_name=None,
+                 document=None,
+                 path=None,
+                 rpcache=None):
+        super().__init__(model_name, document, path, rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.info('Starting instance of rpGlobalScore')
 
@@ -214,8 +218,7 @@ class rpGlobalScore:
                                       rpsbml_dict['pathway']['brsynth']['norm_'+str(thermo_id)]['value'],
                                       rpsbml_dict['pathway']['brsynth']['norm_steps']['value'],
                                       rpsbml_dict['pathway']['brsynth']['norm_fba_'+str(objective_id)]['value']],
-                                      weights=[weight_rule_score, weight_thermo, weight_rp_steps, weight_fba]
-                                     )
+                                      weights=[weight_rule_score, weight_thermo, weight_rp_steps, weight_fba])
             '''
             globalScore = (rpsbml_dict['pathway']['brsynth']['norm_rule_score']['value']*weight_rule_score+
                            rpsbml_dict['pathway']['brsynth']['norm_'+str(thermo_id)]['value']*weight_thermo+

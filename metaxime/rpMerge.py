@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 
 from .rpGraph import rpGraph
+from .rpSBML import rpSBML
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"
@@ -792,6 +793,7 @@ class rpMerge(rpGraph):
 
     #TODO: add a confidence in the merge using the score in 
     #TODO: seperate the different parts so that others may use it
+    #NOTE: This should be used with self being the GEM model and input being the rpSBML model
     def mergeModels(self,
                     input_model,
                     del_sp_pro=False,
@@ -948,10 +950,10 @@ class rpMerge(rpGraph):
         ################ PARAMETERS ###########
         #WARNING: here we compare by ID
         #TODO: need to improve and use the values that already exist in the SBML model
-        targetParametersID = [i.getId() for i in self.model.getListOfParameters()]
-        self.logger.debug('targetParametersID: '+str(targetParametersID)) #BUG: some of the id's are not detected and are almost overwritten (libSBML to the rescue)
+        target_parameters_id = [i.getId() for i in self.model.getListOfParameters()]
+        self.logger.debug('target_parameters_id: '+str(target_parameters_id)) #BUG: some of the id's are not detected and are almost overwritten (libSBML to the rescue)
         for source_parameter in source_model.getListOfParameters():
-            if not source_parameter.getId() in targetParametersID:
+            if not source_parameter.getId() in target_parameters_id:
                 target_parameter = self.model.createParameter()
                 self._checklibSBML(target_parameter, 'creating target parameter')
                 self._checklibSBML(target_parameter.setId(source_parameter.getId()), 'setting target parameter ID')
@@ -965,9 +967,9 @@ class rpMerge(rpGraph):
                     'setting target parameter ID')
         ################ FBC GENE PRODUCTS ########################
         #WARNING: here we compare by ID
-        targetGenProductID = [i.getId() for i in target_fbc.getListOfGeneProducts()]
+        target_gen_product_id = [i.getId() for i in target_fbc.getListOfGeneProducts()]
         for source_geneProduct in source_fbc.getListOfGeneProducts():
-            if not source_geneProduct.getId() in targetGenProductID:
+            if not source_geneProduct.getId() in target_gen_product_id:
                 target_geneProduct = target_fbc.createGeneProduct()
                 self._checklibSBML(target_geneProduct, 'creating target gene product')
                 self._checklibSBML(target_geneProduct.setId(source_geneProduct.getId()),
@@ -981,10 +983,10 @@ class rpMerge(rpGraph):
         ############### FBC OBJECTIVES ############
         #WARNING: here we compare by ID
         #TODO: if overlapping id's need to replace the id with modified, as for the species
-        targetObjectiveID = [i.getId() for i in target_fbc.getListOfObjectives()]
-        sourceObjectiveID = [i.getId() for i in source_fbc.getListOfObjectives()]
+        target_objective_id = [i.getId() for i in target_fbc.getListOfObjectives()]
+        source_objective_id = [i.getId() for i in source_fbc.getListOfObjectives()]
         for source_objective in source_fbc.getListOfObjectives():
-            if not source_objective.getId() in targetObjectiveID:
+            if not source_objective.getId() in target_objective_id:
                 target_objective = target_fbc.createObjective()
                 self._checklibSBML(target_objective, 'creating target objective')
                 self._checklibSBML(target_objective.setId(source_objective.getId()), 'setting target objective')
@@ -1004,8 +1006,8 @@ class rpMerge(rpGraph):
                         'setting target flux obj annotation from source flux obj')
                 self._checklibSBML(target_objective.setAnnotation(source_objective.getAnnotation()),
                         'setting target obj annotation from source obj')
-        self.logger.debug('targetObjectiveID: '+str(targetObjectiveID))
-        self.logger.debug('sourceObjectiveID: '+str(sourceObjectiveID))
+        self.logger.debug('target_objective_id: '+str(target_objective_id))
+        self.logger.debug('source_objective_id: '+str(source_objective_id))
         ################ SPECIES ####################
         species_source_target = self._compareSpecies(comp_source_target, source_model, self.model)
         self.logger.debug('species_source_target: '+str(species_source_target))

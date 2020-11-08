@@ -5,6 +5,8 @@ from .rpGraph import rpGraph
 from .rpMerge import rpMerge
 from .rpDraw import rpDraw
 from .rpReader import rpReader
+from .rpFBA import rpFBA
+from .rpEquilibrator import rpEquilibrator
 
 __all__ = [
     'rpSBML',
@@ -12,5 +14,7 @@ __all__ = [
     'rpMerge',
     'rpCache',
     'rpDraw',
-    'rpReader'
+    'rpReader',
+    'rpFBA',
+    'rpEquilibrator'
 ]

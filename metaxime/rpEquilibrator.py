@@ -9,7 +9,26 @@ import json
 import tempfile
 import os
 
-from rpSBML import rpSBML
+from .rpSBML import rpSBML
+
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = []
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
+
+logging.root.setLevel(logging.NOTSET)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+
 
 #TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
 class rpEquilibrator(rpSBML):
@@ -93,12 +112,26 @@ class rpEquilibrator(rpSBML):
         """
         self.logger.debug('ret_type: '+str(ret_type))
         if ret_type=='name':
-            return libsbml_species.getName()
+            try:
+                spe_name = libsbml_species.getName()
+                self._checklibSBML(spe_name, 'Retreiving species name')
+            except AttributeError:
+                self.logger.error('Cannot retreive the name')
+                return False
+            return spe_name
         elif ret_type=='id':
-            return libsbml_species.getId()
+            try:
+                spe_id = libsbml_species.getId()
+                self._checklibSBML(spe_id, 'Retreiving species id')
+            except AttributeError:
+                self.logger.error('Cannot retreive the id')
+                return False
+            return spe_id
         elif ret_type=='xref':
-            annot = libsbml_species.getAnnotation()
-            if not annot:
+            try:
+                annot = libsbml_species.getAnnotation()
+                self._checklibSBML(annot)
+            except AttributeError:
                 self.logger.error('Cannot retreive the annotation')
                 return False
             miriam_dict = self.readMIRIAMAnnotation(annot)
@@ -200,8 +233,10 @@ class rpEquilibrator(rpSBML):
         :rtype: tuple
         :return: Tuple of size two with mu and sigma values in that order or (None, None) if fail
         """
-        annot = libsbml_species.getAnnotation()
-        if not annot:
+        try:
+            annot = libsbml_species.getAnnotation()
+            self._checklibSBML(annot, 'retreiving annotation')
+        except AttributeError:
             self.logger.warning('The annotation of '+str(libsbml_species)+' is None....')
             return None, None
         brs_annot = self.readBRSYNTHAnnotation(libsbml_species.getAnnotation())

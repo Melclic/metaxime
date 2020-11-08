@@ -91,8 +91,8 @@ class rpCache:
             if not self._fetch_input_files():
                 raise ValueError
         # cache
-        if not os.path.isdir(self.dirname+'/cache'):
-            os.mkdir(self.dirname+'/cache')
+        if not os.path.isdir(os.path.join(self.dirname, 'cache')):
+            os.mkdir(os.path.join(self.dirname, 'cache'))
 
 
     #####################################################
