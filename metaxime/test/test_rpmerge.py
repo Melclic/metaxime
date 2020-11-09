@@ -11,9 +11,11 @@ sys.path.insert(0, '../..')
 from metaxime import rpMerge
 
 class TestRPMerge(unittest.TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         #load a rpSBML file
-        self.data = json.load(open(os.path.join('data', 'rpmerge', 'data.json'), 'r'))
+        cls.data = json.load(open(os.path.join('data', 'rpmerge', 'data.json'), 'r'))
 
     def test_mergeSBMLFiles(self):
         with tempfile.TemporaryDirectory() as tmp_output_folder:

@@ -12,11 +12,13 @@ from metaxime import rpCache
 from metaxime import rpReader
 
 class TestRPreader(unittest.TestCase):
-    def setUp(self):
-        self.data = json.load(open(os.path.join('data', 'rpreader', 'data.json'), 'r'))
-        self.rpcache = rpCache()
-        self.rpcache.populateCache()
-        self.rpreader = rpReader(self.rpcache)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = json.load(open(os.path.join('data', 'rpreader', 'data.json'), 'r'))
+        cls.rpcache = rpCache()
+        cls.rpcache.populateCache()
+        cls.rpreader = rpReader(self.rpcache)
 
     def test_rp2ToCollection(self):
         with tempfile.TemporaryDirectory() as tmp_output_folder:

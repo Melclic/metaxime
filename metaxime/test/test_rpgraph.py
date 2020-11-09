@@ -11,10 +11,12 @@ sys.path.insert(0, '../..')
 from metaxime import rpGraph
 
 class TestRPGraph(unittest.TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         #load a rpSBML file
-        self.rpgraph = rpGraph(model_name='test', path=os.path.join('data', 'rpgraph', 'rpsbml.xml'))
-        self.data = json.load(open(os.path.join('data', 'rpgraph', 'data.json'), 'r'))
+        cls.rpgraph = rpGraph(model_name='test', path=os.path.join('data', 'rpgraph', 'rpsbml.xml'))
+        cls.data = json.load(open(os.path.join('data', 'rpgraph', 'data.json'), 'r'))
 
 
     #_makeCompareGraphs

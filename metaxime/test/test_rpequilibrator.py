@@ -11,10 +11,10 @@ sys.path.insert(0, '../..')
 from metaxime import rpEquilibrator
 
 class TestRPEquilibrator(unittest.TestCase):
-    def setUp(self):
-        #load a rpSBML file
-        #self.data = json.load(open(os.path.join('data', 'rpequilibrator', 'data.json'), 'r'))
-        self.rpeq = rpEquilibrator(path=os.path.join('data', 'rpequilibrator', 'rpsbml.xml'))
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rpeq = rpEquilibrator(path=os.path.join('data', 'rpequilibrator', 'rpsbml.xml'))
 
     def test_makeSpeciesStr(self):
         self.assertEqual(self.rpeq._makeSpeciesStr(self.rpeq.model.getSpecies('MNXM89557__64__MNXC3')), 'CHEBI:5431')
@@ -59,6 +59,6 @@ class TestRPEquilibrator(unittest.TestCase):
             hashlib.md5(open('/home/mdulac/Downloads/test.sbtab', 'rb').read()).hexdigest()
             self.assertTrue(rpeq.toNetworkSBtab(os.path.join(tmp_output_folder, 'test.sbtab')))
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbtab'), 'rb').read()).hexdigest(), '1f33671c02a98f20ac22fb5fff7bfab2')
-        
+
 if __name__ == '__main__':
     unittest.main()

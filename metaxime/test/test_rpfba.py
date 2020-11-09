@@ -11,7 +11,9 @@ sys.path.insert(0, '../..')
 from metaxime import rpFBA
 
 class TestRPFBA(unittest.TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         #load a rpSBML file
         #self.data = json.load(open(os.path.join('data', 'rpfba', 'data.json'), 'r'))
         pass

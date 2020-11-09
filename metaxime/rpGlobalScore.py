@@ -7,8 +7,15 @@ from scipy import stats
 import numpy as np
 import json
 
-sys.path.insert(0, '/home/')
-import rpSBML
+from .rpSBML import rpSBML
+
+__author__ = "Melchior du Lac"
+__copyright__ = "Copyright 2020"
+__credits__ = [""]
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Melchior du Lac"
+__status__ = "Development"
 
 self.logger.basicConfig(
     #level=self.logger.DEBUG,
@@ -56,7 +63,8 @@ class rpGlobalScore(rpSBML):
                               fba_floor=0.0,
                               pathway_id='rp_pathway',
                               objective_id='obj_fraction',
-                              thermo_id='dfG_prime_m'):
+                              thermo_id='dfG_prime_m',
+                              write_results=False):
         """ Extract the reaction SMILES from an SBML, query rule_score and write the results back to the SBML
 
         :param weight_rp_steps: The weight associated with the number of steps
@@ -238,5 +246,6 @@ class rpGlobalScore(rpSBML):
             globalScore = 0.0
         rpsbml_dict['pathway']['brsynth']['global_score'] = {}
         rpsbml_dict['pathway']['brsynth']['global_score']['value'] = globalScore
-        self.updateBRSynthPathway(rpsbml_dict, pathway_id)
+        if write_results:
+            self.updateBRSynthPathway(rpsbml_dict, pathway_id)
         return globalScore

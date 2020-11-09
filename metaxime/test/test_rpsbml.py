@@ -11,11 +11,13 @@ sys.path.insert(0, '../..')
 from metaxime import rpSBML
 
 class TestRPSBML(unittest.TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         #load a rpSBML file
-        self.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
-        self.gem = rpSBML('gem', path=os.path.join('data', 'rpsbml', 'gem.xml'))
-        self.data = json.load(open(os.path.join('data', 'rpsbml', 'data.json'), 'r'))
+        cls.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
+        cls.gem = rpSBML('gem', path=os.path.join('data', 'rpsbml', 'gem.xml'))
+        cls.data = json.load(open(os.path.join('data', 'rpsbml', 'data.json'), 'r'))
 
     def test_isRPsbml(self):
         self.assertTrue(self.rpsbml._isRPsbml())
