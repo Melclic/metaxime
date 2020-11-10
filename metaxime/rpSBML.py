@@ -138,6 +138,45 @@ class rpSBML(rpCache):
         return self.mean_rules_score>rpsbml.mean_rules_score
 
 
+    '''
+    #######################################################################
+    ############################# COLLECTION FUNCTIONS #################### 
+    #######################################################################
+
+
+    def parseCollection(self, rpcol, rpcache=None):
+        """Parse a the collection of rpSBML files and its extra information
+
+        Note: That this function does nothing. It is written to be extended from the other inherited classes
+        TODO: Not sure of the rpcache passing, only applicable when you are extending parsing many different 
+
+        """
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(pcol, mode='r')
+            tar.extractall(path=tmp_folder)
+            tar.close()
+        if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+            logging.error('Input file is empty')
+            return False
+        #load the cache
+        for sbml_path in glob.glob(os.path.join(tmp_folder, '*')):
+            file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+            self._singleParseCollection(model_name=file_name, path=sbml_path)
+        if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+            logging.error('Output file is empty')
+            return False
+        #WARNING: we are overwriting the input file
+        with tarfile.open(rpcol, "w:xz") as tar:
+            tar.add(tmp_folder, arcname='rpsbml_collection')
+        return True
+
+ 
+    def _singleParseCollection(self, model_name, path):
+        """This function is intended to be extended by the inherited classes and generates the different species
+        """
+        pass
+    '''
+
     #######################################################################
     ############################# PRIVATE FUNCTIONS ####################### 
     #######################################################################

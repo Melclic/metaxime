@@ -110,7 +110,7 @@ class rpSelenzyme(rpSBML):
                            direction=0,
                            noMSA=True,
                            fp='RDK',
-                           rxntype='smarts'):
+                           rxntype='smarts'): #WARNING: we are actually inputting Reaction SMILES, but it seems Selenzyme made a mistake here
         """Query Selenzyme given a single reaction rule
 
         :param reaction_rule: The reaction rule
@@ -138,7 +138,7 @@ class rpSelenzyme(rpSBML):
             self.logger.debug(os.path.join(self.data_dir.name, 'data'))
             self.logger.debug(os.listdir(os.path.join(self.data_dir.name, 'data')))
             self.logger.debug(tmp_output_folder)
-            success, results = Selenzy.analyse(['-'+rxntype, reaction_rule], num_results, os.path.join(self.data_dir.name, 'data')+'/', tmp_output_folder, 'tmp.csv', 0, host_taxonomy_id, pc=self.pc, NoMSA=noMSA)
+            success, results = Selenzy.analyse(['-'+rxntype, reaction_rule], num_results, os.path.join(self.data_dir.name, 'data'), tmp_output_folder, 'tmp.csv', 0, host_taxonomy_id, pc=self.pc, NoMSA=noMSA)
             self.logger.debug(os.listdir(os.path.join(self.data_dir.name, 'data')))
             self.logger.debug(os.listdir(tmp_output_folder))
             self.logger.debug(os.path.join(tmp_output_folder, 'tmp.csv'))
