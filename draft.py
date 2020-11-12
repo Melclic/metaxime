@@ -117,6 +117,10 @@ from metaxime import rpReader
 rpReader.rp2ToCollection('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp_pathways.csv', '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp2paths_compounds.csv', '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp2paths_pathways.csv', '/home/mdulac/Downloads/test_out.rpcol')
 
 
+from metaxime import rpEquilibrator
+rpeq = rpEquilibrator(path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpequilibrator/rpsbml.xml')
+spe = rpeq.model.getSpecies('MNXM89557__64__MNXC3')
+rpeq._makeSpeciesStr(spe)
 
 
 
@@ -132,6 +136,34 @@ rpsbml = rpSBML('test', path='/home/mdulac/workspace/melclic/metaxime/metaxime/t
 gem = rpSBML('gem', path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/gem.xml')
 
 data = json.load(open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/data.json', 'r'))
+
+
+
+
+data = json.load(open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpselenzyme/data.json', 'r'))
+
+
+from metaxime import rpSelenzyme
+#rpsele = rpSelenzyme('/home/mdulac/workspace/melclic/metaxime/metaxime/input_cache/rpselenzyme_data.tar.xz', path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpsbml/rpsbml.xml')
+rpsele = rpSelenzyme(path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpsbml/rpsbml.xml')
+res = rpsele.run(83333)
+
+
+from metaxime import rpSelenzyme
+rpsele = rpSelenzyme(path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpsbml/rpsbml.xml')
+a = rpsele.model.getReaction('RP1')
+b = rpsele.readBRSYNTHAnnotation(a.getAnnotation())
+uniprotID_score = rpsele.singleReactionRule(b['smiles'], 83333)
+
+json.dump(data, open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpselenzyme/data.json', 'w'))
+
+
+uniprot_aaLenght = {}
+with open('sel_len.csv') as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=',')
+    next(csv_reader)
+    for row in csv_reader:
+        uniprot_aaLenght[row[0].split('|')[1]] = int(row[1])
 
 
 new = rpSBML('test')

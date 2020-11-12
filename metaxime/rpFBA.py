@@ -2,6 +2,8 @@ import libsbml
 import tempfile
 import glob
 import logging
+import cobra
+from cobra.flux_analysis import pfba
 
 
 from .rpMerge import rpMerge
@@ -26,23 +28,163 @@ logging.basicConfig(
 )
 
 
+###################################################################################
+################################## processify #####################################
+###################################################################################
+
+
+#hack to stop the memory leak. Indeed it seems that looping through rpFBA and the rest causes a memory leak... According to: https://github.com/opencobra/cobrapy/issues/568 there is still memory leak issues with cobrapy. looping through hundreds of models and running FBA may be the culprit
+
+import inspect
+import traceback
+import signal
+from functools import wraps
+from multiprocessing import Process, Queue
+
+def handler(signum, frame):
+    """This is to deal with an error caused by Cobrapy segmentation fault
+    """
+    raise OSError('CobraPy is throwing a segmentation fault')
+
+
+class Sentinel:
+    pass
+
+
+def processify(func):
+    """Decorator to run a function as a process.
+    Be sure that every argument and the return value
+    is *pickable*.
+    The created process is joined, so the code does not
+    run in parallel.
+    """
+
+    def process_generator_func(q, *args, **kwargs):
+        result = None
+        error = None
+        it = iter(func())
+        while error is None and result != Sentinel:
+            try:
+                result = next(it)
+                error = None
+            except StopIteration:
+                result = Sentinel
+                error = None
+            except Exception:
+                ex_type, ex_value, tb = sys.exc_info()
+                error = ex_type, ex_value, ''.join(traceback.format_tb(tb))
+                result = None
+            q.put((result, error))
+
+    def process_func(q, *args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except Exception:
+            ex_type, ex_value, tb = sys.exc_info()
+            error = ex_type, ex_value, ''.join(traceback.format_tb(tb))
+            result = None
+        else:
+            error = None
+
+        q.put((result, error))
+
+    def wrap_func(*args, **kwargs):
+        # register original function with different name
+        # in sys.modules so it is pickable
+        process_func.__name__ = func.__name__ + 'processify_func'
+        setattr(sys.modules[__name__], process_func.__name__, process_func)
+
+        signal.signal(signal.SIGCHLD, handler) #This is to catch the segmentation error
+
+        q = Queue()
+        p = Process(target=process_func, args=[q] + list(args), kwargs=kwargs)
+        p.start()
+        result, error = q.get()
+        p.join()
+
+        if error:
+            ex_type, ex_value, tb_str = error
+            message = '%s (in subprocess)\n%s' % (str(ex_value), tb_str)
+            raise ex_type(message)
+
+        return result
+
+    def wrap_generator_func(*args, **kwargs):
+        # register original function with different name
+        # in sys.modules so it is pickable
+        process_generator_func.__name__ = func.__name__ + 'processify_generator_func'
+        setattr(sys.modules[__name__], process_generator_func.__name__, process_generator_func)
+
+        signal.signal(signal.SIGCHLD, handler) #This is to catch the segmentation error
+
+        q = Queue()
+        p = Process(target=process_generator_func, args=[q] + list(args), kwargs=kwargs)
+        p.start()
+
+        result = None
+        error = None
+        while error is None:
+            result, error = q.get()
+            if result == Sentinel:
+                break
+            yield result
+        p.join()
+
+        if error:
+            ex_type, ex_value, tb_str = error
+            message = '%s (in subprocess)\n%s' % (str(ex_value), tb_str)
+            raise ex_type(message)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if inspect.isgeneratorfunction(func):
+            return wrap_generator_func(*args, **kwargs)
+        else:
+            return wrap_func(*args, **kwargs)
+    return wrapper
+
+
+###########################################################
+################## multiprocesses run #####################
+###########################################################
+
+#This is a non-deamonic multiprocessing method that can be used in combination with processify
+
+import multiprocessing
+import multiprocessing.pool
+import time
+
+
+class NoDaemonProcess(multiprocessing.Process):
+    """Daemon process class
+    """
+    # make 'daemon' attribute always return False
+    def _get_daemon(self):
+        return False
+    def _set_daemon(self, value):
+        pass
+    daemon = property(_get_daemon, _set_daemon)
+
+
+class nonDeamonicPool(multiprocessing.pool.Pool):
+    """We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool because the latter is only a wrapper function, not a proper class.
+    """
+    Process = NoDaemonProcess
+
+
+###########################################################
+######################### main ############################
+###########################################################
+
+
 #TODO: add the pareto frontier optimisation as an automatic way to calculate the optimal fluxes
 class rpFBA(rpMerge):
-    import cobra
-    from cobra.flux_analysis import pfba
     """Class to simulate an rpsbml object using different FBA types and objective functions
     """
     def __init__(self,
-                 gem_sbml_path=None,
-                 rpsbml_path=None,
-                 del_sp_pro=False,
-                 del_sp_react=True,
-                 upper_flux_bound=999999.0,
-                 lower_flux_bound=0.0,
-                 compartment_id='MNXC3',
+                 sbml_path=None,
                  is_gem_sbml=False,
                  model_name=None,
-                 pathway_id='rp_pathway',
                  rpcache=None):
         """Default constructor
 
@@ -60,36 +202,176 @@ class rpFBA(rpMerge):
         """
         super().__init__(is_gem_sbml=True,
                          model_name=model_name,
-                         path=gem_sbml_path,
+                         path=sbml_path,
                          rpcache=rpcache)
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpFBA')
         self.species_source_target = None
         self.reactions_source_target = None
-        self.rpsbml_path = rpsbml_path
-        self.gem_sbml_path = gem_sbml_path
-        self.del_sp_pro = del_sp_pro
-        self.del_sp_react = del_sp_react
-        self.upper_flux_bound = upper_flux_bound
-        self.lower_flux_bound = lower_flux_bound
-        self.compartment_id = compartment_id
+        self.sbml_path = gem_sbml_path
         self.is_gem_sbml = is_gem_sbml
         self.model_name = model_name
-        self.pathway_id = pathway_id
         self.rpcache = rpcache
         self.cobra_model = None
-        #TODO enable FBC if not done so
-        if self.model:
-            if gem_sbml_path:
-                status = self.mergeModels(self.rpsbml_path,
-                                          self.del_sp_pro,
-                                          self.del_sp_react,
-                                          self.upper_flux_bound,
-                                          self.lower_flux_bound,
-                                          self.compartment_id,
-                                          self.pathway_id)
-                if not status:
-                    self.logger.warning('Failed to merge the models')
+
+
+    ##########################################################
+    ################## Static Functions ######################
+    ##########################################################
+
+
+    @staticmethod
+    def parseCollection(self,
+                        rpcol,
+                        gem_sbml_path,
+                        target_reaction='biomass',
+                        sim_type='fba',
+                        source_reaction=None,
+                        source_coefficient=1.0,
+                        target_coefficient=1.0,
+                        num_workers=10,
+                        keep_merged=False,
+                        fraction_of=0.75,
+                        objective_id='obj_fba',
+                        is_max=True,
+                        del_sp_pro=False,
+                        del_sp_react=True,
+                        upper_flux_bound=999999.0,
+                        lower_flux_bound=0.0,
+                        compartment_id='MNXC3',
+                        pathway_id='rp_pathway',
+                        rpcache=None):
+        """Parse a the collection of rpSBML files and its extra information
+
+        Note: That this function does nothing. It is written to be extended from the other inherited classes
+        TODO: Not sure of the rpcache passing, only applicable when you are extending parsing many different
+
+        """
+        @processify
+        def singleFBA_hdd(gem_sbml_path,
+                          model_name,
+                          rpcache,
+                          rpsbml_path,
+                          del_sp_pro,
+                          del_sp_react,
+                          upper_flux_bound,
+                          lower_flux_bound,
+                          compartment_id,
+                          pathway_id,
+                          source_reaction,
+                          source_coefficient,
+                          target_reaction,
+                          target_coefficient,
+                          fraction_of,
+                          is_max,
+                          pathway_id,
+                          objective_id):
+            rpfba = rpFBA(sbml_path=gem_sbml_path,
+                          is_gem_sbml=True,
+                          model_name=file_name,
+                          rpcache=rpcache)
+            status = rpfba.mergeModels(rpsbml_path=rpsbml_path,
+                                       del_sp_pro=del_sp_pro,
+                                       del_sp_react=del_sp_react,
+                                       upper_flux_bound=upper_flux_bound,
+                                       lower_flux_bound=lower_flux_bound,
+                                       compartment_id=compartment_id,
+                                       pathway_id=pathway_id)
+            if not status:
+                logging.error('Problem merging the models: '+str(file_name))
+                continue
+            ####### fraction of reaction ######
+            if sim_type=='fraction':
+                rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+            ####### FBA ########
+            elif sim_type=='fba':
+                rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id)
+            ####### pFBA #######
+            elif sim_type=='pfba':
+                rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+            #overwrite the rpSBML model
+            rpfba.writeSBML(path=rpsbml_path, keep_merged=keep_merged)
+        ######## main #######
+        if not os.path.exists(gem_sbml_path):
+            logging.error('The input GEM file does not seem to exists: '+str(gem_sbml_path))
+            return False
+        if not sim_type in ['fraction', 'fba', 'pfba']:
+            logging.error('The input FBA sim_types is not supported: '+str(sim_type))
+            return False
+        if num_workers<1 or num_workers>50:
+            logging.error('Cannot have 0 or more than 50 workers')
+            return False
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(pcol, mode='r')
+            tar.extractall(path=tmp_folder)
+            tar.close()
+            if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+                logging.error('Input collection has no models')
+                return False
+            #load the cache
+            if not rpcache:
+                rpcache = rpCache()
+                rpcache.populateCache()
+            for rpsbml_path in glob.glob(os.path.join(tmp_folder, '*')):
+                file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+                #if only a single worker then we do not use processify -- easier debugging
+                if num_workers==1:
+                    rpfba = rpFBA(sbml_path=gem_sbml_path,
+                                  is_gem_sbml=True,
+                                  model_name=file_name,
+                                  rpcache=rpcache)
+                    status = rpfba.mergeModels(rpsbml_path=rpsbml_path,
+                                               del_sp_pro=del_sp_pro,
+                                               del_sp_react=del_sp_react,
+                                               upper_flux_bound=upper_flux_bound,
+                                               lower_flux_bound=lower_flux_bound,
+                                               compartment_id=compartment_id,
+                                               pathway_id=pathway_id)
+                    if not status:
+                        logging.error('Problem merging the models: '+str(file_name))
+                        continue
+                    ####### fraction of reaction ######
+                    if sim_type=='fraction':
+                        rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+                    ####### FBA ########
+                    elif sim_type=='fba':
+                        rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id)
+                    ####### pFBA #######
+                    elif sim_type=='pfba':
+                        rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+                    #overwrite the rpSBML model
+                    rpfba.writeSBML(path=rpsbml_path, keep_merged=keep_merged)
+                else:
+                    pool = nonDeamonicPool(processes=num_workers)
+                    results = []
+                    results.append(pool.apply_async(singleFBA_hdd, args=(gem_sbml_path,
+                                                                         model_name,
+                                                                         rpcache,
+                                                                         rpsbml_path,
+                                                                         del_sp_pro,
+                                                                         del_sp_react,
+                                                                         upper_flux_bound,
+                                                                         lower_flux_bound,
+                                                                         compartment_id,
+                                                                         pathway_id,
+                                                                         source_reaction,
+                                                                         source_coefficient,
+                                                                         target_reaction,
+                                                                         target_coefficient,
+                                                                         fraction_of,
+                                                                         is_max,
+                                                                         pathway_id,
+                                                                         objective_id)))
+                    output = [p.get() for p in results]
+                    pool.close()
+                    pool.join()
+            if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+                logging.error('Output has not produced any models')
+                return False
+            #WARNING: we are overwriting the input file
+            with tarfile.open(rpcol, "w:xz") as tar:
+                tar.add(tmp_folder, arcname='rpsbml_collection')
+        return True
 
 
     ##########################################################
@@ -109,7 +391,7 @@ class rpFBA(rpMerge):
                 self.writeSBML(tmp_output_folder)
                 #logging.info(glob.glob(tmp_output_folder+'/*'))
                 #logging.info(cobra.io.validate_sbml_model(glob.glob(tmp_output_folder+'/*')[0]))
-                cobra_model = cobra.io.read_sbml_model(glob.glob(tmp_output_folder+'/*')[0], use_fbc_package=True)
+                cobra_model = cobra.io.read_sbml_model(glob.glob(os.path.join(tmp_output_folder, '*'))[0], use_fbc_package=True)
             #self.cobra_model = cobra.io.read_sbml_model(self.document.toXMLNode().toXMLString(), use_fbc_package=True)
             #use CPLEX
             # self.cobra_model.solver = 'cplex'
@@ -180,61 +462,7 @@ class rpFBA(rpMerge):
     ##################################################################
 
 
-    def mergeModels(self,
-                    rpsbml_path=None,
-                    del_sp_pro=False,
-                    del_sp_react=True,
-                    upper_flux_bound=999999.0,
-                    lower_flux_bound=0.0,
-                    compartment_id='MNXC3',
-                    pathway_id='rp_pathway'):
-        if not del_sp_pro==False and not del_sp_pro:
-            if not self.del_sp_pro==False and not self.del_sp_pro:
-                self.logger.error('Must define either self ('+str(self.del_sp_pro)+') or input del_sp_pro ('+str(del_sp_pro)+')')
-                return False
-            d_s_p = self.del_sp_pro
-        else:
-            d_s_p = del_sp_pro
-        if not del_sp_react==False and not del_sp_react:
-            if not self.del_sp_react==False and not self.del_sp_react:
-                self.logger.error('Must define either self ('+str(self.del_sp_react)+') or input del_sp_react ('+str(del_sp_react)+')')
-                return False
-            d_s_r = self.del_sp_react
-        else:
-            d_s_r = del_sp_react
-        if not upper_flux_bound==0.0 and not upper_flux_bound:
-            if not self.upper_flux_bound==0.0 and not self.upper_flux_bound:
-                self.logger.error('Must define either self ('+str(self.upper_flux_bound)+') or input upper_flux_bound ('+str(upper_flux_bound)+')')
-                return False
-            u_f_b = self.upper_flux_bound
-        else:
-            u_f_b = upper_flux_bound
-        if not lower_flux_bound==0.0 and not lower_flux_bound:
-            if not self.lower_flux_bound==0.0 and not self.lower_flux_bound:
-                self.logger.error('Must define either self ('+str(self.lower_flux_bound)+') or input lower_flux_bound ('+str(lower_flux_bound)+')')
-                return False
-            l_f_b = self.lower_flux_bound
-        else:
-            l_f_b = lower_flux_bound
-        if not compartment_id:
-            if not self.compartment_id:
-                self.logger.error('Must define either self ('+str(self.compartment_id)+') or input compartment_id ('+str(compartment_id)+')')
-                return False
-            c_i = self.compartment_id
-        else:
-            c_i = compartment_id
-        if not pathway_id:
-            if not self.pathway_id:
-                self.logger.error('Must define either self ('+str(self.pathway_id)+') or input pathway_id ('+str(pathway_id)+')')
-                return False
-            p_i = self.pathway_id
-        else:
-            p_i = pathway_id
-        self.species_source_target, self.reactions_source_target = super().mergeModels(rpsbml_path, d_s_p, d_s_r, u_f_b, l_f_b, c_i, p_i)
-        return True
-
-
-    def writeSBML(self, path=None, keep_merged=True):
+    def writeSBML(self, path, keep_merged=True):
         """Export the metabolic network to a SBML filem either the fully merged versin or the rpSBML only version
 
         :param path: Path to the output SBML file
