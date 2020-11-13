@@ -478,12 +478,12 @@ class rpSBML(rpCache):
         :return: None
         """
         self.logger.debug('rpsbml_dict: '+str(rpsbml_dict))
-        groups = self.model.getPlugin('groups')
-        self._checklibSBML(groups, 'Retreiving the groups extension')
-        rp_pathway = groups.getGroup(pathway_id)
-        self._checklibSBML(rp_pathway, 'Retreiving the heterolgous pathway: '+str(pathway_id))
         #self.logger.debug('--> pathway')
         if 'pathway' in rpsbml_dict:
+            groups = self.model.getPlugin('groups')
+            self._checklibSBML(groups, 'Retreiving the groups extension')
+            rp_pathway = groups.getGroup(pathway_id)
+            self._checklibSBML(rp_pathway, 'Retreiving the heterolgous pathway: '+str(pathway_id))
             if 'brsynth' in rpsbml_dict['pathway']:
                 for brsynth_id in rpsbml_dict['pathway']['brsynth']:
                     #self.logger.debug('\tbrsynth_id: '+str(brsynth_id))

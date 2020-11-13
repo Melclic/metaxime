@@ -1,12 +1,15 @@
 import libsbml
 import tempfile
 import glob
+import os
+import tarfile
 import logging
 import cobra
 from cobra.flux_analysis import pfba
 
 
 from .rpMerge import rpMerge
+from .rpCache import rpCache
 
 
 __author__ = "Melchior du Lac"
@@ -17,11 +20,11 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-#logging.root.setLevel(logging.NOTSET)
+logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
+    level=logging.DEBUG,
+    #level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -208,7 +211,7 @@ class rpFBA(rpMerge):
         self.logger.debug('Started instance of rpFBA')
         self.species_source_target = None
         self.reactions_source_target = None
-        self.sbml_path = gem_sbml_path
+        self.sbml_path = sbml_path
         self.is_gem_sbml = is_gem_sbml
         self.model_name = model_name
         self.rpcache = rpcache
@@ -221,8 +224,7 @@ class rpFBA(rpMerge):
 
 
     @staticmethod
-    def parseCollection(self,
-                        rpcol,
+    def parseCollection(rpcol,
                         gem_sbml_path,
                         target_reaction='biomass',
                         sim_type='fba',
@@ -264,13 +266,12 @@ class rpFBA(rpMerge):
                           target_coefficient,
                           fraction_of,
                           is_max,
-                          pathway_id,
                           objective_id):
             rpfba = rpFBA(sbml_path=gem_sbml_path,
                           is_gem_sbml=True,
                           model_name=file_name,
                           rpcache=rpcache)
-            status = rpfba.mergeModels(rpsbml_path=rpsbml_path,
+            status = rpfba.mergeModels(input_model=rpsbml_path,
                                        del_sp_pro=del_sp_pro,
                                        del_sp_react=del_sp_react,
                                        upper_flux_bound=upper_flux_bound,
@@ -279,18 +280,21 @@ class rpFBA(rpMerge):
                                        pathway_id=pathway_id)
             if not status:
                 logging.error('Problem merging the models: '+str(file_name))
-                continue
+                return False
             ####### fraction of reaction ######
             if sim_type=='fraction':
-                rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+                status = rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
             ####### FBA ########
             elif sim_type=='fba':
-                rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id)
+                status = rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id)
             ####### pFBA #######
             elif sim_type=='pfba':
-                rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+                status = rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
+            if not status:
+                logging.error('Problem running the FBA')
+                return False
             #overwrite the rpSBML model
-            rpfba.writeSBML(path=rpsbml_path, keep_merged=keep_merged)
+            return rpfba.writeSBML(path=rpsbml_path, keep_merged=keep_merged)
         ######## main #######
         if not os.path.exists(gem_sbml_path):
             logging.error('The input GEM file does not seem to exists: '+str(gem_sbml_path))
@@ -302,17 +306,22 @@ class rpFBA(rpMerge):
             logging.error('Cannot have 0 or more than 50 workers')
             return False
         with tempfile.TemporaryDirectory() as tmp_folder:
-            tar = tarfile.open(pcol, mode='r')
-            tar.extractall(path=tmp_folder)
+            tar = tarfile.open(rpcol, mode='r')
+            #get the root member
+            root_name = os.path.commonprefix(tar.getnames())
+            logging.debug('root_name: '+str(root_name))
+            tar.extractall(path=tmp_folder, members=tar.members)
             tar.close()
-            if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+            logging.debug(os.path.join(tmp_folder, root_name, 'models', '*'))
+            logging.debug(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Input collection has no models')
                 return False
             #load the cache
             if not rpcache:
                 rpcache = rpCache()
                 rpcache.populateCache()
-            for rpsbml_path in glob.glob(os.path.join(tmp_folder, '*')):
+            for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
                 #if only a single worker then we do not use processify -- easier debugging
                 if num_workers==1:
@@ -320,13 +329,15 @@ class rpFBA(rpMerge):
                                   is_gem_sbml=True,
                                   model_name=file_name,
                                   rpcache=rpcache)
-                    status = rpfba.mergeModels(rpsbml_path=rpsbml_path,
+                    status = rpfba.mergeModels(input_model=rpsbml_path,
                                                del_sp_pro=del_sp_pro,
                                                del_sp_react=del_sp_react,
                                                upper_flux_bound=upper_flux_bound,
                                                lower_flux_bound=lower_flux_bound,
                                                compartment_id=compartment_id,
                                                pathway_id=pathway_id)
+                    #debug
+                    rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')
                     if not status:
                         logging.error('Problem merging the models: '+str(file_name))
                         continue
@@ -360,17 +371,16 @@ class rpFBA(rpMerge):
                                                                          target_coefficient,
                                                                          fraction_of,
                                                                          is_max,
-                                                                         pathway_id,
                                                                          objective_id)))
                     output = [p.get() for p in results]
                     pool.close()
                     pool.join()
-            if len(glob.glob(os.path.join(tmp_folder, 'models', '*')))==0:
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False
             #WARNING: we are overwriting the input file
             with tarfile.open(rpcol, "w:xz") as tar:
-                tar.add(tmp_folder, arcname='rpsbml_collection')
+                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
         return True
 
 
@@ -483,10 +493,11 @@ class rpFBA(rpMerge):
                 return False
             #open the original file once again
             skinny_rpmerge = rpMerge(is_gem_sbml=False,
-                                     path=self.rpsbml_path,
+                                     path=self.sbml_path,
                                      rpcache=self.rpcache)
             #TODO: need to add the newly created reaction from the merge to the skinny rpSBML version
             #overwrite the original BRSynth annotations with the new ones
+            self.logger.debug('asDict: '+str(self.asDict()))
             skinny_rpmerge.updateBRSynthPathway(self.asDict())
             #WARNING: This will not keep the created reactions at the gafilling single parent process
             #add the objectives and overwtie as well
