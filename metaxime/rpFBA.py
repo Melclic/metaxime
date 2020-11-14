@@ -337,7 +337,7 @@ class rpFBA(rpMerge):
                                                compartment_id=compartment_id,
                                                pathway_id=pathway_id)
                     #debug
-                    rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')
+                    logging.debug('write sbml: {0}'.format(rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')))
                     if not status:
                         logging.error('Problem merging the models: '+str(file_name))
                         continue
