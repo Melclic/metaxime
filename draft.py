@@ -314,3 +314,14 @@ svg, resG, mod_pos, reac_cofactors_name, nodes_attach_locs = rpdraw.drawsvg(rpgr
 
 open('/home/mdulac/Downloads/test.svg', 'w').write(svg)
 
+
+
+
+from metaxime import rpFBA
+
+a = rpFBA.parseCollection('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpfba/rpfba_col.tar.xz',
+                		  '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpfba/gem.xml',
+                		  sim_type='fraction',
+                		  source_reaction='biomass',
+                		  target_reaction='RP1_sink',
+                		  objective_id='obj_fraction')
