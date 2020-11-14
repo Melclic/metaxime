@@ -1043,7 +1043,7 @@ class rpCache:
         :return: The list of compartment id's
         """
         if not self.comp_xref:
-            self.getCompXref(comp_id)
+            self.getCompXref()
         try:
             return self.comp_xref[comp_id]
         except KeyError:

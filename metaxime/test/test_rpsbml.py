@@ -18,6 +18,7 @@ class TestRPSBML(unittest.TestCase):
         cls.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         cls.gem = rpSBML('gem', path=os.path.join('data', 'rpsbml', 'gem.xml'))
         cls.data = json.load(open(os.path.join('data', 'rpsbml', 'data.json'), 'r'))
+        cls.maxDiff = None #to be able to compare large dict
 
     def test_isRPsbml(self):
         self.assertTrue(self.rpsbml._isRPsbml())
@@ -54,8 +55,8 @@ class TestRPSBML(unittest.TestCase):
         self.assertRaises(AttributeError, self.gem.readUniqueRPspecies)
 
     def test_readTaxonAnnotation(self):
-        self.assertCountEqual(self.gem.readTaxonAnnotation(), ['511145'])
-        self.assertCountEqual(self.rpsbml.readTaxonAnnotation(), [])
+        self.assertCountEqual(self.gem.readTaxonomy(), ['511145'])
+        self.assertCountEqual(self.rpsbml.readTaxonomy(), [])
 
     def test_defaultBothAnnot(self):
         self.assertEqual(self.rpsbml._defaultBothAnnot('test'), self.data['defaultbothannot'])
@@ -67,8 +68,8 @@ class TestRPSBML(unittest.TestCase):
         self.assertEqual(self.rpsbml._defaultMIRIAMAnnot('test'), self.data['defaultmiriamannot'])
 
     def test_updateBRSynthPathway(self):
-        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'updatebrsynthpathway.xml'))
-        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.23925506171963057)
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
+        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.5760957019721074)
         rpsbml.updateBRSynthPathway(self.rpsbml.asDict())
         self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.5760957019721074)
 
@@ -126,11 +127,9 @@ class TestRPSBML(unittest.TestCase):
         self.assertTrue(self.rpsbml.isSpeciesProduct('TARGET_0000000001__64__MNXC3'))
         self.assertFalse(self.rpsbml.isSpeciesProduct('MNXM1__64__MNXC3'))
 
-    '''too many characters to compare
     def test_outPathsDict(self):
         self.assertDictEqual(self.rpsbml.outPathsDict(), self.data['outpathsdict'])
         self.assertRaises(AttributeError, self.gem.outPathsDict)
-    '''
 
     def test_compareBRSYNTHAnnotations(self):
         self.assertTrue(self.rpsbml.compareBRSYNTHAnnotations(self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation()))
@@ -191,7 +190,7 @@ class TestRPSBML(unittest.TestCase):
         new = rpSBML('test')
         new.createModel('test_name', 'test_id')
         param = new.createReturnFluxParameter(8888.0)
-        self.assertEqual(param.id, 'B_8888')
+        self.assertEqual(param.id, 'B_8888_0')
         self.assertEqual(param.value, 8888.0)
 
     def test_createReaction(self):

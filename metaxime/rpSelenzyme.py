@@ -35,7 +35,7 @@ class rpSelenzyme(rpSBML):
     """Class to handle calling the Selenzyme service
     """
     def __init__(self,
-                 cache_tar_path=os.path.join('metaxime', 'input_cache', 'rpselenzyme_data.tar.xz'),
+                 cache_tar_path=None,
                  uniprot_aaLength=None,
                  data_dir=None,
                  pc=None,
@@ -52,7 +52,12 @@ class rpSelenzyme(rpSBML):
         """
         super().__init__(model_name, document, path, rpcache)
         self.logger = logging.getLogger(__name__)
-        self.cache_tar_path = cache_tar_path
+        self.dirname = os.path.dirname(os.path.abspath( __file__ ))
+        if not cache_tar_path:
+            self.cache_tar_path = os.path.join(self.dirname, 'input_cache', 'rpselenzyme_data.tar.xz')
+        else:
+            self.cache_tar_path = cache_tar_path
+        self.logger.debug('cache_tar_path: '+str(self.cache_tar_path))
         self.uniprot_aaLength = uniprot_aaLength
         self.data_dir = data_dir
         self.pc = pc
@@ -60,11 +65,12 @@ class rpSelenzyme(rpSBML):
             if not os.path.exists(self.cache_tar_path):
                 self.logger.warning('Cannot find the cache tar file: '+str(self.cache_tar_path))
                 self.cache_tar_path = None
-        if not self.pc or not self.uniprot_aaLength or not self.data_dir:
-            self.pc, self.uniprot_aaLength, self.data_dir = self.loadCache(cache_tar_path)
+            if not self.pc or not self.uniprot_aaLength or not self.data_dir:
+                self.pc, self.uniprot_aaLength, self.data_dir = self.loadCache(self.cache_tar_path)
+            else:
+                self.logger.warning('Either both pc and cache_tar_path are None and the cache is loaded or both are passed')
         else:
-            self.logger.warning('Either both pc and cache_tar_path are None and the cache is loaded or both are passed')
-
+            self.logger.warning('Did not specify a cache_tar_path')
 
     #overwrite the del class to remove the self.data_dir if it has been initiated
     def __del__(self):
@@ -74,32 +80,36 @@ class rpSelenzyme(rpSBML):
             self.data_dir.cleanup()
         
 
-    def loadCache(self, rpselen_cache_tar=os.path.join('metaxime', 'input_cache', 'rpselenzyme_data.tar.xz')):
+    def loadCache(self, cache_tar_path=None):
         """Load the selenzyme cache
         """
         ## global parameter 
-        if not os.path.exists(rpselen_cache_tar):
-            self.logger.error('The input cache does not seem to exists: '+str(rpselen_cache_tar))
+        self.logger.debug('cache_tar_path: '+str(cache_tar_path))
+        if not cache_tar_path:
+            self.logger.error('Cannot have None tar path')
             return None, None, None
-        if not os.path.isdir(os.path.join('metaxime', 'cache')):
-            os.mkdir(os.path.join('metaxime', 'cache')) 
+        if not os.path.exists(cache_tar_path):
+            self.logger.error('The input cache does not seem to exists: '+str(cache_tar_path))
+            return None, None, None
+        if not os.path.isdir(os.path.join(self.dirname, 'cache')):
+            os.mkdir(os.path.join(self.dirname, 'cache')) 
         pc = None
         uniprot_aaLength = {}
         tmp_output_folder = tempfile.TemporaryDirectory()
-        tar = tarfile.open(rpselen_cache_tar, mode='r')
+        tar = tarfile.open(cache_tar_path, mode='r')
         tar.extractall(path=tmp_output_folder.name)
         tar.close()
         pc = Selenzy.readData(os.path.join(tmp_output_folder.name, 'data'))
         #### load the uniprot_aaLength
-        if os.path.exists(os.path.join('metaxime', 'cache', 'uniprot_aaLength.pickle.gz')):
-            uniprot_aaLength = pickle.load(gzip.open(os.path.join('metaxime', 'cache', 'uniprot_aaLength.pickle.gz'), 'rb'))
+        if os.path.exists(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz')):
+            uniprot_aaLength = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz'), 'rb'))
         else: 
             with open(os.path.join(tmp_output_folder.name, 'data', 'sel_len.csv')) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=',')
                 next(csv_reader)
                 for row in csv_reader:
                     uniprot_aaLength[row[0].split('|')[1]] = int(row[1])
-            pickle.dump(uniprot_aaLength, gzip.open(os.path.join('metaxime', 'cache', 'uniprot_aaLength.pickle.gz'), 'wb'))
+            pickle.dump(uniprot_aaLength, gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz'), 'wb'))
         return pc, uniprot_aaLength, tmp_output_folder
 
 

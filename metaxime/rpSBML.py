@@ -1262,9 +1262,9 @@ class rpSBML(rpCache):
                     self.logger.warning('This contains no attributes: '+str(bag.getChild(i).toXMLString()))
                     continue
                 if len(str_annot.split('/')[-1].split(':'))==2:
-                    taxid = str_annot.split('/')[-1].split(':')[1]
+                    tax_id = str_annot.split('/')[-1].split(':')[1]
                 else:
-                    taxid = str_annot.split('/')[-1]
+                    tax_id = str_annot.split('/')[-1]
                 to_ret.append(tax_id)
             return to_ret
         except AttributeError as e:

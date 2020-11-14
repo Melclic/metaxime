@@ -17,10 +17,11 @@ class TestRPSelenzyme(unittest.TestCase):
         #load a rpSBML file
         cls.rpsele = rpSelenzyme(path=os.path.join('data', 'rpselenzyme', 'rpsbml.xml'))
         cls.data = json.load(open(os.path.join('data', 'rpselenzyme', 'data.json'), 'r'))
+        cls.maxDiff = None
 
     def test_singleReactionRule(self):
         reac = self.rpsele.model.getReaction('RP1')
-        annot = self.rpsele.readBRSYNTHAnnotation(a.getAnnotation())
+        annot = self.rpsele.readBRSYNTHAnnotation(reac.getAnnotation())
         self.assertDictEqual(self.rpsele.singleReactionRule(annot['smiles'], 83333), self.data['singlereactionrule'])
 
     def test_run(self):

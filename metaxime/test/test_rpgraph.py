@@ -48,9 +48,10 @@ class TestRPGraph(unittest.TestCase):
 
     #exportJSON
     def test_exportJSON(self):
-        self.assertDictEqual(self.rpgraph.exportJSON(), data['exportjson']
+        self.assertDictEqual(self.rpgraph.exportJSON(), self.data['exportjson'])
 
     #orderedRetroReactions
+
 
 if __name__ == '__main__':
     unittest.main()

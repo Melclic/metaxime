@@ -19,11 +19,11 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-logging.root.setLevel(logging.NOTSET)
+#logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
+    #level=logging.DEBUG,
+    level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -78,7 +78,7 @@ class rpEquilibrator(rpSBML):
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.mnx_default_conc = json.load(open(os.path.join(os.getcwd(), 'data', 'mnx_default_conc.json'), 'r'))
+        self.mnx_default_conc = json.load(open(os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'data', 'mnx_default_conc.json'), 'r'))
         self.calc_cmp = {}
 
 
