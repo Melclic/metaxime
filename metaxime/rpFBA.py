@@ -251,22 +251,22 @@ class rpFBA(rpMerge):
         """
         @processify
         def singleFBA_hdd(gem_sbml_path,
-                          model_name,
-                          rpcache,
                           rpsbml_path,
-                          del_sp_pro,
-                          del_sp_react,
-                          upper_flux_bound,
-                          lower_flux_bound,
-                          compartment_id,
-                          pathway_id,
-                          source_reaction,
-                          source_coefficient,
-                          target_reaction,
-                          target_coefficient,
-                          fraction_of,
-                          is_max,
-                          objective_id):
+                          model_name=None,
+                          rpcache=None,
+                          del_sp_pro=False,
+                          del_sp_react=True,
+                          upper_flux_bound=999999.0,
+                          lower_flux_bound=0.0,
+                          compartment_id='MNXC3',
+                          pathway_id='rp_pathway',
+                          source_reaction='biomass',
+                          source_coefficient=1.0,
+                          target_reaction='RP1_sink',
+                          target_coefficient=1.0,
+                          fraction_of=0.75,
+                          is_max=True,
+                          objective_id='obj_fraction'):
             rpfba = rpFBA(sbml_path=gem_sbml_path,
                           is_gem_sbml=True,
                           model_name=file_name,
@@ -337,7 +337,7 @@ class rpFBA(rpMerge):
                                                compartment_id=compartment_id,
                                                pathway_id=pathway_id)
                     #debug
-                    rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')
+                    #rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')
                     if not status:
                         logging.error('Problem merging the models: '+str(file_name))
                         continue
@@ -351,7 +351,10 @@ class rpFBA(rpMerge):
                     elif sim_type=='pfba':
                         rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id)
                     #overwrite the rpSBML model
-                    rpfba.writeSBML(path=rpsbml_path, keep_merged=keep_merged)
+                    if keep_merged:
+                        rpfba.writeSBML(path=rpsbml_path)
+                    else:
+                        rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
                 else:
                     pool = nonDeamonicPool(processes=num_workers)
                     results = []
@@ -398,10 +401,10 @@ class rpFBA(rpMerge):
         cobra_model = None
         try:
             with tempfile.TemporaryDirectory() as tmp_output_folder:
-                self.writeSBML(tmp_output_folder)
+                self.writeSBML(os.path.join(tmp_output_folder, 'tmp.sbml'))
                 #logging.info(glob.glob(tmp_output_folder+'/*'))
                 #logging.info(cobra.io.validate_sbml_model(glob.glob(tmp_output_folder+'/*')[0]))
-                cobra_model = cobra.io.read_sbml_model(glob.glob(os.path.join(tmp_output_folder, '*'))[0], use_fbc_package=True)
+                cobra_model = cobra.io.read_sbml_model(os.path.join(tmp_output_folder, 'tmp.sbml'), use_fbc_package=True)
             #self.cobra_model = cobra.io.read_sbml_model(self.document.toXMLNode().toXMLString(), use_fbc_package=True)
             #use CPLEX
             # self.cobra_model.solver = 'cplex'
@@ -472,7 +475,7 @@ class rpFBA(rpMerge):
     ##################################################################
 
 
-    def writeSBML(self, path, keep_merged=True):
+    def writeSBML(self, path, skinny_rpsbml_path=None):
         """Export the metabolic network to a SBML filem either the fully merged versin or the rpSBML only version
 
         :param path: Path to the output SBML file
@@ -487,13 +490,13 @@ class rpFBA(rpMerge):
         """
         ####### check the path #########
         #need to determine where are the path id's coming from
-        if not keep_merged:
+        if skinny_rpsbml_path:
             if not self.path:
                 self.logger.error('Must have path initiated to return the non-merged version of the model')
                 return False
             #open the original file once again
             skinny_rpmerge = rpMerge(is_gem_sbml=False,
-                                     path=self.sbml_path,
+                                     path=skinny_rpsbml_path,
                                      rpcache=self.rpcache)
             #TODO: need to add the newly created reaction from the merge to the skinny rpSBML version
             #overwrite the original BRSynth annotations with the new ones
@@ -556,10 +559,12 @@ class rpFBA(rpMerge):
         if not self.cobra_model:
             self.cobra_model = self._convertToCobra()
         if not self.cobra_model:
-            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
+            if write_results:
+                self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
         cobra_results = self.cobra_model.optimize()
-        self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
+        if write_results:
+            self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         return 0.0, True
 
 
@@ -567,7 +572,7 @@ class rpFBA(rpMerge):
     #def runMultiObjectiveParsimonou
 
 
-    def runFBA(self, reaction_id, coefficient=1.0, is_max=True, pathway_id='rp_pathway', objective_id=None):
+    def runFBA(self, reaction_id, coefficient=1.0, is_max=True, pathway_id='rp_pathway', objective_id=None, write_results=False):
         """Run FBA using a single objective
 
         :param reaction_id: The id of the reactions involved in the objective
@@ -594,14 +599,16 @@ class rpFBA(rpMerge):
         if not self.cobra_model:
             self.cobra_model = self._convertToCobra()
         if not self.cobra_model:
-            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
+            if write_results:
+                self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
         cobra_results = self.cobra_model.optimize()
-        self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
+        if write_results:
+            self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         return cobra_results.objective_value, True
 
 
-    def runParsimoniousFBA(self, reaction_id, coefficient=1.0, fraction_of_optimum=0.95, is_max=True, pathway_id='rp_pathway', objective_id=None):
+    def runParsimoniousFBA(self, reaction_id, coefficient=1.0, fraction_of_optimum=0.95, is_max=True, pathway_id='rp_pathway', objective_id=None, write_results=False):
         """Run parsimonious FBA using a single objective
 
         :param reaction_id: The id of the reactions involved in the objective
@@ -633,7 +640,8 @@ class rpFBA(rpMerge):
             self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
         cobra_results = pfba(self.cobra_model, fraction_of_optimum)
-        self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
+        if write_results:
+            self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         return cobra_results.objective_value, True
 
 
@@ -645,7 +653,8 @@ class rpFBA(rpMerge):
                             fraction_of_source=0.75,
                             is_max=True,
                             pathway_id='rp_pathway',
-                            objective_id='obj_fraction'):
+                            objective_id='obj_fraction',
+                            write_results=False):
         """Optimise for a target reaction while fixing a source reaction to the fraction of its optimum
 
         :param source_reaction: The id of the source reaction
@@ -697,7 +706,8 @@ class rpFBA(rpMerge):
                 return 0.0, False
             cobra_results = self.cobra_model.optimize()
             self.logger.debug('Source reaction optimisation results: '+str(cobra_results.objective_value))
-            self._writeAnalysisResults(source_obj_id, cobra_results, pathway_id)
+            if write_results:
+                self._writeAnalysisResults(source_obj_id, cobra_results, pathway_id)
             # cobra_results.objective_value
             fbc_obj = fbc_plugin.getObjective(source_obj_id)
             fbc_obj_annot = fbc_obj.getAnnotation()
@@ -742,10 +752,12 @@ class rpFBA(rpMerge):
         if not self.cobra_model:
             self.logger.error('Converting libSBML to CobraPy returned False')
             #although this may not be the greatest idea, set flux to 0.0 when cobrapy error
-            self._writeAnalysisResults(objective_id, 0.0, pathway_id)
+            if write_results:
+                self._writeAnalysisResults(objective_id, 0.0, pathway_id)
             return 0.0, False
         cobra_results = self.cobra_model.optimize()
-        self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
+        if write_results:
+            self._writeAnalysisResults(objective_id, cobra_results, pathway_id)
         ##### print the biomass results ######
         #self.logger.debug('Biomass: '+str(cobra_results.fluxes.biomass))
         #self.logger.debug('Target: '+str(cobra_results.fluxes.RP1_sink))
