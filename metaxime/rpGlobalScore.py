@@ -6,6 +6,9 @@ import logging
 from scipy import stats
 import numpy as np
 import json
+import glob
+import tarfile
+import tempfile
 
 from .rpSBML import rpSBML
 
@@ -48,23 +51,40 @@ class rpGlobalScore(rpSBML):
         return 1/(1+np.exp(-x))
     '''
 
+    @staticmethod
+    def runCollection(rpcollection):
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcollection, mode='r')
+            #get the root member
+            root_name = os.path.commonprefix(tar.getnames())
+            logging.debug('root_name: '+str(root_name))
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()  
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Input collection has no models')
+                return False
+            for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+                rpglobalscore = rpGlobalScore(model_name=file_name, path=rpsbml_path)
+                rpglobalscore.calculateGlobalScore(write_results=True)
+
 
     # NOTE: all the scores are normalised by their maximal and minimal, and normalised to be higher is better
     # Higher is better
     #TODO: try to standardize the values instead of normalisation.... Advantage: not bounded
-    def _calculateGlobalScore(weight_rp_steps=0.10002239003499142,
-                              weight_rule_score=0.13346271414277305,
-                              weight_fba=0.6348436269211155,
-                              weight_thermo=0.13167126890112002,
-                              max_rp_steps=15, #TODO: add this as a limit in RP2
-                              thermo_ceil=5000.0,
-                              thermo_floor=-5000.0,
-                              fba_ceil=5.0,
-                              fba_floor=0.0,
-                              pathway_id='rp_pathway',
-                              objective_id='obj_fraction',
-                              thermo_id='dfG_prime_m',
-                              write_results=False):
+    def calculateGlobalScore(weight_rp_steps=0.10002239003499142,
+                             weight_rule_score=0.13346271414277305,
+                             weight_fba=0.6348436269211155,
+                             weight_thermo=0.13167126890112002,
+                             max_rp_steps=15, #TODO: add this as a limit in RP2
+                             thermo_ceil=5000.0,
+                             thermo_floor=-5000.0,
+                             fba_ceil=5.0,
+                             fba_floor=0.0,
+                             pathway_id='rp_pathway',
+                             objective_id='obj_fraction',
+                             thermo_id='dfG_prime_m',
+                             write_results=False):
         """ Extract the reaction SMILES from an SBML, query rule_score and write the results back to the SBML
 
         :param weight_rp_steps: The weight associated with the number of steps
