@@ -325,3 +325,40 @@ a = rpFBA.parseCollection('/home/mdulac/workspace/melclic/metaxime/metaxime/test
                 		  source_reaction='biomass',
                 		  target_reaction='RP1_sink',
                 		  objective_id='obj_fraction')
+
+import libsbml
+document = libsbml.readSBMLFromFile('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpreader/rp_1_1_rpsbml.xml')
+model = document.model
+a = model.getListOfReactions()[0]
+
+groups_plugin = model.getPlugin('groups')
+
+
+
+
+from metaxime import rpCache
+import os
+rpcache = rpCache()
+rpcache.populateCache()
+
+
+from metaxime import rpReader
+rpReader.rp2ToCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'rp_pathways.csv'),
+                         os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'rp2paths_compounds.csv'),
+                         os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'rp2paths_pathways.csv'),
+                         os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'test.rpcol'),
+                         rpcache=rpcache)
+
+
+from metaxime import rpFBA
+rpFBA.runCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'test.rpcol'),
+                    os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'gem.xml'),
+                    os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'test.rpcol'),
+                    num_workers=5,
+                    rpcache=rpcache)
+
+
+hqn_c__64__MNXC3
+
+
+
