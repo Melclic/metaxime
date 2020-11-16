@@ -1,5 +1,6 @@
 import libsbml
 import sys
+import os
 import json
 import tempfile
 import glob
@@ -10,6 +11,8 @@ import cobra
 import time
 from cobra.flux_analysis import pfba
 from multiprocessing import Pool
+
+from shared_memory_dict import SharedMemoryDict
 
 from .rpMerge import rpMerge
 from .rpCache import rpCache
@@ -83,53 +86,46 @@ class rpFBA(rpMerge):
 
 
     @staticmethod
-    def singleFBA_hdd(gem_sbml_path,
-                      rpsbml_path,
-                      deprecatedCID_cid,
-                      deprecatedRID_rid,
-                      deprecatedComp_comp,
-                      cid_strc,
-                      cid_xref,
-                      comp_xref,
-                      cid_name,
-                      chebi_cid,
-                      inchikey_cid,
-                      rr_reactions,
-                      rr_full_reactions,
-                      model_name=None,
-                      del_sp_pro=False,
-                      del_sp_react=True,
-                      upper_flux_bound=999999.0,
-                      lower_flux_bound=0.0,
-                      compartment_id='MNXC3',
-                      pathway_id='rp_pathway',
-                      created_reaction_pathway_id='merge_created_reactions',
-                      sim_type='fraction',
-                      keep_merged=False,
-                      source_reaction='biomass',
-                      source_coefficient=1.0,
-                      target_reaction='RP1_sink',
-                      target_coefficient=1.0,
-                      fraction_of=0.75,
-                      is_max=True,
-                      objective_id='obj_fraction'):
+    def multiFBA(gem_sbml_path,
+                 rpsbml_path,
+                 shared_rpcache_name,
+                 model_name=None,
+                 del_sp_pro=False,
+                 del_sp_react=True,
+                 upper_flux_bound=999999.0,
+                 lower_flux_bound=0.0,
+                 compartment_id='MNXC3',
+                 pathway_id='rp_pathway',
+                 created_reaction_pathway_id='merge_created_reactions',
+                 sim_type='fraction',
+                 keep_merged=False,
+                 source_reaction='biomass',
+                 source_coefficient=1.0,
+                 target_reaction='RP1_sink',
+                 target_coefficient=1.0,
+                 fraction_of=0.75,
+                 is_max=True,
+                 objective_id='obj_fraction'):
+        logging.debug('################ '+str(model_name)+' ###############')
         rpfba = rpFBA(sbml_path=gem_sbml_path,
                       is_gem_sbml=True,
                       model_name=model_name,
                       rpcache=None)
         """Function to run as process
         """
-        rpfba.deprecatedCID_cid = deprecatedCID_cid
-        rpfba.deprecatedRID_rid = deprecatedRID_rid
-        rpfba.deprecatedComp_comp = deprecatedComp_comp
-        rpfba.cid_strc = cid_strc
-        rpfba.cid_xref = cid_xref
-        rpfba.comp_xref = comp_xref
-        rpfba.cid_name = cid_name
-        rpfba.chebi_cid = chebi_cid
-        rpfba.inchikey_cid = inchikey_cid
-        rpfba.rr_reactions = rr_reactions
-        rpfba.rr_full_reactions = rr_full_reactions
+        if shared_rpcache_name:
+            rpcache_shared_dict = SharedMemoryDict(name=shared_rpcache_name, size=None) #not sure why I need to pass size although not used
+            rpfba.setFromDict(rpcache_shared_dict)
+            '''
+            logging.debug('rpcache_shared_dict[deprecatedCID_cid]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']))))
+            logging.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))
+            logging.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))))
+            logging.debug('rpfba.deprecatedCID_cid: '+str(hex(id(rpfba.deprecatedCID_cid))))
+            logging.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(rpfba.deprecatedCID_cid['MNXM95986']))
+            logging.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(hex(id(rpfba.deprecatedCID_cid['MNXM95986']))))
+            '''
+        else:
+            logging.warning('No shared memory: rpcache_shared_dict')
         status = rpfba.mergeModels(input_model=rpsbml_path,
                                    del_sp_pro=del_sp_pro,
                                    del_sp_react=del_sp_react,
@@ -147,12 +143,16 @@ class rpFBA(rpMerge):
         ####### FBA ########
         elif sim_type=='fba':
             status = rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id, True)
+        #TODO: add multi objective
         ####### pFBA #######
         elif sim_type=='pfba':
             status = rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
         if not status:
             logging.error('Problem running the FBA')
             return False
+        #cleanup the shared memory
+        if shared_rpcache_name:
+            rpcache_shared_dict.cleanup()
         #overwrite the rpSBML model
         if keep_merged:
             return rpfba.writeSBML(path=rpsbml_path)
@@ -239,83 +239,87 @@ class rpFBA(rpMerge):
                 return False
             #load the cache
             if not rpcache:
+                #TODO: check what part of the cache is used here and only populate that part
                 rpcache = rpCache()
                 rpcache.populateCache()
             #if only a single worker then we do not use processify -- easier debugging
             if num_workers==1:
                 for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                     file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
-                    logging.debug('################ '+str(file_name)+' ###############')
-                    result = rpFBA.singleFBA_hdd(gem_sbml_path,
-                                                 rpsbml_path,
-                                                 rpcache.deprecatedCID_cid,
-                                                 rpcache.deprecatedRID_rid,
-                                                 rpcache.deprecatedComp_comp,
-                                                 rpcache.cid_strc,
-                                                 rpcache.cid_xref,
-                                                 rpcache.comp_xref,
-                                                 rpcache.cid_name,
-                                                 rpcache.chebi_cid,
-                                                 rpcache.inchikey_cid,
-                                                 rpcache.rr_reactions,
-                                                 rpcache.rr_full_reactions,
-                                                 file_name,
-                                                 del_sp_pro,
-                                                 del_sp_react,
-                                                 upper_flux_bound,
-                                                 lower_flux_bound,
-                                                 compartment_id,
-                                                 pathway_id,
-                                                 created_reaction_pathway_id,
-                                                 sim_type,
-                                                 keep_merged,
-                                                 source_reaction,
-                                                 source_coefficient,
-                                                 target_reaction,
-                                                 target_coefficient,
-                                                 fraction_of,
-                                                 is_max,
-                                                 objective_id)
-                    logging.debug('result: '+str(result))
+                    rpfba = rpFBA(sbml_path=gem_sbml_path,
+                                  is_gem_sbml=True,
+                                  model_name=file_name,
+                                  rpcache=rpcache)
+                    status = rpfba.mergeModels(input_model=rpsbml_path,
+                                               del_sp_pro=del_sp_pro,
+                                               del_sp_react=del_sp_react,
+                                               upper_flux_bound=upper_flux_bound,
+                                               lower_flux_bound=lower_flux_bound,
+                                               compartment_id=compartment_id,
+                                               pathway_id=pathway_id,
+                                               created_reaction_pathway_id=created_reaction_pathway_id)
+                    #debug
+                    #logging.debug('write sbml: {0}'.format(rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')))
+                    if not status:
+                        logging.error('Problem merging the models: '+str(file_name))
+                        continue
+                    ####### fraction of reaction ######
+                    if sim_type=='fraction':
+                        rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
+                    ####### FBA ########
+                    elif sim_type=='fba':
+                        rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id, True)
+                    ####### pFBA #######
+                    elif sim_type=='pfba':
+                        rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
+                    #overwrite the rpSBML model
+                    if keep_merged:
+                        rpfba.writeSBML(path=rpsbml_path)
+                    else:
+                        rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
             else:
+                logging.debug('Setting up the shared memory')
+                rpcache_shared_dict = SharedMemoryDict(name='rpcache', size=rpcache.getSizeCache())
+                rpcache_shared_dict['cid_strc'] = rpcache.cid_strc
+                rpcache_shared_dict['deprecatedCID_cid'] = rpcache.deprecatedCID_cid
+                rpcache_shared_dict['deprecatedRID_rid'] = rpcache.deprecatedRID_rid
+                rpcache_shared_dict['cid_xref'] = rpcache.cid_xref
+                rpcache_shared_dict['comp_xref'] = rpcache.comp_xref
+                rpcache_shared_dict['rr_full_reactions'] = rpcache.rr_full_reactions
+                rpcache_shared_dict['chebi_cid'] = rpcache.chebi_cid
+                rpcache_shared_dict['inchikey_cid'] = rpcache.inchikey_cid
+                rpcache_shared_dict['cid_name'] = rpcache.cid_name
+                #lock the shared memory to read only
                 result_objs = []
                 with Pool(processes=num_workers) as pool:
                     for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                         file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
-                        logging.debug('################ '+str(file_name)+' ###############')
-                        result = pool.apply_async(rpFBA.singleFBA_hdd, args=(gem_sbml_path,
-                                                                             rpsbml_path,
-                                                                             rpcache.deprecatedCID_cid,
-                                                                             rpcache.deprecatedRID_rid,
-                                                                             rpcache.deprecatedComp_comp,
-                                                                             rpcache.cid_strc,
-                                                                             rpcache.cid_xref,
-                                                                             rpcache.comp_xref,
-                                                                             rpcache.cid_name,
-                                                                             rpcache.chebi_cid,
-                                                                             rpcache.inchikey_cid,
-                                                                             rpcache.rr_reactions,
-                                                                             rpcache.rr_full_reactions,
-                                                                             file_name,
-                                                                             del_sp_pro,
-                                                                             del_sp_react,
-                                                                             upper_flux_bound,
-                                                                             lower_flux_bound,
-                                                                             compartment_id,
-                                                                             pathway_id,
-                                                                             created_reaction_pathway_id,
-                                                                             sim_type,
-                                                                             keep_merged,
-                                                                             source_reaction,
-                                                                             source_coefficient,
-                                                                             target_reaction,
-                                                                             target_coefficient,
-                                                                             fraction_of,
-                                                                             is_max,
-                                                                             objective_id,))
+                        result = pool.apply_async(rpFBA.multiFBA, args=(gem_sbml_path,
+                                                                        rpsbml_path,
+                                                                        'rpcache',
+                                                                        file_name,
+                                                                        del_sp_pro,
+                                                                        del_sp_react,
+                                                                        upper_flux_bound,
+                                                                        lower_flux_bound,
+                                                                        compartment_id,
+                                                                        pathway_id,
+                                                                        created_reaction_pathway_id,
+                                                                        sim_type,
+                                                                        keep_merged,
+                                                                        source_reaction,
+                                                                        source_coefficient,
+                                                                        target_reaction,
+                                                                        target_coefficient,
+                                                                        fraction_of,
+                                                                        is_max,
+                                                                        objective_id,))
                         result_objs.append(result)
+                        logging.debug('result: '+str(result))
                     results = [result.get() for result in result_objs]
                     logging.debug('results: '+str(results))
+                #clean up the 
+                rpcache_shared_dict.cleanup()
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False

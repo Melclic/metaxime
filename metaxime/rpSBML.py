@@ -533,7 +533,10 @@ class rpSBML(rpCache):
                         units = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['units']
                     except (KeyError, TypeError):
                         units = None
-                    self.addUpdateBRSynth(reaction, brsynth_id, value, units, False)
+                    if brsynth_id=='smiles' or brsynth_id=='rule_id' or brsynth_id=='rule_ori_reac':
+                        self.addUpdateBRSynth(reaction, brsynth_id, value, units, True)
+                    else:
+                        self.addUpdateBRSynth(reaction, brsynth_id, value, units, False)
 
 
     def addMIRIAMinchiKey(self):
@@ -676,7 +679,7 @@ class rpSBML(rpCache):
     ####################### ADD ELEMENTS ############
 
 
-    def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None):
+    def addUpdateBRSynth(self, sbase_obj, annot_header, value, units=None, no_value=False, is_list=False, is_sort=True, meta_id=None):
         """Append or update an entry to the BRSynth annotation of the passed libsbml.SBase object.
 
         If the annot_header isn't contained in the annotation it is created. If it already exists it overwrites it
@@ -685,33 +688,33 @@ class rpSBML(rpCache):
         :param annot_header: The annotation header that defines the type of entry
         :param value: The value(s) to add
         :param units: Add a values unit to the entry
-        :param isAlone: Add the entry without any units or defined within a value child (Setting this to True will ignore any units)
-        :param isList: Define if the value entry is a list or not
-        :param isSort: Sort the list that is passed (Only if the isList is True)
+        :param no_value: Add the entry without any units or defined within a value child (Setting this to True will ignore any units)
+        :param is_list: Define if the value entry is a list or not
+        :param is_sort: Sort the list that is passed (Only if the is_list is True)
         :param meta_id: The meta ID to be added to the annotation string
 
         :type sbase_obj: libsbml.SBase
         :type annot_header: str
         :type value: Union[str, int, float, list]
         :type units: str
-        :type isAlone: bool
-        :type isList: bool
-        :type isSort: bool
+        :type no_value: bool
+        :type is_list: bool
+        :type is_sort: bool
         :type meta_id: str
 
         :rtype: bool
         :return: Sucess or failure of the function
         """
         #self.logger.debug('############### '+str(annot_header)+' ################')
-        if isList:
+        if is_list:
             annotation = '''<annotation>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
         <rdf:BRSynth rdf:about="#adding">
           <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">
             <brsynth:'''+str(annot_header)+'''>'''
-            if isSort:
+            if is_sort:
                 for name in sorted(value, key=value.get, reverse=True):
-                    if isAlone:
+                    if no_value:
                         annotation += '<brsynth:'+str(name)+'>'+str(value[name])+'</brsynth:'+str(name)+'>'
                     else:
                         if units:
@@ -720,7 +723,7 @@ class rpSBML(rpCache):
                             annotation += '<brsynth:'+str(name)+' value="'+str(value[name])+'" />'
             else:
                 for name in value:
-                    if isAlone:
+                    if no_value:
                         annotation += '<brsynth:'+str(name)+'>'+str(value[name])+'</brsynth:'+str(name)+'>'
                     else:
                         if units:
@@ -739,7 +742,7 @@ class rpSBML(rpCache):
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
         <rdf:BRSynth rdf:about="#adding">
           <brsynth:brsynth xmlns:brsynth="http://brsynth.eu">'''
-            if isAlone:
+            if no_value:
                 annotation += '<brsynth:'+str(annot_header)+'>'+str(value)+'</brsynth:'+str(annot_header)+'>'
             else:
                 if units:
@@ -1363,7 +1366,7 @@ class rpSBML(rpCache):
                     to_ret[ann.getName()] = {
                             'units': None,
                             'value': None}
-            elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id' or ann.getName()=='num_spe_del' or ann.getName()=='num_reac_created':
+            elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_path_id' or ann.getName()=='num_spe_del' or ann.getName()=='num_reac_created':
                 try:
                     #to_ret[ann.getName()] = int(ann.getAttrValue('value'))
                     to_ret[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
@@ -2211,7 +2214,6 @@ class rpSBML(rpCache):
         ###### BRSYNTH additional information ########
         if smiles:
             self.addUpdateBRSynth(spe, 'smiles', smiles, None, True, False, False, meta_id)
-            #                   sbase_obj, annot_header, value, units=None, isAlone=False, isList=False, isSort=True, meta_id=None)
         if inchi:
             self.addUpdateBRSynth(spe, 'inchi', inchi, None, True, False, False, meta_id)
         if inchikey:

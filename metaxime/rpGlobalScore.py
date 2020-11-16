@@ -109,10 +109,6 @@ class rpGlobalScore(rpSBML):
                                                                'objective_id': objective_id,
                                                                'thermo_id': thermo_id}
             json.dump(rpglobalscore_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
-            ####### cache #######
-            if not rpcache:
-                rpcache = rpCache()
-                #rpcache.populateCache()
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                 rpglobalscore = rpGlobalScore(model_name=file_name, path=rpsbml_path, rpcache=rpcache)

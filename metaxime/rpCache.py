@@ -15,6 +15,7 @@ import argparse
 from ast import literal_eval
 import json
 
+import objsize
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"
@@ -463,6 +464,79 @@ class rpCache:
         a = self.getChebiCID()
         a = self.getInchiKeyCID()
         a = self.getCIDname()
+
+
+    def asDict(self, to_ret=None):
+        """Return the whole set cache as a dictionnary
+        """
+        if not to_ret:
+            to_ret = {}
+        to_ret['cid_strc'] = self.cid_strc
+        to_ret['deprecatedCID_cid'] = self.deprecatedCID_cid
+        to_ret['deprecatedRID_rid'] = self.deprecatedRID_rid
+        to_ret['cid_xref'] = self.cid_xref
+        to_ret['comp_xref'] = self.comp_xref
+        to_ret['rr_full_reactions'] = self.rr_full_reactions
+        to_ret['chebi_cid'] = self.chebi_cid
+        to_ret['inchikey_cid'] = self.inchikey_cid
+        to_ret['cid_name'] = self.cid_name
+        return to_ret
+    
+
+    def setFromDict(self, cache_dict):
+        """Set the current cache from a dict input
+        """
+        try:
+            self.cid_strc = cache_dict['cid_strc']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for cid_strc')
+        try:
+            self.deprecatedCID_cid = cache_dict['deprecatedCID_cid']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for deprecatedCID_cid')
+        try:
+            self.deprecatedRID_rid = cache_dict['deprecatedRID_rid']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for deprecatedRID_rid')
+        try:
+            self.cid_xref = cache_dict['cid_xref']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for cid_xref')
+        try:
+            self.comp_xref = cache_dict['comp_xref']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for comp_xref')
+        try:
+            self.rr_full_reactions = cache_dict['rr_full_reactions']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for rr_full_reactions')
+        try:
+            self.chebi_cid = cache_dict['chebi_cid']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for chebi_cid')
+        try:
+            self.inchikey_cid = cache_dict['inchikey_cid']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for inchikey_cid')
+        try:
+            self.cid_name = cache_dict['cid_name']
+        except KeyError:
+            self.logger.warning('There does not seem to be an entry for cid_name')
+        return True
+
+    
+    def getSizeCache(self):
+        size_cache = 0
+        size_cache += objsize.get_deep_size(self.cid_strc)
+        size_cache += objsize.get_deep_size(self.deprecatedCID_cid)
+        size_cache += objsize.get_deep_size(self.deprecatedRID_rid)
+        size_cache += objsize.get_deep_size(self.cid_xref)
+        size_cache += objsize.get_deep_size(self.comp_xref)
+        size_cache += objsize.get_deep_size(self.rr_full_reactions)
+        size_cache += objsize.get_deep_size(self.chebi_cid)
+        size_cache += objsize.get_deep_size(self.inchikey_cid)
+        size_cache += objsize.get_deep_size(self.cid_name)
+        return size_cache
 
 
     ##################### Individual getters for the cache ####################

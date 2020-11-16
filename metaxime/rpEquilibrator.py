@@ -126,10 +126,6 @@ class rpEquilibrator(rpSBML):
                                                                  'temp_k': temp_k,
                                                                  'pathway_id': pathway_id}
             json.dump(rpequilibrator_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
-            ####### cache ######
-            if not rpcache:
-                rpcache = rpCache()
-                #rpcache.populateCache()
             if not cc:
                 cc = ComponentContribution()
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):

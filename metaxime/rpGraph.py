@@ -257,7 +257,6 @@ class rpGraph(rpSBML):
         self.logger.debug('rp_species_id: '+str(rp_species_id))
         self.logger.debug('rp_reactions_id: '+str(rp_reactions_id))
         self.logger.debug('rp_annotation: '+str(rp_annotation))
-        print('rp_reactions_id: '+str(rp_reactions_id))
         self.G = nx.DiGraph(brsynth=rp_annotation)
         #### add ALL the species and reactions ####
         #nodes
