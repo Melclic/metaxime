@@ -467,6 +467,7 @@ class rpSBML(rpCache):
 
         Originally used by rpGlobalScore and is used to update the normalised and global score.... Should make about all
         NOTE: this may be dangerous to use when the two rpSBMK do not have the same number of reactions
+        WARNIN: Only updates the pathway and the reactions.
 
         :param rpsbml_dict: Heterologous dict
         :param pathway_id: The Groups id of the heterologous pathway
@@ -490,16 +491,22 @@ class rpSBML(rpCache):
                     #if brsynth_id[:5]=='norm_' or brsynth_id=='global_score':
                     try:
                         value = rpsbml_dict['pathway']['brsynth'][brsynth_id]['value']
-                    except TypeError:
+                    except (KeyError, TypeError):
                         self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
+                        try:
+                            value = rpsbml_dict['pathway']['brsynth'][brsynth_id]
+                        except (KeyError, TypeError):
+                            self.logger.warning('Cannot retreive the value from: '+str(brsynth_id))
+                            continue
                     try:
                         units = rpsbml_dict['pathway']['brsynth'][brsynth_id]['units']
                     except (KeyError, TypeError):
                         units = None
-                    self._checklibSBML(self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, False), 'updating brsynth annotation value: '+str(value))
+                    self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, False)
         #self.logger.debug('--> reactions')
         if 'reactions' in rpsbml_dict:
             for reac_id in rpsbml_dict['reactions']:
+                #TODO: need to add selezyme or the lists
                 #self.logger.debug('reac_id: '+str(reac_id))
                 try:
                     reaction = self.model.getReaction(reac_id)
@@ -510,16 +517,23 @@ class rpSBML(rpCache):
                 for brsynth_id in rpsbml_dict['reactions'][reac_id]['brsynth']:
                     #if brsynth_id[:5]=='norm_':
                     #self.logger.debug('\tbrsynth_id: '+str(brsynth_id))
+                    if brsynth_id=='selenzyme':
+                        self.addUpdateBRSynth(reaction, 'selenzyme', rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id], None, False, True, True)
+                        continue
                     try:
                         value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['value']
-                    except TypeError:
-                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]
+                    except (KeyError, TypeError):
                         self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
+                        try:
+                            value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]
+                        except (KeyError, TypeError):
+                            self.logger.warning('Cannot retreive the value from: '+str(brsynth_id))
+                            continue
                     try:
                         units = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['units']
                     except (KeyError, TypeError):
                         units = None
-                    self._checklibSBML(self.addUpdateBRSynth(reaction, brsynth_id, value, units, False), 'updating the reaction brsynth annotation value: '+str(value))
+                    self.addUpdateBRSynth(reaction, brsynth_id, value, units, False)
 
 
     def addMIRIAMinchiKey(self):
@@ -1327,7 +1341,9 @@ class rpSBML(rpCache):
                  'rule_id': None,
                  'rule_ori_reac': None,
                  'rule_score': None,
-                 'global_score': None}
+                 'global_score': None,
+                 'num_spe_del': None,
+                 'num_reac_created': None}
         if not annot:
             self.logger.warning('The passed annotation is not BRSYNTH')
             return {}
@@ -1347,7 +1363,7 @@ class rpSBML(rpCache):
                     to_ret[ann.getName()] = {
                             'units': None,
                             'value': None}
-            elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id':
+            elif ann.getName()=='path_id' or ann.getName()=='step_id' or ann.getName()=='sub_step_id' or ann.getName()=='num_spe_del' or ann.getName()=='num_reac_created':
                 try:
                     #to_ret[ann.getName()] = int(ann.getAttrValue('value'))
                     to_ret[ann.getName()] = {'value': int(ann.getAttrValue('value'))}
@@ -2062,7 +2078,11 @@ class rpSBML(rpCache):
             groups_plugin = self.model.getPlugin('groups')
             hetero_group = groups_plugin.getGroup(pathway_id)
             if not hetero_group:
-                self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model')
+                self.logger.warning('The pathway_id '+str(pathway_id)+' does not exist in the model, creating it')
+                path_group = self.createGroup(pathway_id)
+                newM = path_group.createMember()
+                self._checklibSBML(newM, 'Creating a new groups member')
+                self._checklibSBML(newM.setIdRef(reac_id), 'Setting name to the groups member')
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')

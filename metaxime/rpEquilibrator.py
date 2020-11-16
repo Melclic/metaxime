@@ -1,4 +1,5 @@
 import logging
+import time
 import numpy as np
 import json
 import tempfile
@@ -80,6 +81,74 @@ class rpEquilibrator(rpSBML):
         self.temp_k = temp_k
         self.mnx_default_conc = json.load(open(os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'data', 'mnx_default_conc.json'), 'r'))
         self.calc_cmp = {}
+
+    ##################################################################################
+    ############################### STATIC ###########################################
+    ##################################################################################
+
+
+    @staticmethod
+    def runCollection(rpcollection,
+                      rpcollection_output=None,
+                      rpcache=None,
+                      cc=None,
+                      ph=7.5,
+                      ionic_strength=200,
+                      pMg=10.0,
+                      temp_k=298.15,
+                      pathway_id='rp_pathway'):
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcol, mode='r')
+            #get the root member
+            root_name = os.path.commonprefix(tar.getnames())
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()
+            logging.debug(os.path.join(tmp_folder, root_name, 'models', '*'))
+            logging.debug(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Input collection has no models')
+                return False
+            ##### log #######
+            rpequilibrator_log = None
+            rpfba_log = None
+            if os.path.exists(os.path.join(tmp_folder, root_name, 'log.json')):
+                rpequilibrator_log = json.load(open(os.path.join(tmp_folder, root_name, 'log.json')))
+            else:
+                logging.warning('The log does not seem to exists, creating it...')
+                rpequilibrator_log = {}
+            if not 'rpequilibrator' in rpequilibrator_log:
+                rpequilibrator_log['rpequilibrator'] = {}
+            rpequilibrator_log['rpequilibrator'][time.time()] = {'rpcollection': rpcollection,
+                                                                 'rpcollection_output': rpcollection_output,
+                                                                 'ph': ph,
+                                                                 'ionic_strength': ionic_strength,
+                                                                 'pMg': pMg,
+                                                                 'temp_k': temp_k,
+                                                                 'pathway_id': pathway_id}
+            json.dump(rpequilibrator_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
+            ####### cache ######
+            if not rpcache:
+                rpcache = rpCache()
+                #rpcache.populateCache()
+            if not cc:
+                cc = ComponentContribution()
+            for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+                rpequilibrator = rpEquilibrator(path=rpsbml_path, model_name=file_name, rpcache=rpcache, cc=cc)
+                rpequilibrator.pathway(pathway_id, True)
+                rpequilibrator.writeSBML(path=rpsbml_path)
+        if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+            logging.error('Output has not produced any models')
+            return False
+        #WARNING: we are overwriting the input file
+        if rpcollection_output:
+            with tarfile.open(rpcollection_output, "w:xz") as tar:
+                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        else:
+            logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
+            with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
+                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        return True
 
 
     ##################################################################################
@@ -438,7 +507,7 @@ class rpEquilibrator(rpSBML):
 
 
     #WARNING: taking the sum of the reaction thermodynamics is perhaps not the best way to do it
-    def pathway(self, pathway_id='rp_pathway', write_results=True):
+    def pathway(self, pathway_id='rp_pathway', write_results=False):
         """Calculate the dG of a heterologous pathway
 
         :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)

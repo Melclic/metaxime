@@ -1,4 +1,5 @@
 import csv
+import glob
 import requests
 import itertools
 import tempfile
@@ -10,6 +11,7 @@ import json
 from io import StringIO
 import copy
 import logging
+import time
 
 from .rpSBML import rpSBML
 from .rpCache import rpCache
@@ -94,7 +96,7 @@ class rpReader(rpCache):
     def rp2ToCollection(rp2_pathways,
                         rp2paths_compounds,
                         rp2paths_pathways,
-                        out_path_collec,
+                        rpcollection_output,
                         upper_flux_bound=999999.0,
                         lower_flux_bound=0.0,
                         max_subpaths_filter=100,
@@ -102,12 +104,31 @@ class rpReader(rpCache):
                         compartment_id='MNXC3',
                         species_group_id='central_species',
                         sink_species_group_id='rp_sink_species',
-                        pubchem_search=False):
-        rpcache = rpCache()
-        rpcache.populateCache()
+                        pubchem_search=False,
+                        rpcache=None):
+        if not rpcache:
+            rpcache = rpCache()
+            rpcache.populateCache()
         rpreader = rpReader(rpcache)
         with tempfile.TemporaryDirectory() as tmp_output_folder:
             os.mkdir(os.path.join(tmp_output_folder, 'models'))
+            #make the log
+            rpreader_log = {}
+            rpreader_log['rpreader'] = {}
+            rpreader_log['rpreader'][time.time()] = {'rp2_pathways': rp2_pathways,
+                                                     'rp2paths_compounds': rp2paths_compounds,
+                                                     'rp2paths_pathways': rp2paths_pathways,
+                                                     'rpcollection_output': rpcollection_output,
+                                                     'upper_flux_bound': upper_flux_bound,
+                                                     'lower_flux_bound': lower_flux_bound,
+                                                     'max_subpaths_filter': max_subpaths_filter,
+                                                     'pathway_id': pathway_id,
+                                                     'compartment_id': compartment_id,
+                                                     'species_group_id': species_group_id,
+                                                     'sink_species_group_id': sink_species_group_id,
+                                                     'pubchem_search': pubchem_search}
+            json.dump(rpreader_log, open(os.path.join(tmp_output_folder, 'log.json'), 'w'))
+            #make the run
             status = rpreader.rp2ToSBML(rp2_pathways,
                                         rp2paths_compounds,
                                         rp2paths_pathways,
@@ -120,14 +141,18 @@ class rpReader(rpCache):
                                         species_group_id,
                                         sink_species_group_id,
                                         pubchem_search)
-            if not out_path_collec.endswith('.rpcol'):
-                out_path_collec += '.rpcol'
-            if os.path.exists(out_path_collec):
-                logging.warning('The path '+str(out_path_collec)+' already exists... overwriting it')
-            with tarfile.open(out_path_collec, "w:xz") as tar:
+            if len(glob.glob(os.path.join(tmp_output_folder, 'models', '*')))==0:
+                logging.error('Output has not produced any models')
+                return False
+            if not rpcollection_output.endswith('.rpcol'):
+                rpcollection_output += '.rpcol'
+            if os.path.exists(rpcollection_output):
+                logging.warning('The path '+str(rpcollection_output)+' already exists... overwriting it')
+            #save the whole thing
+            with tarfile.open(rpcollection_output, "w:xz") as tar:
                 tar.add(tmp_output_folder, arcname='rpsbml_collection')
         return status
-
+    
 
     def rp2ToSBML(self,
                   rp2_pathways,

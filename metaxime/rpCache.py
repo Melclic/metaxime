@@ -24,6 +24,7 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
+logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
     #level=logging.DEBUG,

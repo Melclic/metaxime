@@ -1,4 +1,5 @@
 import os
+import copy
 import logging
 import libsbml
 import pandas as pd
@@ -87,6 +88,7 @@ class rpMerge(rpGraph):
                        lower_flux_bound=0.0,
                        compartment_id='MNXC3',
                        pathway_id='rp_pathway',
+                       created_reaction_pathway_id='merge_created_reactions',
                        central_species_group_id='central_species',
                        sink_species_group_id='rp_sink_species'):
         """Static function that merges two SBML files together
@@ -145,7 +147,9 @@ class rpMerge(rpGraph):
                                                                                    del_sp_react,
                                                                                    upper_flux_bound,
                                                                                    lower_flux_bound,
-                                                                                   compartment_id)
+                                                                                   compartment_id,
+                                                                                   pathway_id,
+                                                                                   created_reaction_pathway_id)
         """
         species_source_target, reactions_source_target = source_rpsbml.mergeModels(target_rpsbml.model,
                                                                                    del_sp_pro,
@@ -301,7 +305,8 @@ class rpMerge(rpGraph):
                            upper_flux_bound=999999.0,
                            lower_flux_bound=0.0,
                            compartment_id='MNXC3',
-                           pathway_id=None):
+                           pathway_id=None,
+                           created_reaction_pathway_id='merge_created_reactions'):
         """Check if there are any single parent species in a heterologous pathways and if there are, either delete them or add reaction to complete the heterologous pathway
 
         :param del_sp_pro: Define if to delete the products or create reaction that consume it
@@ -323,14 +328,40 @@ class rpMerge(rpGraph):
         produced_species_nid = self.onlyProducedSpecies()
         self.logger.debug('consumed_species_nid: '+str(consumed_species_nid))
         self.logger.debug('produced_species_nid: '+str(produced_species_nid))
+        num_spe_del = 0
+        num_reac_created = 0
+        groups_plugin = self.model.getPlugin('groups')
+        self._checklibSBML(groups_plugin, 'Returning the groups plugin')
         if del_sp_pro:
             for pro in produced_species_nid:
                 self.logger.debug('Deleting product species: '+str(pro))
-                self._checklibSBML(self.removeSpecies(pro), 'removing the following product species: '+str(pro))
-                #TODO: remove the mention of it from any reactions that contain it
+                num_spe_del += 1
+                #delete the species from the model
+                self._checklibSBML(self.model.removeSpecies(pro), 'removing the following product species: '+str(pro))
+                #delete the reference of the species from the reactions
+                for rea in self.model.getListOfReactions():
+                    ret = rea.removeReactant(pro)
+                    if ret:
+                        self.logger.debug('Deleted reactant of reaction '+str(rea.id)+': '+str(ret.species))
+                    ret = rea.removeProduct(pro)
+                    if ret:
+                        self.logger.debug('Deleted product of reaction '+str(rea.id)+': '+str(ret.species))
+                #delete the reference of the species from the groups
+                for group in groups_plugin.getListOfGroups():
+                    to_del_members_pos = []
+                    #WARNING: does not seem stable but using the int position to delete
+                    count = 0
+                    for member in group.getListOfMembers():
+                        if member.getIdRef()==pro:
+                            to_del_members_pos.append(count)
+                        count += 1
+                    for t_d_m_p in to_del_members_pos:
+                        rem_member = group.removeMember(t_d_m_p)
+                        self.logger.debug('Removed from the group '+str(group.id)+' the member '+str(rem_member.getIdRef()))
         else:
             for pro in produced_species_nid:
                 self.logger.debug('Creating reaction to consume: '+str(pro))
+                num_reac_created += 1
                 step = {'rule_id': None,
                         'left': {pro.split('__')[0]: 1},
                         'right': {},
@@ -347,15 +378,37 @@ class rpMerge(rpGraph):
                                     lower_flux_bound,
                                     step,
                                     compartment_id,
-                                    pathway_id=pathway_id)
+                                    pathway_id=created_reaction_pathway_id)
         if del_sp_react:
             for react in consumed_species_nid:
+                #delete the species from the model
                 self.logger.debug('Deleting reactant species: '+str(react))
-                self._checklibSBML(self.removeSpecies(react), 'removing the following reactant species: '+str(react))
-                #TODO: remove the mention of it from any reactions that contain it
+                num_spe_del += 1
+                self._checklibSBML(self.model.removeSpecies(react), 'removing the following reactant species: '+str(react))
+                #delete the reference of the species from the reactions
+                for rea in self.model.getListOfReactions():
+                    ret = rea.removeReactant(react)
+                    if ret:
+                        self.logger.debug('Deleted reactant of reaction '+str(rea.id)+': '+str(ret.species))
+                    ret = rea.removeProduct(react)
+                    if ret:
+                        self.logger.debug('Deleted product of reaction '+str(rea.id)+': '+str(ret.species))
+                #delete the reference of the species from the groups
+                for group in groups_plugin.getListOfGroups():
+                    to_del_members_pos = []
+                    #WARNING: does not seem stable but using the int position to delete
+                    count = 0
+                    for member in group.getListOfMembers():
+                        if member.getIdRef()==react:
+                            to_del_members_pos.append(count)
+                        count += 1
+                    for t_d_m_p in to_del_members_pos:
+                        rem_member = group.removeMember(t_d_m_p)
+                        self.logger.debug('Removed from the group '+str(group.id)+' the member '+str(rem_member.getIdRef()))
         else:
             for react in consumed_species_nid:
                 self.logger.debug('Creating reaction to produce: '+str(react))
+                num_reac_created += 1
                 step = {'rule_id': None,
                         'left': {},
                         'right': {react.split('__')[0]: 1},
@@ -372,7 +425,15 @@ class rpMerge(rpGraph):
                                     lower_flux_bound,
                                     step,
                                     compartment_id,
-                                    pathway_id=pathway_id)
+                                    pathway_id=created_reaction_pathway_id)
+        #### add information to the pathway_id if specified ####
+        if pathway_id:
+            hetero_group = groups_plugin.getGroup(pathway_id)
+            if not hetero_group:
+                self.logger.error('Cannot find the group: '+str(pathway_id))
+            else:
+                self.addUpdateBRSynth(hetero_group, 'num_spe_del', num_spe_del, None, False, False, False)
+                self.addUpdateBRSynth(hetero_group, 'num_reac_created', num_reac_created, None, False, False, False)
         return True
 
 
@@ -801,7 +862,8 @@ class rpMerge(rpGraph):
                     upper_flux_bound=999999.0,
                     lower_flux_bound=0.0,
                     compartment_id='MNXC3',
-                    pathway_id=None):
+                    pathway_id=None,
+                    created_reaction_pathway_id='merge_created_reactions'):
         """Merge two models species and reactions using the annotations to recognise the same species and reactions. The 
 
         The source model (input model) has to have both the GROUPS and FBC packages enabled in its SBML. The course must have a groups
@@ -1248,7 +1310,7 @@ class rpMerge(rpGraph):
         #regenerate the graph with the new species added
         self._makeGraph(is_gem_sbml=True)
         #detect single parent species and deal with them
-        self._checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id, pathway_id)
+        self._checkSingleParent(del_sp_pro, del_sp_react, upper_flux_bound, lower_flux_bound, compartment_id, pathway_id, created_reaction_pathway_id)
         """
         ########### OUTPUT ##############
         #if the output is specified, then generate the different 

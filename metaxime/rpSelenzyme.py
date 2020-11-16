@@ -1,4 +1,5 @@
 import tempfile
+import time
 import pickle
 import tarfile
 import gzip
@@ -10,6 +11,7 @@ import os
 
 from selenzy import Selenzy
 from .rpSBML import rpSBML
+from .rpCache import rpCache
 
 
 __author__ = "Melchior du Lac"
@@ -36,7 +38,7 @@ class rpSelenzyme(rpSBML):
     """
     def __init__(self,
                  cache_tar_path=None,
-                 uniprot_aaLength=None,
+                 uniprot_aa_length=None,
                  data_dir=None,
                  pc=None,
                  model_name=None,
@@ -58,19 +60,20 @@ class rpSelenzyme(rpSBML):
         else:
             self.cache_tar_path = cache_tar_path
         self.logger.debug('cache_tar_path: '+str(self.cache_tar_path))
-        self.uniprot_aaLength = uniprot_aaLength
+        self.uniprot_aa_length = uniprot_aa_length
         self.data_dir = data_dir
         self.pc = pc
         if self.cache_tar_path:
             if not os.path.exists(self.cache_tar_path):
                 self.logger.warning('Cannot find the cache tar file: '+str(self.cache_tar_path))
                 self.cache_tar_path = None
-            if not self.pc or not self.uniprot_aaLength or not self.data_dir:
-                self.pc, self.uniprot_aaLength, self.data_dir = self.loadCache(self.cache_tar_path)
+            if not self.pc or not self.uniprot_aa_length or not self.data_dir:
+                self.pc, self.uniprot_aa_length, self.data_dir = self.loadCache(self.cache_tar_path)
             else:
                 self.logger.warning('Either both pc and cache_tar_path are None and the cache is loaded or both are passed')
         else:
             self.logger.warning('Did not specify a cache_tar_path')
+
 
     #overwrite the del class to remove the self.data_dir if it has been initiated
     def __del__(self):
@@ -78,7 +81,105 @@ class rpSelenzyme(rpSBML):
         if isinstance(self.data_dir, tempfile.TemporaryDirectory):
             self.logger.debug('Cleaning up: '+str(self.data_dir.name))
             self.data_dir.cleanup()
-        
+
+
+    #############################################################
+    #################### STATIC #################################
+    #############################################################
+
+
+    @staticmethod
+    def runCollection(rpcollection,
+                      host_taxonomy_id,
+                      rpcollection_output=None,
+                      num_results=50,
+                      direction=0,
+                      noMSA=True,
+                      fp='RDK',
+                      rxntype='smarts',
+                      min_aa_length=100,
+                      pc=None,
+                      uniprot_aa_length=None,
+                      cache_path=None,
+                      rpcache=None):
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcol, mode='r')
+            #get the root member
+            root_name = os.path.commonprefix(tar.getnames())
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Input collection has no models')
+                return False
+            ##### log ########
+            rpselenzyme_log = None
+            rpfba_log = None
+            if os.path.exists(os.path.join(tmp_folder, root_name, 'log.json')):
+                rpselenzyme_log = json.load(open(os.path.join(tmp_folder, root_name, 'log.json')))
+            else:
+                logging.warning('The log does not seem to exists, creating it...')
+                rpselenzyme_log = {}
+            if not 'rpselenzyme' in rpselenzyme_log:
+                rpselenzyme_log['rpselenzyme'] = {}
+            rpselenzyme_log['rpselenzyme'][time.time()] = {'rpcollection': rpcollection,
+                                                           'host_taxonomy_id': host_taxonomy_id,
+                                                           'rpcollection_output': rpcollection_output,
+                                                           'num_results':num_results,
+                                                           'direction': direction,
+                                                           'noMSA': noMSA,
+                                                           'fp': fp,
+                                                           'rxntype': rxntype,
+                                                           'min_aa_length': min_aa_length,
+                                                           'cache_path': cache_path}
+            json.dump(rpselenzyme_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
+            ##### cache ######
+            if not rpcache:
+                rpcache = rpCache()
+                #rpcache.populateCache()
+            if not pc or not uniprot_aa_length:
+                cache_selenzyme = rpSelenzyme()
+                if not cache_path:
+                    pc, uniprot_aa_length, cache_path = cache_selenzyme.loadCache(os.path.join(cache_selenzyme.dirname, 'input_cache', 'rpselenzyme_data.tar.xz'))
+                else:
+                    pc, uniprot_aa_length, cache_path = cache_selenzyme.loadCache(cache_path)
+            for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+                rpselenzyme = rpSelenzyme(uniprot_aa_length=uniprot_aa_length,
+                                          data_dir=cache_path,
+                                          pc=pc,
+                                          model_name=file_name,
+                                          path=rpsbml_path,
+                                          rpcache=rpcache)
+                rpselenzyme.run(host_taxonomy_id=host_taxonomy_id,
+                                pathway_id=pathway_id,
+                                num_results=num_results,
+                                direction=direction,
+                                noMSA=noMSA,
+                                fp=fp,
+                                rxntype=rxntype,
+                                min_aa_length=min_aa_length,
+                                write_results=True)
+                rpselenzyme.writeSBML(path=rpsbml_path)
+        if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+            logging.error('Output has not produced any models')
+            return False
+        if isinstance(cache_path, tempfile.TemporaryDirectory):
+            cache_path.cleanup()
+        #WARNING: we are overwriting the input file
+        if rpcollection_output:
+            with tarfile.open(rpcollection_output, "w:xz") as tar:
+                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        else:
+            logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
+            with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
+                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        return True 
+
+
+    #############################################################
+    #################### PUBLIC #################################
+    #############################################################
+
 
     def loadCache(self, cache_tar_path=None):
         """Load the selenzyme cache
@@ -94,23 +195,23 @@ class rpSelenzyme(rpSBML):
         if not os.path.isdir(os.path.join(self.dirname, 'cache')):
             os.mkdir(os.path.join(self.dirname, 'cache')) 
         pc = None
-        uniprot_aaLength = {}
+        uniprot_aa_length = {}
         tmp_output_folder = tempfile.TemporaryDirectory()
         tar = tarfile.open(cache_tar_path, mode='r')
         tar.extractall(path=tmp_output_folder.name)
         tar.close()
         pc = Selenzy.readData(os.path.join(tmp_output_folder.name, 'data'))
-        #### load the uniprot_aaLength
-        if os.path.exists(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz')):
-            uniprot_aaLength = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz'), 'rb'))
+        #### load the uniprot_aa_length
+        if os.path.exists(os.path.join(self.dirname, 'cache', 'uniprot_aa_length.pickle.gz')):
+            uniprot_aa_length = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aa_length.pickle.gz'), 'rb'))
         else: 
             with open(os.path.join(tmp_output_folder.name, 'data', 'sel_len.csv')) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=',')
                 next(csv_reader)
                 for row in csv_reader:
-                    uniprot_aaLength[row[0].split('|')[1]] = int(row[1])
-            pickle.dump(uniprot_aaLength, gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aaLength.pickle.gz'), 'wb'))
-        return pc, uniprot_aaLength, tmp_output_folder
+                    uniprot_aa_length[row[0].split('|')[1]] = int(row[1])
+            pickle.dump(uniprot_aa_length, gzip.open(os.path.join(self.dirname, 'cache', 'uniprot_aa_length.pickle.gz'), 'wb'))
+        return pc, uniprot_aa_length, tmp_output_folder
 
 
     def singleReactionRule(self,
@@ -220,10 +321,10 @@ class rpSelenzyme(rpSBML):
                     uniprotID_score_restricted = {}
                     for uniprot in uniprotID_score:
                         try:
-                            if self.uniprot_aaLength[uniprot]>int(min_aa_length):
+                            if self.uniprot_aa_length[uniprot]>int(min_aa_length):
                                 uniprotID_score_restricted[uniprot] = uniprotID_score[uniprot]
                         except KeyError:
-                            self.logger.warning('Cannot find the following UNIPROT '+str(uniprot)+' in uniprot_aaLength')
+                            self.logger.warning('Cannot find the following UNIPROT '+str(uniprot)+' in uniprot_aa_length')
                     xref = {'uniprot': [i for i in uniprotID_score_restricted]}
                     if write_results:
                         self.addUpdateMIRIAM(reac, 'reaction', xref)
