@@ -246,6 +246,7 @@ class rpFBA(rpMerge):
             if num_workers==1:
                 for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                     file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+                    logging.debug('################ '+str(file_name)+' ###############')
                     rpfba = rpFBA(sbml_path=gem_sbml_path,
                                   is_gem_sbml=True,
                                   model_name=file_name,

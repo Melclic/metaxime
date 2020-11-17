@@ -1987,6 +1987,7 @@ class rpSBML(rpCache):
                        reaction_smiles=None,
                        xref=None, #TODO: add xref check from rpCache
                        pathway_id=None,
+                       use_species_id_as_is=True,
                        meta_id=None):
         """Create libSBML reaction
 
@@ -2041,7 +2042,10 @@ class rpSBML(rpCache):
             spe = reac.createReactant()
             self._checklibSBML(spe, 'create reactant')
             #use the same writing convention as CobraPy
-            self._checklibSBML(spe.setSpecies(str(reactant)+'__64__'+str(compartment_id)), 'assign reactant species')
+            if not use_species_id_as_is:
+                self._checklibSBML(spe.setSpecies(str(reactant)+'__64__'+str(compartment_id)), 'assign reactant species')
+            else:
+                self._checklibSBML(spe.setSpecies(str(reactant)), 'assign reactant species')
             #TODO: check to see the consequences of heterologous parameters not being constant
             self._checklibSBML(spe.setConstant(True), 'set "constant" on species '+str(reactant))
             self._checklibSBML(spe.setStoichiometry(float(step['left'][reactant])),
@@ -2051,7 +2055,10 @@ class rpSBML(rpCache):
         for product in step['right']:
             pro = reac.createProduct()
             self._checklibSBML(pro, 'create product')
-            self._checklibSBML(pro.setSpecies(str(product)+'__64__'+str(compartment_id)), 'assign product species')
+            if not use_species_id_as_is:
+                self._checklibSBML(pro.setSpecies(str(product)+'__64__'+str(compartment_id)), 'assign product species')
+            else:
+                self._checklibSBML(pro.setSpecies(str(product)), 'assign product species')
             #TODO: check to see the consequences of heterologous parameters not being constant
             self._checklibSBML(pro.setConstant(True), 'set "constant" on species '+str(product))
             self._checklibSBML(pro.setStoichiometry(float(step['right'][product])),
@@ -2102,6 +2109,7 @@ class rpSBML(rpCache):
                       smiles=None,
                       species_group_id=None,
                       in_sink_group_id=None,
+                      use_species_id_as_is=True,
                       meta_id=None):
                       #TODO: add these at some point -- not very important
                       #charge=0,
@@ -2144,7 +2152,10 @@ class rpSBML(rpCache):
         try:
             spe_obj = self.model.getSpecies(species_id)
             if not spe_obj:
-                spe_obj = self.model.getSpecies(species_id+'__64__'+str(compartment_id))
+                if not use_species_id_as_is:
+                    spe_obj = self.model.getSpecies(str(species_id)+'__64__'+str(compartment_id))
+                else:
+                    spe_obj = self.model.getSpecies(str(species_id))
             self._checklibSBML(spe_obj, 'Trying to retreive species by id')
             self.logger.warning('The following species id already exists: '+str(species_id))
             return spe_obj
@@ -2195,8 +2206,12 @@ class rpSBML(rpCache):
         #useless for FBA (usefull for ODE) but makes Copasi stop complaining
         self._checklibSBML(spe.setInitialConcentration(1.0), 'set an initial concentration')
         #same writting convention as COBRApy
-        self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
-        self.logger.debug('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
+        if not use_species_id_as_is:
+            self._checklibSBML(spe.setId(str(species_id)+'__64__'+str(compartment_id)), 'set species id')
+            self.logger.debug('Setting species id as: '+str(species_id)+'__64__'+str(compartment_id))
+        else:
+            self._checklibSBML(spe.setId(str(species_id)), 'set species id')
+            self.logger.debug('Setting species id as: '+str(species_id))
         if not meta_id:
             meta_id = self._genMetaID(species_id)
         self._checklibSBML(spe.setMetaId(meta_id), 'setting reaction meta_id')
@@ -2231,7 +2246,10 @@ class rpSBML(rpCache):
             else:
                 newM = hetero_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
-                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                if not use_species_id_as_is:
+                    self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                else:
+                    self._checklibSBML(newM.setIdRef(str(species_id)), 'Setting name to the groups member')
         #TODO: check that it actually exists
         #add the species to the sink species
         self.logger.debug('in_sink_group_id: '+str(in_sink_group_id))
@@ -2244,7 +2262,10 @@ class rpSBML(rpCache):
             else:
                 newM = sink_group.createMember()
                 self._checklibSBML(newM, 'Creating a new groups member')
-                self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                if not use_species_id_as_is:
+                    self._checklibSBML(newM.setIdRef(str(species_id)+'__64__'+str(compartment_id)), 'Setting name to the groups member')
+                else:
+                    self._checklibSBML(newM.setIdRef(str(species_id)), 'Setting name to the groups member')
         return spe
 
 

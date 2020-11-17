@@ -363,7 +363,7 @@ class rpMerge(rpGraph):
                 self.logger.debug('Creating reaction to consume: '+str(pro))
                 num_reac_created += 1
                 step = {'rule_id': None,
-                        'left': {pro.split('__')[0]: 1},
+                        'left': {pro: 1},
                         'right': {},
                         'step': None,
                         'sub_step': None,
@@ -378,7 +378,8 @@ class rpMerge(rpGraph):
                                     lower_flux_bound,
                                     step,
                                     compartment_id,
-                                    pathway_id=created_reaction_pathway_id)
+                                    pathway_id=created_reaction_pathway_id,
+                                    use_species_id_as_is=True)
         if del_sp_react:
             for react in consumed_species_nid:
                 #delete the species from the model
@@ -411,7 +412,7 @@ class rpMerge(rpGraph):
                 num_reac_created += 1
                 step = {'rule_id': None,
                         'left': {},
-                        'right': {react.split('__')[0]: 1},
+                        'right': {react: 1},
                         'step': None,
                         'sub_step': None,
                         'path_id': None,
@@ -425,7 +426,8 @@ class rpMerge(rpGraph):
                                     lower_flux_bound,
                                     step,
                                     compartment_id,
-                                    pathway_id=created_reaction_pathway_id)
+                                    pathway_id=created_reaction_pathway_id,
+                                    use_species_id_as_is=True)
         #### add information to the pathway_id if specified ####
         if pathway_id:
             hetero_group = groups_plugin.getGroup(pathway_id)

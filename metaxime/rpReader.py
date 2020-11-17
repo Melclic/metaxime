@@ -282,7 +282,8 @@ class rpReader(rpCache):
                                              species.inchikey,
                                              species.smiles,
                                              species_group_id,
-                                             sink_species_group_id)
+                                             sink_species_group_id,
+                                             use_species_id_as_is=False)
                     else:
                         rpsbml.createSpecies(cid,
                                              compartment_id,
@@ -291,7 +292,8 @@ class rpReader(rpCache):
                                              species.inchi,
                                              species.inchikey,
                                              species.smiles,
-                                             species_group_id)
+                                             species_group_id,
+                                             use_species_id_as_is=False)
                 #4) Add the complete reactions and their annotations
                 for step in steps:
                     # add the substep to the model
@@ -303,14 +305,13 @@ class rpReader(rpCache):
                                           compartment_id,
                                           rp_transformations[step['transformation_id']]['rule'],
                                           {'ec': rp_transformations[step['transformation_id']]['ec']},
-                                          pathway_id)
+                                          pathway_id,
+                                          use_species_id_as_is=False)
                 #5) Adding the consumption of the target
                 target_step = {'rule_id': None,
                                'left': {[i for i in all_cid if i[:6]=='TARGET'][0]: 1}, #warning this is dangerous
                                'right': {},
                                'step': None,
-                               #'sub_step': None,
-                               #'path_id': None,
                                'transformation_id': None,
                                'rule_score': None,
                                'rule_ori_reac': None}
@@ -318,7 +319,8 @@ class rpReader(rpCache):
                                       upper_flux_bound,
                                       lower_flux_bound,
                                       target_step,
-                                      compartment_id)
+                                      compartment_id,
+                                      use_species_id_as_is=False)
                 #6) Adding the cofactors
                 self._addCofactors(rpsbml, compartment_id, pathway_id, pubchem_search)
                 #7) Insert the new rpsbml object in list if it does not exist
@@ -1181,7 +1183,8 @@ class rpReader(rpCache):
                                      spe_inchi,
                                      spe_inchikey,
                                      spe_smiles,
-                                     species_group_id)
+                                     species_group_id,
+                                     use_species_id_as_is=False)
             # 4) add the complete reactions and their annotations
             # create a new group for the measured pathway
             # need to convert the validation to step for reactions
@@ -1237,7 +1240,8 @@ class rpReader(rpCache):
                                       compartment_id,
                                       None,
                                       reac_xref,
-                                      pathway_id)
+                                      pathway_id,
+                                      use_species_id_as_is=False)
                 if step_num==1:
                     # adding the consumption of the target
                     target_step = {'rule_id': None,
@@ -1268,7 +1272,8 @@ class rpReader(rpCache):
                                           upper_flux_bound,
                                           lower_flux_bound,
                                           target_step,
-                                          compartment_id)
+                                          compartment_id,
+                                          use_species_id_as_is=False)
                     rpsbml.createFluxObj('rpFBA_obj', header_name+'_Step1_sink', 1, True)
             if output_folder:
                 rpsbml.writeSBML(output_folder)
