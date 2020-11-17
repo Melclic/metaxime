@@ -38,7 +38,7 @@ class rpDraw(rpGraph):
         """Class constructor
 
         .. document private functions
-        .. automethod:: _hierarchyPos
+        .. automethod:: hierarchyPos
         """
         super().__init__(is_gem_sbml,
                          pathway_id,
@@ -76,35 +76,40 @@ class rpDraw(rpGraph):
     # TODO: add the global filter of cofactors to remove the species that are shared among many (ex: H+, O2, etc...)
     #BUG: /Users/melchior/Downloads/Galaxy111/rp_50_28.sbml.xml not having the  ink entry added
     #TODO: move this to rpGraph
-    def _hierarchyPos(self,
-                      G,
-                      root,
-                      width=1.0,
-                      y_gap=0.2,
-                      xcenter=0.5,
-                      plot_only_central=False,
-                      filter_cofactors=True,
-                      filter_sink_species=False,
-                      central_species_group_id='central_species',
-                      sink_species_group_id='sink_species'):
+    def hierarchyPos(self,
+                     root=None,
+                     width=1.0,
+                     y_gap=0.2,
+                     xcenter=0.5,
+                     plot_only_central=False,
+                     filter_cofactors=True,
+                     filter_sink_species=False,
+                     central_species_group_id='central_species',
+                     sink_species_group_id='sink_species'):
+        if not root:
+            try:
+                root = list(reversed(list(nx.topological_sort(self.G))))[0]
+            except nx.exception.NetworkXUnfeasible:
+                self.logger.error('Cannot retreive root, need to specify it')
+                return None, None, None
         #### find all the nodes that are in a layer ###########
         def _make_layer(parent_nodes):
             layer = []
             for current_node in parent_nodes:
-                self.logger.debug('\t'+str(current_node)+' --> '+str(list(G.predecessors(current_node))+list(G.successors(current_node))))
-                for nei in list(G.predecessors(current_node))+list(G.successors(current_node)):
+                self.logger.debug('\t'+str(current_node)+' --> '+str(list(self.G.predecessors(current_node))+list(self.G.successors(current_node))))
+                for nei in list(self.G.predecessors(current_node))+list(self.G.successors(current_node)):
                 #self.logger.debug('\t'+str(current_node)+' --> '+str(list(G.predecessors(current_node))))
                 #for nei in list(G.predecessors(current_node)):
                     if nei in toadd_nodes and nei not in layer:
                         self.logger.debug('\tAdding node: '+str(nei))
                         layer.append(nei)
                         #now check that the predeceessor of that node is a reaction and if yes add its successors to the current layer
-                        self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(G.predecessors(nei))))
-                        for nei_pre in list(G.predecessors(nei)):
-                            self.logger.debug('\t\t'+str(nei_pre)+' type: '+str(G.node.get(nei_pre)['type']))
-                            if G.node.get(nei_pre)['type']=='reaction':
-                                self.logger.debug('\t\t'+str(nei_pre)+' successors: '+str(list(G.successors(nei_pre))))
-                                for reac_nei_suc in list(G.successors(nei_pre)):
+                        self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(self.G.predecessors(nei))))
+                        for nei_pre in list(self.G.predecessors(nei)):
+                            self.logger.debug('\t\t'+str(nei_pre)+' type: '+str(self.G.node.get(nei_pre)['type']))
+                            if self.G.node.get(nei_pre)['type']=='reaction':
+                                self.logger.debug('\t\t'+str(nei_pre)+' successors: '+str(list(self.G.successors(nei_pre))))
+                                for reac_nei_suc in list(self.G.successors(nei_pre)):
                                     if reac_nei_suc in toadd_nodes and reac_nei_suc not in layer:
                                         self.logger.debug('\tAdding node: '+str(reac_nei_suc))
                                         layer.append(reac_nei_suc)
@@ -112,10 +117,10 @@ class rpDraw(rpGraph):
         ##### filter the nodes that will not be used #######
         filtered_species = []
         reac_cofactors_id = {}
-        toadd_nodes = list(set(list(G.nodes)))
-        for node in list(set(list(G.nodes))):
+        toadd_nodes = list(set(list(self.G.nodes)))
+        for node in list(set(list(self.G.nodes))):
             self.logger.debug('--------- '+str(node)+' ---------')
-            node_obj = G.node.get(node)
+            node_obj = self.G.node.get(node)
             self.logger.debug(node_obj)
             if node_obj['type']=='reaction':
                 reac_cofactors_id[node] = {'substrates': [], 'products': []}
@@ -130,7 +135,6 @@ class rpDraw(rpGraph):
                     if 'metanetx' in node_obj['miriam']:
                         if any([i in list(self.mnx_cofactors.keys()) for i in node_obj['miriam']['metanetx']]):
                             self.logger.debug('filter_cofactors: '+str(filter_cofactors))
-
                             self.logger.warning(str(node)+' is a list cofactor and is filtered')
                             toadd_nodes.remove(node)
                             filtered_species.append(node)
@@ -148,9 +152,9 @@ class rpDraw(rpGraph):
                     filtered_species.append(node)
                     continue
         ###### create the cofactor list based on the ones you are removing
-        for edge in list(G.edges):
-            node_obj_source = G.node.get(edge[0])
-            node_obj_target = G.node.get(edge[1])
+        for edge in list(self.G.edges):
+            node_obj_source = self.G.node.get(edge[0])
+            node_obj_target = self.G.node.get(edge[1])
             if node_obj_source['type']=='reaction':
                 if edge[1] in filtered_species:
                     reac_cofactors_id[edge[0]]['products'].append(edge[1])
@@ -161,11 +165,11 @@ class rpDraw(rpGraph):
         pos = {}
         parent_layer = [root]
         y_layer = 0.0
-        self.logger.debug('\t'+str(root)+' --> '+str(list(G.predecessors(root))+list(G.successors(root))))
-        for nei in list(G.predecessors(root))+list(G.successors(root)):
-            self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(G.predecessors(nei))))
-            if G.node.get(nei)['type']=='reaction':
-                for reac_nei_suc in list(G.successors(nei)):
+        self.logger.debug('\t'+str(root)+' --> '+str(list(self.G.predecessors(root))+list(self.G.successors(root))))
+        for nei in list(self.G.predecessors(root))+list(self.G.successors(root)):
+            self.logger.debug('\t'+str(nei)+' predecessors: '+str(list(self.G.predecessors(nei))))
+            if self.G.node.get(nei)['type']=='reaction':
+                for reac_nei_suc in list(self.G.successors(nei)):
                     if reac_nei_suc in toadd_nodes and reac_nei_suc not in parent_layer:
                         parent_layer.append(reac_nei_suc)
         self.logger.debug('parent_layer: '+str(parent_layer))
@@ -202,10 +206,6 @@ class rpDraw(rpGraph):
             layer_num += 1
             y_layer -= y_gap
             parent_layer = layer
-        plotG = G.copy()
-        for node_id in list(plotG.nodes):
-            if node_id not in list(pos.keys()):
-                plotG.remove_node(node_id)
         #normalise the values to between 0 and 1
         #round the pos since we can have division errors
         self.logger.debug('----------------------------')
@@ -228,6 +228,15 @@ class rpDraw(rpGraph):
                 y = 0
             pos[node] = (x, y)
         self.logger.debug('pos: '+str(pos))
+        #### remove deleted nodes and add x and y information
+        plotG = self.G.copy()
+        for node_id in list(plotG.nodes):
+            if node_id not in list(pos.keys()):
+                plotG.remove_node(node_id)
+            else:
+                node_obj = plotG.node.get(node_id)
+                node_obj['ori_x'] = pos[node_id][0]
+                node_obj['ori_y'] = pos[node_id][1]
         ##### TODO: need to adjust the position layers if they are not equidistant
         return plotG, pos, reac_cofactors_id
 
@@ -373,11 +382,11 @@ class rpDraw(rpGraph):
         #TODO: Check this one: /Users/melchior/Downloads/rpglobalscore_77/rp_109_2.sbml.xml
         reac_size = [subplot_size[0]/8, subplot_size[1]/2]
         #gather all the inchis and convert to svg
-        resG, pos, reac_cofactors_id = self._hierarchyPos(self.G,
-                                                          target,
-                                                          plot_only_central=plot_only_central,
-                                                          filter_cofactors=filter_cofactors,
-                                                          filter_sink_species=filter_sink_species)
+        resG, pos, reac_cofactors_id = self.hierarchyPos(self.G,
+                                                         target,
+                                                         plot_only_central=plot_only_central,
+                                                         filter_cofactors=filter_cofactors,
+                                                         filter_sink_species=filter_sink_species)
         self.logger.debug('+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=')
         ######## convert the id's to string name #####
         reac_cofactors_name = {}

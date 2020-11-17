@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='iso-8859-1'?>
+<svg version='1.1' baseProfile='full'
+              xmlns='http://www.w3.org/2000/svg'
+                      xmlns:rdkit='http://www.rdkit.org/xml'
+                      xmlns:xlink='http://www.w3.org/1999/xlink'
+                  xml:space='preserve'
+width='200px' height='200px' viewBox='0 0 200 1800'>
+<!-- END OF HEADER -->
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<path class='bond-0' d='M 85.5582,102.385 L 92.5531,102.385' style='fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />
+<path class='bond-0' d='M 85.5582,100.103 L 92.5531,100.103' style='fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />
+<path  class='atom-0' d='M 81.373 101.256
+Q 81.373 100.236, 81.877 99.6664
+Q 82.381 99.0964, 83.323 99.0964
+Q 84.265 99.0964, 84.769 99.6664
+Q 85.273 100.236, 85.273 101.256
+Q 85.273 102.288, 84.763 102.876
+Q 84.253 103.458, 83.323 103.458
+Q 82.387 103.458, 81.877 102.876
+Q 81.373 102.294, 81.373 101.256
+M 83.323 102.978
+Q 83.971 102.978, 84.319 102.546
+Q 84.673 102.108, 84.673 101.256
+Q 84.673 100.422, 84.319 100.002
+Q 83.971 99.5764, 83.323 99.5764
+Q 82.675 99.5764, 82.321 99.9964
+Q 81.973 100.416, 81.973 101.256
+Q 81.973 102.114, 82.321 102.546
+Q 82.675 102.978, 83.323 102.978
+' fill='#FF0000'/>
+<path  class='atom-1' d='M 92.7824 101.256
+Q 92.7824 100.236, 93.2864 99.6664
+Q 93.7904 99.0964, 94.7324 99.0964
+Q 95.6744 99.0964, 96.1784 99.6664
+Q 96.6824 100.236, 96.6824 101.256
+Q 96.6824 102.288, 96.1724 102.876
+Q 95.6624 103.458, 94.7324 103.458
+Q 93.7964 103.458, 93.2864 102.876
+Q 92.7824 102.294, 92.7824 101.256
+M 94.7324 102.978
+Q 95.3804 102.978, 95.7284 102.546
+Q 96.0824 102.108, 96.0824 101.256
+Q 96.0824 100.422, 95.7284 100.002
+Q 95.3804 99.5764, 94.7324 99.5764
+Q 94.0844 99.5764, 93.7304 99.9964
+Q 93.3824 100.416, 93.3824 101.256
+Q 93.3824 102.114, 93.7304 102.546
+Q 94.0844 102.978, 94.7324 102.978
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#000000'/>
+' fill='#000000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#000000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+</svg>

@@ -360,5 +360,78 @@ rpFBA.runCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxi
 
 hqn_c__64__MNXC3
 
+from metaxime import rpMerge
+rpMerge.mergeSBMLFiles('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpfba/rpsbml_collection/models/rp_129_6_rpsbml.xml',
+					   '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpfba/gem.xml',
+					   '/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpfba/test.sbml')
 
+
+
+
+
+from metaxime import rpDraw
+from networkx.readwrite import json_graph
+import json
+
+rpdraw = rpDraw(path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpdraw/rp_1_1_rpsbml.xml')
+a = rpdraw.hierarchyPos('TARGET_0000000001__64__MNXC3')
+d = json_graph.node_link_data(a[0])
+
+
+##### firefox CORS config ####
+'''
+Open Firefox, and on the address bar, type about:config.
+
+Click on I'll be careful,I promise!".
+
+Search for security.fileuri.strict_origin_policy.
+
+Right-click and select Toggle to change the value from true to false.
+
+Close the browser and launch it again.
+'''
+
+rpdraw = rpDraw(path='/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpdraw/rp_1_1_rpsbml.xml')
+a = rpdraw.hierarchyPos('TARGET_0000000001__64__MNXC3', filter_cofactors=False)
+d = json_graph.node_link_data(a[0])
+
+all_x = sorted(list(set([a[1][i][0] for i in a[1]])))
+#all_y = sorted([a[1][i][1] for i in a[1]])
+
+groups = {}
+count = 1
+for i in all_x:
+	groups[i] = count
+	count += 1
+
+to_ret = {}
+to_ret['nodes'] = []
+nodes_id = {}
+count = 0
+for n in d['nodes']:
+	to_ret['nodes'].append({'name': n['id'], 'group': groups[n['ori_x']]})
+	nodes_id[n['id']] = count
+	count += 1
+
+to_ret['links'] = []
+for l in d['links']:
+	to_ret['links'].append({'source': nodes_id[l['source']], 
+							'target': nodes_id[l['target']]})
+
+json.dump(to_ret, open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpdraw/graph.json', 'w'))
+
+
+
+id_inchi = {}
+subplot_size=[200,200]
+for node in list(a[0].nodes):
+    if a[0].node.get(node)['type']=='species':
+        id_inchi[node] = a[0].node.get(node)['brsynth']['inchi']
+
+
+id_svg = rpdraw.drawChemicalList(id_inchi, subplot_size)
+
+for i in id_svg:
+	with open('/home/mdulac/workspace/melclic/metaxime/metaxime/test/data/rpdraw/images/'+i+'.svg', 'w') as o:
+		o.write(id_svg[i])
 

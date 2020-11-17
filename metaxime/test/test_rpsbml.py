@@ -15,9 +15,9 @@ class TestRPSBML(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         #load a rpSBML file
-        cls.rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
-        cls.gem = rpSBML('gem', path=os.path.join('data', 'rpsbml', 'gem.xml'))
-        cls.data = json.load(open(os.path.join('data', 'rpsbml', 'data.json'), 'r'))
+        cls.rpsbml = rpSBML('test', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'rpsbml.xml'))
+        cls.gem = rpSBML('gem', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'gem.xml'))
+        cls.data = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'data.json'), 'r'))
         cls.maxDiff = None #to be able to compare large dict
 
     def test_isRPsbml(self):

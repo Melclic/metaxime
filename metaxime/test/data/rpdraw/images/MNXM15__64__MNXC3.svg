@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='iso-8859-1'?>
+<svg version='1.1' baseProfile='full'
+              xmlns='http://www.w3.org/2000/svg'
+                      xmlns:rdkit='http://www.rdkit.org/xml'
+                      xmlns:xlink='http://www.w3.org/1999/xlink'
+                  xml:space='preserve'
+width='200px' height='200px' viewBox='0 0 200 1800'>
+<!-- END OF HEADER -->
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='200' height='200' x='0' y='0'> </rect>
+<path  class='atom-0' d='M 88.0887 99.1204
+L 89.4807 101.37
+Q 89.6187 101.592, 89.8407 101.994
+Q 90.0627 102.396, 90.0747 102.42
+L 90.0747 99.1204
+L 90.6387 99.1204
+L 90.6387 103.368
+L 90.0567 103.368
+L 88.5627 100.908
+Q 88.3887 100.62, 88.2027 100.29
+Q 88.0227 99.9604, 87.9687 99.8584
+L 87.9687 103.368
+L 87.4167 103.368
+L 87.4167 99.1204
+L 88.0887 99.1204
+' fill='#0000FF'/>
+<path  class='atom-0' d='M 91.1487 99.1204
+L 91.7247 99.1204
+L 91.7247 100.926
+L 93.8967 100.926
+L 93.8967 99.1204
+L 94.4727 99.1204
+L 94.4727 103.368
+L 93.8967 103.368
+L 93.8967 101.406
+L 91.7247 101.406
+L 91.7247 103.368
+L 91.1487 103.368
+L 91.1487 99.1204
+' fill='#0000FF'/>
+<path  class='atom-0' d='M 96.4131 104.53
+L 96.7497 104.53
+L 96.7497 104.847
+L 96.4131 104.847
+L 96.4131 105.492
+L 96.0409 105.492
+L 96.0409 104.847
+L 94.5915 104.847
+L 94.5915 104.597
+L 95.8191 102.689
+L 96.4131 102.689
+L 96.4131 104.53
+M 95.0509 104.53
+L 96.0409 104.53
+L 96.0409 102.942
+L 95.0509 104.53
+' fill='#0000FF'/>
+<path  class='atom-0' d='M 94.8291 99.8861
+L 95.5776 99.8861
+L 95.5776 99.0981
+L 95.9102 99.0981
+L 95.9102 99.8861
+L 96.6784 99.8861
+L 96.6784 100.171
+L 95.9102 100.171
+L 95.9102 100.963
+L 95.5776 100.963
+L 95.5776 100.171
+L 94.8291 100.171
+L 94.8291 99.8861
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#FF7F00'/>
+' fill='#000000'/>
+' fill='#000000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#000000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#0000FF'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+' fill='#FF0000'/>
+</svg>
