@@ -344,6 +344,8 @@ import os
 rpcache = rpCache()
 rpcache.populateCache()
 
+#TODO test all the tools without loading the cache
+
 from metaxime import rpReader
 rpReader.rp2ToCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'rp_pathways.csv'),
                          os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpreader', 'rp2paths_compounds.csv'),
@@ -356,19 +358,16 @@ rpFBA.runCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxi
                     os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'gem.xml'),
                     os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'test.rpcol'),
                     num_workers=1,
-                    rpcache=rpcache,
-                    )
+                    rpcache=rpcache )
 
 from metaxime import rpEquilibrator
-import os
-rpcache = None
+
 rpEquilibrator.runCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'test.rpcol'),
                     		 os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpequilibrator', 'test.rpcol'),
                     		 rpcache=rpcache)
 
 from metaxime import rpSelenzyme
-import os
-rpcache = None
+
 rpSelenzyme.runCollection(os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpfba', 'test.rpcol'),
 						  83333,
 						  os.path.join('/home/mdulac/workspace/melclic/metaxime/metaxime/test', 'data', 'rpselenzyme', 'test.rpcol'),

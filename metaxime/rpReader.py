@@ -461,23 +461,63 @@ class rpReader(rpCache):
                 #return {}
                 return False
             #################################
-            ruleIds = row[2].split(',')
-            if ruleIds==None:
+            rule_ids = row[2].split(',')
+            if rule_ids==None:
                 self.logger.warning('The rulesIds is None')
                 #pass # or continue
                 continue
             ###WARNING: This is the part where we select some rules over others
             # we do it by sorting the list according to their score and taking the topx
-            tmp_rr_reactions = {}
-            for r_id in ruleIds:
-                for rea_id in self.rr_reactions[r_id]:
-                    tmp_rr_reactions[str(r_id)+'__'+str(rea_id)] = self.rr_reactions[r_id][rea_id]
-            ruleIds = tmp_rr_reactions
             sub_path_step = 1
-            for singleRule in ruleIds:
-                tmp_reac = {'rule_id': singleRule.split('__')[0],
-                            'rule_ori_reac': singleRule.split('__')[1],
-                            'rule_score': self.rr_reactions[singleRule.split('__')[0]][singleRule.split('__')[1]]['rule_score'],
+            for r_id in rule_ids:
+                rr_reacts = self.queryRRreactions(r_id)
+                if not rr_reacts:
+                    continue
+                for rea_id in rr_reacts:
+                    tmp_reac = {'rule_id': r_id,
+                                'rule_ori_reac': rea_id,
+                                'rule_score': rr_reacts[rea_id]['rule_score'],
+                                'right': {},
+                                'left': {},
+                                'path_id': int(row[0]),
+                                'step': path_step,
+                                'transformation_id': row[1][:-2]}
+                    ############ LEFT ##############
+                    for l in row[3].split(':'):
+                        tmp_l = l.split('.')
+                        #tmp_reac['left'].append({'stoichio': int(tmp_l[0]), 'name': tmp_l[1]})
+                        cid = '' #TODO: change this
+                        cid = self._checkCIDdeprecated(tmp_l[1])
+                        try:
+                            tmp_reac['left'][cid] = int(tmp_l[0])
+                        except ValueError:
+                            self.logger.error('Cannot convert tmp_l[0] to int ('+str(tmp_l[0])+')')
+                            #return {}
+                            return False
+                    ############## RIGHT ###########
+                    for r in row[4].split(':'):
+                        tmp_r = r.split('.')
+                        #tmp_reac['right'].append({'stoichio': int(tmp_r[0]), 'name': tmp_r[1]})
+                        cid = '' #TODO change this
+                        cid = self._checkCIDdeprecated(tmp_r[1])
+                        try:
+                            tmp_reac['right'][cid] = int(tmp_r[0])
+                        except ValueError:
+                            self.logger.error('Cannot convert tmp_r[0] to int ('+str(tmp_r[0])+')')
+                            return False
+                    #################################
+                    if not int(row[0]) in rp_paths:
+                        rp_paths[int(row[0])] = {}
+                    if not int(path_step) in rp_paths[int(row[0])]:
+                        rp_paths[int(row[0])][int(path_step)] = {}
+                    rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmp_reac
+                    sub_path_step += 1
+            '''
+            tmp_rr_reactions[str(r_id)+'__'+str(rea_id)] = rr_reacts[rea_id]
+            for single_rule in tmp_rr_reactions:
+                tmp_reac = {'rule_id': single_rule.split('__')[0],
+                            'rule_ori_reac': single_rule.split('__')[1],
+                            'rule_score': self.rr_reactions[single_rule.split('__')[0]][single_rule.split('__')[1]]['rule_score'],
                             'right': {},
                             'left': {},
                             'path_id': int(row[0]),
@@ -513,6 +553,7 @@ class rpReader(rpCache):
                     rp_paths[int(row[0])][int(path_step)] = {}
                 rp_paths[int(row[0])][int(path_step)][int(sub_path_step)] = tmp_reac
                 sub_path_step += 1
+            '''
         return rp_paths
 
 
