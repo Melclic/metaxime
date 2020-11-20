@@ -1,8 +1,10 @@
 import logging
+import glob
 import time
 import numpy as np
 import json
 import tempfile
+import tarfile
 import os
 from equilibrator_api import ComponentContribution, Q_
 from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
@@ -41,6 +43,7 @@ class rpEquilibrator(rpSBML):
                  path=None,
                  rpcache=None,
                  cc=None,
+                 calc_cmp={},
                  ph=7.5,
                  ionic_strength=200,
                  pMg=10.0,
@@ -80,7 +83,7 @@ class rpEquilibrator(rpSBML):
         self.pMg = pMg
         self.temp_k = temp_k
         self.mnx_default_conc = json.load(open(os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'data', 'mnx_default_conc.json'), 'r'))
-        self.calc_cmp = {}
+        self.calc_cmp = calc_cmp
 
     ##################################################################################
     ############################### STATIC ###########################################
@@ -98,13 +101,11 @@ class rpEquilibrator(rpSBML):
                       temp_k=298.15,
                       pathway_id='rp_pathway'):
         with tempfile.TemporaryDirectory() as tmp_folder:
-            tar = tarfile.open(rpcol, mode='r')
+            tar = tarfile.open(rpcollection, mode='r')
             #get the root member
             root_name = os.path.commonprefix(tar.getnames())
             tar.extractall(path=tmp_folder, members=tar.members)
             tar.close()
-            logging.debug(os.path.join(tmp_folder, root_name, 'models', '*'))
-            logging.debug(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Input collection has no models')
                 return False
@@ -125,25 +126,28 @@ class rpEquilibrator(rpSBML):
                                                                  'pMg': pMg,
                                                                  'temp_k': temp_k,
                                                                  'pathway_id': pathway_id}
-            json.dump(rpequilibrator_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
+            json.dump(rpequilibrator_log, open(os.path.join(tmp_folder, root_name, 'log.json'), 'w'))
             if not cc:
                 cc = ComponentContribution()
+            #this is the cache for the already calculated structures
+            calc_cmp = {}
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
-                rpequilibrator = rpEquilibrator(path=rpsbml_path, model_name=file_name, rpcache=rpcache, cc=cc)
+                rpequilibrator = rpEquilibrator(path=rpsbml_path, model_name=file_name, rpcache=rpcache, cc=cc, calc_cmp=calc_cmp)
                 rpequilibrator.pathway(pathway_id, True)
                 rpequilibrator.writeSBML(path=rpsbml_path)
-        if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
-            logging.error('Output has not produced any models')
-            return False
-        #WARNING: we are overwriting the input file
-        if rpcollection_output:
-            with tarfile.open(rpcollection_output, "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
-        else:
-            logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
-            with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+                calc_cmp = rpequilibrator.calc_cmp    
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Output has not produced any models')
+                return False
+            #WARNING: we are overwriting the input file
+            if rpcollection_output:
+                with tarfile.open(rpcollection_output, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            else:
+                logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
+                with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
         return True
 
 
@@ -318,24 +322,34 @@ class rpEquilibrator(rpSBML):
             self.logger.debug('Trying to find the CMP using the structure')
             #try to find it in the local data - we do this because there are repeated species in many files
             if brs_annot['inchi'] in self.calc_cmp:
-                spe_cmp = self.calc_cmp[brs_annot['inchi']]
+                if self.calc_cmp[brs_annot['inchi']]:
+                    spe_cmp = self.calc_cmp[brs_annot['inchi']]
+                else:
+                    self.logger.warning('Already tried and failed to calculate formation for this species')
+                    return None, None
             elif brs_annot['smiles'] in self.calc_cmp:
-                spe_cmp = self.calc_cmp[brs_annot['smiles']]
+                if self.calc_cmp[brs_annot['smiles']]:
+                    spe_cmp = self.calc_cmp[brs_annot['smiles']]
+                else:
+                    self.logger.warning('Already tried and failed to calculate formation for this species')
+                    return None, None
             else:
                 #if you cannot find it then calculate it
                 try:
                     spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['inchi'], mol_format='inchi')
                     self.calc_cmp[brs_annot['inchi']] = spe_cmp
                     self.calc_cmp[brs_annot['smiles']] = spe_cmp
-                except (OSError, KeyError, GroupDecompositionError) as e:
+                except (OSError, KeyError, GroupDecompositionError, TypeError) as e:
                     try:
                         spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['smiles'], mol_format='smiles')
                         self.calc_cmp[brs_annot['smiles']] = spe_cmp
                         self.calc_cmp[brs_annot['inchi']] = spe_cmp
-                    except (OSError, KeyError, GroupDecompositionError) as e:
+                    except (OSError, KeyError, GroupDecompositionError, TypeError) as e:
                         self.logger.warning('The following species does not have brsynth annotation InChI or SMILES: '+str(libsbml_species.getId()))
                         self.logger.warning('Or Equilibrator could not convert the structures')
                         self.logger.warning(e)
+                        self.calc_cmp[brs_annot['smiles']] = None 
+                        self.calc_cmp[brs_annot['inchi']] = None
                         return None, None
         if spe_cmp.id==4: #this is H+ and can be ignored
             return 'h', 'h'

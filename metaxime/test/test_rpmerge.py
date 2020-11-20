@@ -23,6 +23,8 @@ class TestRPMerge(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_output_folder:
             rpMerge(os.path.join('data', 'rpmerge', 'rpsbml.xml'), os.path.join('data', 'rpmerge', 'gem.xml'), os.path.join(tmp_output_folder, 'test.sbml'))
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbml'), 'rb').read()).hexdigest(), '66cb235c127e2bb07c6c13bea7bc6df2')
+            #TODO: test that the new files contains both unique species
+
 
     #def _findUniqueRowColumn
 

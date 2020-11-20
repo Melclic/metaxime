@@ -1,5 +1,6 @@
 import tempfile
 import time
+import glob
 import pickle
 import tarfile
 import gzip
@@ -63,7 +64,7 @@ class rpSelenzyme(rpSBML):
         self.uniprot_aa_length = uniprot_aa_length
         self.data_dir = data_dir
         self.pc = pc
-        if self.cache_tar_path:
+        if not self.uniprot_aa_length or not self.data_dir or not self.pc:
             if not os.path.exists(self.cache_tar_path):
                 self.logger.warning('Cannot find the cache tar file: '+str(self.cache_tar_path))
                 self.cache_tar_path = None
@@ -98,12 +99,13 @@ class rpSelenzyme(rpSBML):
                       fp='RDK',
                       rxntype='smarts',
                       min_aa_length=100,
+                      pathway_id='rp_pathway',
                       pc=None,
                       uniprot_aa_length=None,
                       cache_path=None,
                       rpcache=None):
         with tempfile.TemporaryDirectory() as tmp_folder:
-            tar = tarfile.open(rpcol, mode='r')
+            tar = tarfile.open(rpcollection, mode='r')
             #get the root member
             root_name = os.path.commonprefix(tar.getnames())
             tar.extractall(path=tmp_folder, members=tar.members)
@@ -131,7 +133,7 @@ class rpSelenzyme(rpSBML):
                                                            'rxntype': rxntype,
                                                            'min_aa_length': min_aa_length,
                                                            'cache_path': cache_path}
-            json.dump(rpselenzyme_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
+            json.dump(rpselenzyme_log, open(os.path.join(tmp_folder, root_name, 'log.json'), 'w'))
             ##### cache ######
             if not rpcache:
                 rpcache = rpCache()
@@ -150,7 +152,7 @@ class rpSelenzyme(rpSBML):
                                           model_name=file_name,
                                           path=rpsbml_path,
                                           rpcache=rpcache)
-                rpselenzyme.run(host_taxonomy_id=host_taxonomy_id,
+                rpselenzyme.run(host_taxonomy_id=int(host_taxonomy_id),
                                 pathway_id=pathway_id,
                                 num_results=num_results,
                                 direction=direction,
@@ -160,19 +162,19 @@ class rpSelenzyme(rpSBML):
                                 min_aa_length=min_aa_length,
                                 write_results=True)
                 rpselenzyme.writeSBML(path=rpsbml_path)
-        if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
-            logging.error('Output has not produced any models')
-            return False
-        if isinstance(cache_path, tempfile.TemporaryDirectory):
-            cache_path.cleanup()
-        #WARNING: we are overwriting the input file
-        if rpcollection_output:
-            with tarfile.open(rpcollection_output, "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
-        else:
-            logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
-            with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Output has not produced any models')
+                return False
+            if isinstance(cache_path, tempfile.TemporaryDirectory):
+                cache_path.cleanup()
+            #WARNING: we are overwriting the input file
+            if rpcollection_output:
+                with tarfile.open(rpcollection_output, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            else:
+                logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
+                with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
         return True 
 
 

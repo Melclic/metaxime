@@ -243,8 +243,11 @@ class rpSBML(rpCache):
             reactions[reaction.getId()] = self.readBRSYNTHAnnotation(reaction.getAnnotation())
         # Get Species
         species = {}
+        self.logger.debug('Model species: '+str([i.getId() for i in self.model.getListOfSpecies()]))
         for member in self.readUniqueRPspecies(pathway_id):
+            self.logger.debug('member: '+str(member))
             spe = self.model.getSpecies(member)
+            self._checklibSBML(spe, 'Retreiving the species: '+str(member))
             species[spe.getId()] = self.readBRSYNTHAnnotation(spe.getAnnotation())
         # Pathways dict
         d_reactions = {}
@@ -1551,8 +1554,9 @@ class rpSBML(rpCache):
                 pass
         #list the common keys between the two
         for same_key in list(set(list(source_dict.keys())).intersection(list(target_dict.keys()))):
-            if source_dict[same_key]==target_dict[same_key]:
-                return True
+            if source_dict[same_key] and target_dict[same_key]:
+                if source_dict[same_key]==target_dict[same_key]:
+                    return True
         return False
 
 
@@ -1576,8 +1580,9 @@ class rpSBML(rpCache):
         for com_key in set(list(source_dict.keys()))-(set(list(source_dict.keys()))-set(list(target_dict.keys()))):
             #compare the keys and if same is non-empty means that there
             #are at least one instance of the key that is the same
-            if bool(set(source_dict[com_key]) & set(target_dict[com_key])):
-                return True
+            if source_dict[com_key] and target_dict[com_key]:
+                if bool(set(source_dict[com_key]) & set(target_dict[com_key])):
+                    return True
         return False
 
 

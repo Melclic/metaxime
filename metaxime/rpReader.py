@@ -858,7 +858,8 @@ class rpReader(rpCache):
                                              species.xref,
                                              species.inchi,
                                              species.inchikey,
-                                             species.smiles)
+                                             species.smiles,
+                                             use_species_id_as_is=False)
                         if not species in self.species_obj_dict:
                             self.species_obj_dict.append(species)
                 #add the new species to the RP reactions
