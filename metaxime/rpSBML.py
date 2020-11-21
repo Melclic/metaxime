@@ -21,11 +21,11 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-#logging.root.setLevel(logging.NOTSET)
+logging.root.setLevel(logging.NOTSET)
 
 logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
+    level=logging.DEBUG,
+    #level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
@@ -493,19 +493,19 @@ class rpSBML(rpCache):
                     #self.logger.debug('\tbrsynth_id: '+str(brsynth_id))
                     #if brsynth_id[:5]=='norm_' or brsynth_id=='global_score':
                     try:
+                        units = rpsbml_dict['pathway']['brsynth'][brsynth_id]['units']
+                    except (KeyError, TypeError):
+                        units = None
+                    try:
                         value = rpsbml_dict['pathway']['brsynth'][brsynth_id]['value']
+                        self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, False)
                     except (KeyError, TypeError):
                         self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
                         try:
                             value = rpsbml_dict['pathway']['brsynth'][brsynth_id]
+                            self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, True)
                         except (KeyError, TypeError):
                             self.logger.warning('Cannot retreive the value from: '+str(brsynth_id))
-                            continue
-                    try:
-                        units = rpsbml_dict['pathway']['brsynth'][brsynth_id]['units']
-                    except (KeyError, TypeError):
-                        units = None
-                    self.addUpdateBRSynth(rp_pathway, brsynth_id, value, units, False)
         #self.logger.debug('--> reactions')
         if 'reactions' in rpsbml_dict:
             for reac_id in rpsbml_dict['reactions']:
@@ -524,22 +524,19 @@ class rpSBML(rpCache):
                         self.addUpdateBRSynth(reaction, 'selenzyme', rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id], None, False, True, True)
                         continue
                     try:
-                        value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['value']
-                    except (KeyError, TypeError):
-                        self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
-                        try:
-                            value = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]
-                        except (KeyError, TypeError):
-                            self.logger.warning('Cannot retreive the value from: '+str(brsynth_id))
-                            continue
-                    try:
                         units = rpsbml_dict['reactions'][reac_id]['brsynth'][brsynth_id]['units']
                     except (KeyError, TypeError):
                         units = None
-                    if brsynth_id=='smiles' or brsynth_id=='rule_id' or brsynth_id=='rule_ori_reac':
-                        self.addUpdateBRSynth(reaction, brsynth_id, value, units, True)
-                    else:
+                    try:
+                        value = rpsbml_dict['reactions']['brsynth'][brsynth_id]['value']
                         self.addUpdateBRSynth(reaction, brsynth_id, value, units, False)
+                    except (KeyError, TypeError):
+                        self.logger.debug('The entry '+str(brsynth_id)+' doesnt contain value')
+                        try:
+                            value = rpsbml_dict['reactions']['brsynth'][brsynth_id]
+                            self.addUpdateBRSynth(reaction, brsynth_id, value, units, True)
+                        except (KeyError, TypeError):
+                            self.logger.warning('Cannot retreive the value from: '+str(brsynth_id))
 
 
     def addMIRIAMinchiKey(self):
@@ -1003,9 +1000,12 @@ class rpSBML(rpCache):
         #pathway
         rpsbml_json = {}
         rpsbml_json['pathway'] = {}
+        self.logger.debug('========================')
+        self.logger.debug(self.readBRSYNTHAnnotation(rp_pathway.getAnnotation()))
         rpsbml_json['pathway']['brsynth'] = self.readBRSYNTHAnnotation(rp_pathway.getAnnotation())
         #reactions
         rpsbml_json['reactions'] = {}
+        self.logger.debug('--- reactions ----')
         for member in reactions:
             reaction = self.model.getReaction(member.getIdRef())
             self._checklibSBML(reaction, 'Retreiving reaction: '+str(member))
@@ -1013,9 +1013,11 @@ class rpSBML(rpCache):
             self._checklibSBML(annot, 'Retreiving annotation of: '+str(member))
             rpsbml_json['reactions'][member.getIdRef()] = {}
             rpsbml_json['reactions'][member.getIdRef()]['brsynth'] = self.readBRSYNTHAnnotation(annot)
+            self.logger.debug('\t'+str(self.readBRSYNTHAnnotation(annot)))
             rpsbml_json['reactions'][member.getIdRef()]['miriam'] = self.readMIRIAMAnnotation(annot)
         #loop though all the species
         rpsbml_json['species'] = {}
+        self.logger.debug('---- species ----')
         for spe_id in self.readUniqueRPspecies(pathway_id):
             species = self.model.getSpecies(spe_id)
             self._checklibSBML(species, 'Retreiving reaction: '+str(spe_id))
@@ -1023,6 +1025,7 @@ class rpSBML(rpCache):
             self._checklibSBML(annot, 'Retreiving annotation of: '+str(spe_id))
             rpsbml_json['species'][spe_id] = {}
             rpsbml_json['species'][spe_id]['brsynth'] = self.readBRSYNTHAnnotation(annot)
+            self.logger.debug('\t'+str(self.readBRSYNTHAnnotation(annot)))
             rpsbml_json['species'][spe_id]['miriam'] = self.readMIRIAMAnnotation(annot)
         return rpsbml_json
 
@@ -1323,7 +1326,7 @@ class rpSBML(rpCache):
             return {}
 
 
-    def readBRSYNTHAnnotation(self, annot):
+    def readBRSYNTHAnnotation_old(self, annot):
         """Return a dictionnary of all the information in a BRSynth annotations
 
         :param annot: The annotation object of libSBML
@@ -1359,7 +1362,7 @@ class rpSBML(rpCache):
             if ann=='':
                 self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
                 continue
-            if ann.getName()=='dfG_prime_m' or ann.getName()=='dfG_uncert' or ann.getName()=='dfG_prime_o' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
+            if ann.getName()[0:4]=='dfG_' or ann.getName()[0:4]=='fba_' or ann.getName()=='flux_value':
                 try:
                     to_ret[ann.getName()] = {
                             'units': ann.getAttrValue('units'),
@@ -1388,16 +1391,84 @@ class rpSBML(rpCache):
             elif ann.getName()=='selenzyme':
                 to_ret[ann.getName()] = {}
                 for y in range(ann.getNumChildren()):
-                    selAnn = ann.getChild(y)
+                    selen_ann = ann.getChild(y)
                     try:
-                        to_ret[ann.getName()][selAnn.getName()] = float(selAnn.getAttrValue('value'))
+                        to_ret[ann.getName()][selen_ann.getName()] = float(selen_ann.getAttrValue('value'))
                     except ValueError:
-                        to_ret[ann.getName()][selAnn.getName()] = selAnn.getAttrValue('value')
+                        to_ret[ann.getName()][selen_ann.getName()] = selen_ann.getAttrValue('value')
             else:
                 to_ret[ann.getName()] = ann.getChild(0).toXMLString()
         #to delete empty
         return {k: v for k, v in to_ret.items() if v is not None}
         #return to_ret
+
+    def _convIntFloatBoolString(self, x):
+        try:
+            a = int(x)
+        except ValueError:
+            try:
+                a = float(x)
+                if a==int(a):
+                    return int(a)
+                else:
+                    return float(x)
+            except ValueError:
+                if x=='True':
+                    return True
+                elif x=='False':
+                    return False
+                else:
+                    return x
+
+    def readBRSYNTHAnnotation(self, annot):
+        """Return a dictionnary of all the information in a BRSynth annotations
+
+        :param annot: The annotation object of libSBML
+
+        :type annot: libsbml.XMLNode
+
+        :rtype: dict
+        :return: Dictionary of all the BRSynth annotations
+        """
+        to_ret = {}
+        if not annot:
+            self.logger.warning('The passed annotation is not BRSYNTH')
+            return {}
+        bag = annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        for i in range(bag.getNumChildren()):
+            ann = bag.getChild(i)
+            if ann=='':
+                self.logger.warning('This contains no attributes: '+str(ann.toXMLString()))
+                continue
+            name = ann.getName()
+            self.logger.debug('---> '+str(name))
+            units = ann.getAttrValue('units')
+            self.logger.debug('\tunits: '+str(units))
+            self.logger.debug('\tann.getNumChildren(): '+str(ann.getNumChildren()))
+            if ann.getNumChildren()==0 or ann.getNumChildren()==1:
+                if ann.getAttrValue('value'):
+                    value = ann.getAttrValue('value')
+                else:
+                    value = ann.getChild(0).toXMLString()
+                    if name=='smiles':
+                        value = value.replace('&gt;', '>')
+                value = self._convIntFloatBoolString(value)
+                if units and ann.getAttrValue('value'):
+                    to_ret[name] = {'units': units, 'value': value}
+                elif ann.getAttrValue('value'):
+                    to_ret[name] = {'value': value}
+                else:
+                    to_ret[name] = value
+            elif ann.getNumChildren()>0:
+                #NOTE: at thos point we only handle lists with value and name
+                to_ret[ann.getName()] = {}
+                for y in range(ann.getNumChildren()):
+                    ann_child = ann.getChild(y)
+                    to_ret[name][ann_child.getName()] = self._convIntFloatBoolString(ann_child.getAttrValue('value'))
+            else:
+                self.logger.error('There seems to be an error where the number of children is negative')
+        #to delete empty
+        return to_ret
 
 
     def readReactionSpecies(self, reaction):

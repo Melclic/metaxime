@@ -73,7 +73,8 @@ class rpSelenzyme(rpSBML):
             else:
                 self.logger.warning('Either both pc and cache_tar_path are None and the cache is loaded or both are passed')
         else:
-            self.logger.warning('Did not specify a cache_tar_path')
+            self.logger.warning('Cache has been passed fully')
+            self.logger.debug('self.data_dir.name: '+str(self.data_dir.name))
 
 
     #overwrite the del class to remove the self.data_dir if it has been initiated
@@ -134,34 +135,32 @@ class rpSelenzyme(rpSBML):
                                                            'min_aa_length': min_aa_length,
                                                            'cache_path': cache_path}
             json.dump(rpselenzyme_log, open(os.path.join(tmp_folder, root_name, 'log.json'), 'w'))
+            cache_selenzyme = None
             ##### cache ######
             if not rpcache:
                 rpcache = rpCache()
                 #rpcache.populateCache()
             if not pc or not uniprot_aa_length:
-                cache_selenzyme = rpSelenzyme()
                 if not cache_path:
-                    pc, uniprot_aa_length, cache_path = cache_selenzyme.loadCache(os.path.join(cache_selenzyme.dirname, 'input_cache', 'rpselenzyme_data.tar.xz'))
+                    cache_selenzyme = rpSelenzyme(cache_tar_path=os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'input_cache', 'rpselenzyme_data.tar.xz'))
                 else:
-                    pc, uniprot_aa_length, cache_path = cache_selenzyme.loadCache(cache_path)
+                    cache_selenzyme = rpSelenzyme(cache_tar_path=cache_path)
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
-                rpselenzyme = rpSelenzyme(uniprot_aa_length=uniprot_aa_length,
-                                          data_dir=cache_path,
-                                          pc=pc,
-                                          model_name=file_name,
-                                          path=rpsbml_path,
-                                          rpcache=rpcache)
-                rpselenzyme.run(host_taxonomy_id=int(host_taxonomy_id),
-                                pathway_id=pathway_id,
-                                num_results=num_results,
-                                direction=direction,
-                                noMSA=noMSA,
-                                fp=fp,
-                                rxntype=rxntype,
-                                min_aa_length=min_aa_length,
-                                write_results=True)
-                rpselenzyme.writeSBML(path=rpsbml_path)
+                logging.debug('################### '+str(file_name)+' ##################')
+                cache_selenzyme.model_name = file_name
+                cache_selenzyme.rpsbml_path = rpsbml_path
+                cache_selenzyme.readSBML(rpsbml_path, file_name)
+                cache_selenzyme.run(host_taxonomy_id=int(host_taxonomy_id),
+                                    pathway_id=pathway_id,
+                                    num_results=num_results,
+                                    direction=direction,
+                                    noMSA=noMSA,
+                                    fp=fp,
+                                    rxntype=rxntype,
+                                    min_aa_length=min_aa_length,
+                                    write_results=True)
+                cache_selenzyme.writeSBML(path=rpsbml_path)
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False

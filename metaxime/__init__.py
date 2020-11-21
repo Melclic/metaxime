@@ -8,6 +8,7 @@ from .rpReader import rpReader
 from .rpFBA import rpFBA
 from .rpEquilibrator import rpEquilibrator
 from .rpSelenzyme import rpSelenzyme
+from .rpGlobalScore import rpGlobalScore
 
 __all__ = [
     'rpSBML',
@@ -18,5 +19,6 @@ __all__ = [
     'rpReader',
     'rpFBA',
     'rpEquilibrator',
-    'rpSelenzyme'
+    'rpSelenzyme',
+    'rpGlobalScore'
 ]

@@ -9,6 +9,8 @@ import json
 import glob
 import tarfile
 import tempfile
+import os
+import time
 
 from .rpSBML import rpSBML
 
@@ -21,19 +23,18 @@ __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
 
-self.logger.basicConfig(
+logging.basicConfig(
     #level=self.logger.DEBUG,
-    level=self.logger.WARNING,
+    level=logging.WARNING,
     #level=self.logger.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
 
-
 class rpGlobalScore(rpSBML):
     """Class combining all the different characteristics of a pathway and calculate the global score
     """
-    def __init__(self
+    def __init__(self,
                  model_name=None,
                  document=None,
                  path=None,
@@ -108,7 +109,7 @@ class rpGlobalScore(rpSBML):
                                                                'pathway_id': pathway_id,
                                                                'objective_id': objective_id,
                                                                'thermo_id': thermo_id}
-            json.dump(rpglobalscore_log, open(os.path.join(tmp_output_folder, root_name, 'log.json'), 'w'))
+            json.dump(rpglobalscore_log, open(os.path.join(tmp_folder, root_name, 'log.json'), 'w'))
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                 rpglobalscore = rpGlobalScore(model_name=file_name, path=rpsbml_path, rpcache=rpcache)
@@ -116,7 +117,7 @@ class rpGlobalScore(rpSBML):
                                                    weight_rule_score,
                                                    weight_fba,
                                                    weight_thermo,
-                                                   max_rp_steps2
+                                                   max_rp_steps,
                                                    thermo_ceil,
                                                    thermo_floor,
                                                    fba_ceil,
@@ -126,17 +127,17 @@ class rpGlobalScore(rpSBML):
                                                    thermo_id,
                                                    True)
                 rpglobalscore.writeSBML(path=rpsbml_path)
-        if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
-            logging.error('Output has not produced any models')
-            return False
-        #WARNING: we are overwriting the input file
-        if rpcollection_output:
-            with tarfile.open(rpcollection_output, "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
-        else:
-            logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
-            with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
-                tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
+                logging.error('Output has not produced any models')
+                return False
+            #WARNING: we are overwriting the input file
+            if rpcollection_output:
+                with tarfile.open(rpcollection_output, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            else:
+                logging.warning('The output file is: '+str(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz')))
+                with tarfile.open(os.path.join(os.path.dirname(rpcollection), 'output.tar.xz'), "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
         return True 
 
 
@@ -193,7 +194,7 @@ class rpGlobalScore(rpSBML):
         :rtype: float
         :return: The global score
         """
-        rpsbml_dict = self.asdict(pathway_id)
+        rpsbml_dict = self.asDict(pathway_id)
         path_norm = {}
         ########################################### REACTIONS #################################################
         #WARNING: we do this because the list gets updated
@@ -201,6 +202,7 @@ class rpGlobalScore(rpSBML):
         self.logger.debug('thermo_floor: '+str(thermo_floor))
         self.logger.debug('fba_ceil: '+str(fba_ceil))
         self.logger.debug('fba_floor: '+str(fba_floor))
+        #WARNING: make lists since the keys can change in the loops
         list_reac_id = list(rpsbml_dict['reactions'].keys())
         for reac_id in list_reac_id:
             list_bd_id = list(rpsbml_dict['reactions'][reac_id]['brsynth'].keys())
@@ -247,10 +249,14 @@ class rpGlobalScore(rpSBML):
                         self.logger.warning('Cannot find the objective: '+str(bd_id)+' for the reaction: '+str(reac_id))
                     rpsbml_dict['reactions'][reac_id]['brsynth']['norm_'+bd_id] = {}
                     rpsbml_dict['reactions'][reac_id]['brsynth']['norm_'+bd_id]['value'] = norm_fba
+                ########## Rule Score #########
                 elif bd_id=='rule_score':
                     if bd_id not in path_norm:
                         path_norm[bd_id] = []
                     #rule score higher is better
+                    self.logger.debug('reac_id: '+str(reac_id))
+                    self.logger.debug('bd_id: '+str(bd_id))
+                    self.logger.debug(rpsbml_dict['reactions'][reac_id]['brsynth'])
                     path_norm[bd_id].append(rpsbml_dict['reactions'][reac_id]['brsynth'][bd_id]['value'])
                 else:
                     self.logger.debug('Not normalising: '+str(bd_id))
@@ -274,11 +280,11 @@ class rpGlobalScore(rpSBML):
                 rpsbml_dict['pathway']['brsynth']['norm_'+bd_id]['value'] = norm_fba
         ############# thermo ################
         for bd_id in path_norm:
-            if bd_id[:4]=='dfG_':
-                rpsbml_dict['pathway']['brsynth']['norm_'+bd_id] = {}
-                rpsbml_dict['pathway']['brsynth']['var_'+bd_id] = {}
+            if bd_id=='dfG_prime_o' or bd_id=='dfG_prime_m':
+                #rpsbml_dict['pathway']['brsynth']['var_'+bd_id] = {}
                 #here add weights based on std
                 self.logger.debug(str(bd_id)+': '+str(path_norm[bd_id]))
+                rpsbml_dict['pathway']['brsynth']['norm_'+bd_id] = {}
                 rpsbml_dict['pathway']['brsynth']['norm_'+bd_id]['value'] = np.average([np.average(path_norm[bd_id]), 1.0-np.std(path_norm[bd_id])], weights=[0.5, 0.5])
                 #the score is higher is better - (-1 since we want lower variability)
                 #rpsbml_dict['pathway']['brsynth']['var_'+bd_id]['value'] = 1.0-np.var(path_norm[bd_id])
@@ -289,8 +295,8 @@ class rpGlobalScore(rpSBML):
             rpsbml_dict['pathway']['brsynth']['norm_'+bd_id] = {}
             rpsbml_dict['pathway']['brsynth']['norm_'+bd_id]['value'] = 0.0
         else:
-            rpsbml_dict['pathway']['brsynth']['norm_'+bd_id] = {}
-            rpsbml_dict['pathway']['brsynth']['norm_'+bd_id]['value'] = np.average(path_norm[bd_id])
+            rpsbml_dict['pathway']['brsynth']['norm_rule_score'] = {}
+            rpsbml_dict['pathway']['brsynth']['norm_rule_score']['value'] = np.average(path_norm['rule_score'])
         ##### length of pathway ####
         #lower is better -> -1.0 to reverse it
         norm_steps = 0.0
@@ -303,11 +309,11 @@ class rpGlobalScore(rpSBML):
                 norm_steps = 1.0-norm_steps
             except ZeroDivisionError:
                 norm_steps = 0.0
+        rpsbml_dict['pathway']['brsynth']['norm_steps'] = {}
+        rpsbml_dict['pathway']['brsynth']['norm_steps']['value'] = norm_steps
         ################################### GLOBAL ######################################
         ##### global score #########
         try:
-            rpsbml_dict['pathway']['brsynth']['norm_steps'] = {}
-            rpsbml_dict['pathway']['brsynth']['norm_steps']['value'] = norm_steps
             self.logger.debug('Using the following values for the global score:')
             self.logger.debug('Rule Score: '+str(rpsbml_dict['pathway']['brsynth']['norm_rule_score']['value']))
             self.logger.debug('Thermo: '+str(rpsbml_dict['pathway']['brsynth']['norm_'+str(thermo_id)]['value']))
