@@ -111,6 +111,7 @@ class rpGlobalScore(rpSBML):
                                                                'thermo_id': thermo_id}
             json.dump(rpglobalscore_log, open(os.path.join(tmp_folder, root_name, 'log.json'), 'w'))
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                logging.debug('############### '+str(rpsbml_path)+' #############')
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                 rpglobalscore = rpGlobalScore(model_name=file_name, path=rpsbml_path, rpcache=rpcache)
                 rpglobalscore.calculateGlobalScore(weight_rp_steps,
@@ -267,6 +268,9 @@ class rpGlobalScore(rpSBML):
         for bd_id in list_path_id:
             if bd_id[:4]=='fba_':
                 norm_fba = 0.0
+                self.logger.debug('bd_id: '+str(bd_id))
+                self.logger.debug('fba_floor: '+str(fba_floor))
+                self.logger.debug(rpsbml_dict['pathway']['brsynth'][bd_id])
                 if fba_ceil>=rpsbml_dict['pathway']['brsynth'][bd_id]['value']>=fba_floor:
                     #min-max feature scaling
                     norm_fba = (rpsbml_dict['pathway']['brsynth'][bd_id]['value']-fba_floor)/(fba_ceil-fba_floor)

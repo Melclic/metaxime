@@ -1404,7 +1404,7 @@ class rpSBML(rpCache):
 
     def _convIntFloatBoolString(self, x):
         try:
-            a = int(x)
+            return int(x)
         except ValueError:
             try:
                 a = float(x)
@@ -1452,7 +1452,9 @@ class rpSBML(rpCache):
                     value = ann.getChild(0).toXMLString()
                     if name=='smiles':
                         value = value.replace('&gt;', '>')
+                self.logger.debug('\tvalue: '+str(value))
                 value = self._convIntFloatBoolString(value)
+                self.logger.debug('\tvalue: '+str(value))
                 if units and ann.getAttrValue('value'):
                     to_ret[name] = {'units': units, 'value': value}
                 elif ann.getAttrValue('value'):
