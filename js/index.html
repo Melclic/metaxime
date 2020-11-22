@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="svg.min.js"></script>
+    <script type="text/javascript" src="jquery-3.5.1.js"></script>
+    <script type="text/javascript" src="smiles-drawer.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css?family=Droid+Sans:400,700"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+  </body>
+  <script>
+
+  var draw = SVG().addTo('body')
+  rect = draw.rect(100, 100).fill('#f06')
+
+  //var point = svg.image('file:///Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpdraw/images/TARGET_0000000001__64__MNXC3.svg');
+
+  svg_image = SVG().addTo('body').size(500, 500);
+  $.get('file:///Users/melchior/workspace/melclic/metaxime/metaxime/test/data/rpdraw/images/TARGET_0000000001__64__MNXC3.svg', function(contents) {
+	var $tmp = $('svg', contents);
+	console.log($tmp)
+	svg_image.svg($tmp.html());
+  });
+
+  console.log(svg_image)
+  svg_image.rect(500, 500).fill('#f06')
+
+  let options = {};
+  let smilesDrawer = new SmilesDrawer.Drawer(options);
+  smilesDrawer.draw("[H]OC(=O)c1c([H])c([H])c(O[H])c([H])c1[H]", "example-canvas", "light", false);
+
+
+  </script>
+</html>
