@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <script src="pkgs/dagre-d3.js"></script>
+  <script src="pkgs/smiles-drawer.js"></script>
+  <script src="pkgs/jquery-3.5.1.js"></script>
+  <script src="pkgs/d3.v6.js"></script>
+</head>
+<body>
+  <script>
+    $.getJSON("networkx.json", function(json) {
+      var g = new dagreD3.graphlib.Graph().setGraph(json);
+      var render = new dagreD3.render();
+      var svg = d3.select("#graph-container").append("svg")
+	.attr('width', '100%')
+	.attr('height', '100%');
+      var svgGroup = svg.append("g");
+      var thingtorender = d3.select("svg g")
+      render(thingtorender, g);
+    });
+  </script>
+</body>
+

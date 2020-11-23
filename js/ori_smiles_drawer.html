@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Smiles Drawer Example</title>
+    <meta name="description" content="A minimal smiles drawer example." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link
+      href="https://fonts.googleapis.com/css?family=Droid+Sans:400,700"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+  <div class="drawing-container" id='drawcont'>
+    <div class="svg-container" id='svgcont'>
+      <svg id="output-svg" viewbox="0 0 500 500" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+    <script src="pkgs/smiles-drawer.min.js"></script>
+    <script>
+      let options = {};
+      var div = document.createElement('div');
+      div.setAttribute('id', 'dyn_svgcont')
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+      //svg.setAttribute('width', '300')
+      //svg.setAttribute('height', '300')
+      svg.setAttribute('viewBox', '0 0 500 500')
+      svg.setAttribute('id', 'test_svg')
+      document.getElementById("svgcont").appendChild(svg);
+      //div.appendChild(svg)
+      console.log(isElement(svg))
+      console.log(svg)
+
+      // Initialize the drawer to draw to canvas
+      //let smilesDrawer = new SmilesDrawer.Drawer(options);
+      // Alternatively, initialize the SVG drawer:
+      svg_static = document.getElementById('output-svg')
+      console.log(svg_static)
+      let svgDrawer = new SmilesDrawer.SvgDrawer(options);
+      SmilesDrawer.parse('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', function(tree) {
+	// Draw to the canvas
+	//smilesDrawer.draw(tree, "example-canvas", "light", false);
+	// Alternatively, draw to SVG:
+	svgDrawer.draw(tree, 'test_svg', 'light', false);
+	//svgDrawer.draw(tree, 'test_svg', 'light', false);
+      });
+      console.log(svg)
+	
+    //Returns true if it is a DOM element    
+    function isElement(o){
+      return (
+        typeof HTMLElement === "object" ? o instanceof HTMLElement : //DOM2
+        o && typeof o === "object" && o !== null && o.nodeType === 1 && typeof o.nodeName==="string"
+    );
+    }
+
+    </script>
+  </body>
+</html>
