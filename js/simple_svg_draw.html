@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <script src="pkgs/d3.v3.min.js"></script>
+  <script src="pkgs/smiles-drawer_2.js"></script>
+  <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Smiles Drawer Example</title>
+    <meta name="description" content="A minimal smiles drawer example." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link
+      href="https://fonts.googleapis.com/css?family=Droid+Sans:400,700"
+      rel="stylesheet"
+    />
+</head>
+<body>
+  <canvas id="example-canvas" width="100" height="100"></canvas>
+  <script>
+	var cmp_width = 100;
+	var cmp_height = 100;
+
+	/*
+	var cas = d3.select("body")
+	  .append("foreignObject")
+		.attr('width', cmp_width)
+		.attr('height', cmp_height)
+		.attr('id', 'test')
+		.append('xhtml:canvas')
+		  //.attr('xmlns', 'http://www.w3.org/1999/xhtml');
+
+	var elements = document.getElementsByTagName('foreignObject');
+	for (var i=0; i<elements.length; i++) {
+	  console.log(elements[i].id)
+	  makeSVGstrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', document.querySelector('#'+elements[i].id+' canvas'), 100, 100);
+	  //makeStrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', document.querySelector('#'+elements[i].id+' canvas'), 100, 100);
+	}
+  */
+
+  var svg = d3.select("body")
+    .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr('id', 'test_svg')
+		.append("g");
+
+
+  svg.append('svg')
+	.attr("width", 200)
+	.attr("height", 200)
+    .attr('id', 'sub_test_svg')
+
+  console.log(document.getElementById('sub_test_svg').innerHTML)
+
+  makeSVGstrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', 'sub_test_svg', 200, 200);
+
+  console.log(document.getElementById('sub_test_svg').innerHTML)
+	
+  //cas.attr("width", width).attr("height", height)
+
+  function makeStrc(input, canvas, width, height) {
+    smilesDrawer = new SmilesDrawer.Drawer({ width: width, height: height });
+    SmilesDrawer.parse(input, function(tree) {
+          // Draw to the canvas
+          smilesDrawer.draw(tree, canvas, "light", false);
+          // Alternatively, draw to SVG:
+          //svgDrawer.draw(tree, canvas, 'dark', false);
+        });
+  }
+
+  function makeSVGstrc(input, in_canvas, in_width, in_height) {
+    svgDrawer = new SmilesDrawer.SvgDrawer({ width: in_width, height: in_height });
+    SmilesDrawer.parse(input, function(tree) {
+          // draw to the canvas
+          //smilesdrawer.draw(tree, in_canvas, "light", false);
+          // alternatively, draw to svg:
+          svgDrawer.draw(tree, in_canvas, 'dark', false);
+        });
+  }
+
+  </script>
+</body>
