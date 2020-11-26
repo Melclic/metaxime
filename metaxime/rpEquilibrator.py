@@ -206,7 +206,7 @@ class rpEquilibrator(rpSBML):
             miriam_dict = self.readMIRIAMAnnotation(annot)
             self.logger.debug('miriam_dict: '+str(miriam_dict))
             if not miriam_dict:
-                self.logger.error('The object annotation does not have any MIRIAM entries')
+                self.logger.warning('The object annotation does not have any MIRIAM entries')
                 return False
             if 'kegg' in miriam_dict:
                 if miriam_dict['kegg']:
@@ -661,7 +661,7 @@ class rpEquilibrator(rpSBML):
                 spe = self.model.getSpecies(spe_id)
                 miriam_dict = self.readMIRIAMAnnotation(spe.getAnnotation())
                 if not miriam_dict:
-                    self.logger.error('The object annotation does not have any MIRIAM entries')
+                    self.logger.warning('The object annotation does not have any MIRIAM entries')
                     return False
                 iden_str = None
                 if 'kegg' in miriam_dict:

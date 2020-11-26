@@ -28,6 +28,7 @@ class TestRPreader(unittest.TestCase):
                                      os.path.join('data', 'rpreader', 'rp2paths_compounds.csv'),
                                      os.path.join('data', 'rpreader', 'rp2paths_pathways.csv'),
                                      os.path.join(tmp_output_folder, 'test.rpcol'))
+            tar = tarfile.open(os.path.join(tmp_output_folder, 'test.rpcol'), mode='r')
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.rpcol'), 'rb').read()).hexdigest(), 'b3ae498ea2b5dbcc2c0e35410b875865')
 
     def test_rp2ToSBML(self):
