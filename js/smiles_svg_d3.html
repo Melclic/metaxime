@@ -113,6 +113,8 @@ d3.json("graph.json", function(error, graph) {
 
   var elements = document.getElementsByTagName('foreignObject');
   for (var i=0; i<elements.length; i++) {
+	console.log('#'+elements[i].id+' canvas')
+	console.log(document.querySelector('#'+elements[i].id+' canvas'))
 	console.log(elements[i].id)
 	//var canvas = document.querySelector('#'+elements[i].id+' canvas')
 	makeSVGstrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', document.querySelector('#'+elements[i].id+' canvas'), 100, 100);
@@ -162,8 +164,8 @@ d3.json("graph.json", function(error, graph) {
 
 
   function makestrc(input, in_canvas, in_width, in_height) {
-    smilesdrawer = new smilesdrawer.drawer({ width: in_width, height: in_height });
-    smilesdrawer.parse(input, function(tree) {
+    smilesdrawer = new SmilesDrawer.Drawer({ width: in_width, height: in_height });
+    SmilesDrawer.parse(input, function(tree) {
           // draw to the canvas
           smilesdrawer.draw(tree, in_canvas, "light", false);
           // alternatively, draw to svg:

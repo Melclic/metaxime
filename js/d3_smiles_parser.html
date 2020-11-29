@@ -147,6 +147,7 @@ d3.json("graph.json", function(error, graph) {
 
   var elements = document.getElementsByTagName('foreignObject');
   for (var i=0; i<elements.length; i++) {
+	console.log(document.querySelector('#'+elements[i].id+' canvas'))
 	console.log(elements[i].id)
 	//var canvas = document.querySelector('#'+elements[i].id+' canvas')
 	makeStrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', document.querySelector('#'+elements[i].id+' canvas'), 100, 100);
