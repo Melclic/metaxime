@@ -1,1 +1,608 @@
-{"directed": true, "multigraph": false, "graph": {"brsynth": {"path_id": {"value": 1}, "sub_path_id": {"value": 1}}}, "nodes": [{"type": "species", "name": "MNXM188", "miriam": {"inchikey": ["RWZYAGGXGHYGMB-UHFFFAOYSA-M"], "seed": ["cpd00093"], "sabiork": ["5005"], "metacyc": ["ANTHRANILATE"], "hmdb": ["HMDB01123"], "chebi": ["40980", "2757", "22578", "22577", "30754", "22575", "13841", "16567"], "metanetx": ["MNXM188"], "bigg": ["M_anth", "anth"]}, "brsynth": {"smiles": "[H]OC(=O)c1c([H])c([H])c([H])c([H])c1N([H])[H]", "inchi": "InChI=1S/C7H7NO2/c8-6-4-2-1-3-5(6)7(9)10/h1-4H,8H2,(H,9,10)/p-1", "inchikey": "RWZYAGGXGHYGMB-UHFFFAOYSA-M"}, "central_species": true, "sink_species": true, "rp_pathway": true, "id": "MNXM188__64__MNXC3"}, {"type": "species", "name": "TARGET_0000000001", "miriam": {"inchikey": ["TXXHDPDFNKHHGW-UHFFFAOYSA-N"]}, "brsynth": {"smiles": "[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]", "inchi": "InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)", "inchikey": "TXXHDPDFNKHHGW-UHFFFAOYSA-N"}, "central_species": true, "sink_species": false, "rp_pathway": true, "id": "TARGET_0000000001__64__MNXC3"}, {"type": "species", "name": "CMPD_0000000003", "miriam": {"inchikey": ["YCIMNLLNPGFGHC-UHFFFAOYSA-N"]}, "brsynth": {"smiles": "[H]Oc1c([H])c([H])c([H])c([H])c1O[H]", "inchi": "InChI=1S/C6H6O2/c7-5-3-1-2-4-6(5)8/h1-4,7-8H", "inchikey": "YCIMNLLNPGFGHC-UHFFFAOYSA-N"}, "central_species": true, "sink_species": false, "rp_pathway": true, "id": "CMPD_0000000003__64__MNXC3"}, {"type": "species", "name": "MNXM4", "miriam": {"inchikey": ["MYMOFIZGZYHOMD-UHFFFAOYSA-N"], "seed": ["cpd00007"], "sabiork": ["1264"], "reactome": ["R-ALL-5668566", "R-ALL-352327", "R-ALL-351593", "R-ALL-29368", "R-ALL-189461", "R-ALL-1236709", "R-ALL-113685", "R-ALL-113535", "R-ALL-113534", "R-ALL-113533", "R-ALL-1131511"], "metacyc": ["OXYGEN-MOLECULE"], "hmdb": ["HMDB01377"], "chebi": ["29793", "27140", "26689", "7860", "44742", "30491", "29097", "25366", "23833", "13416", "10745", "15379"], "metanetx": ["MNXM97007", "MNXM89559", "MNXM114217", "MNXM4"], "bigg": ["M_o2", "o2"]}, "brsynth": {"smiles": "O=O", "inchi": "InChI=1S/O2/c1-2", "inchikey": "MYMOFIZGZYHOMD-UHFFFAOYSA-N"}, "central_species": true, "sink_species": true, "rp_pathway": true, "id": "MNXM4__64__MNXC3"}, {"type": "species", "name": "MNXM6", "miriam": {"inchikey": ["ACFIXJIJDZMPPO-NNYOXOHSSA-J"], "seed": ["cpd27640", "cpd00005"], "sabiork": ["1262"], "reactome": ["R-ALL-6790135", "R-ALL-5623644", "R-ALL-351627", "R-ALL-29364", "R-ALL-2000347", "R-ALL-194725", "R-ALL-113602", "R-ALL-113601", "R-ALL-113600"], "metacyc": ["NADPH", "NADH-P-OR-NOP"], "hmdb": ["HMDB06341", "HMDB00799", "HMDB00221"], "chebi": ["57783", "7425", "44286", "21904", "13400", "13399", "16474"], "metanetx": ["MNXM96040", "MNXM89561", "MNXM89556", "MNXM64104", "MNXM162231", "MNXM6"], "bigg": ["M_nadph", "nadph"]}, "brsynth": {"smiles": "[H]N=C(O[H])C1=C([H])N(C2([H])OC([H])(C([H])([H])OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C3([H])OC([H])(n4c([H])nc5c(N([H])[H])nc([H])nc54)C([H])(OP(=O)(O[H])O[H])C3([H])O[H])C([H])(O[H])C2([H])O[H])C([H])=C([H])C1([H])[H]", "inchi": "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/p-4/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", "inchikey": "ACFIXJIJDZMPPO-NNYOXOHSSA-J"}, "central_species": true, "sink_species": true, "rp_pathway": true, "id": "MNXM6__64__MNXC3"}, {"type": "species", "name": "MNXM5", "miriam": {"inchikey": ["XJLXINKUBYWONI-NNYOXOHSSA-K"], "seed": ["cpd00006"], "sabiork": ["1263"], "reactome": ["R-ALL-6790191", "R-ALL-5623650", "R-ALL-389556", "R-ALL-351628", "R-ALL-29366", "R-ALL-2000348", "R-ALL-194668", "R-ALL-113564", "R-ALL-113563"], "metacyc": ["NADP"], "hmdb": ["HMDB00217"], "chebi": ["58349", "44405", "13397", "44409", "25523", "7424", "29868", "21903", "13398", "18009"], "metanetx": ["MNXM96408", "MNXM89560", "MNXM64103", "MNXM588022", "MNXM5"], "bigg": ["M_nadp", "nadp"]}, "brsynth": {"smiles": "NC(=O)c1ccc[n+](c1)[C@@H]1O[C@H](COP([O-])(=O)OP([O-])(=O)OC[C@H]2O[C@H]([C@H](OP([O-])([O-])=O)[C@@H]2O)n2cnc3c(N)ncnc23)[C@@H](O)[C@H]1O", "inchi": "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p-3/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", "inchikey": "XJLXINKUBYWONI-NNYOXOHSSA-K"}, "central_species": false, "sink_species": false, "rp_pathway": true, "id": "MNXM5__64__MNXC3"}, {"type": "species", "name": "MNXM15", "miriam": {"inchikey": ["QGZKDVFQNNGYKY-UHFFFAOYSA-O"], "seed": ["cpd19013", "cpd00013"], "sabiork": ["43", "1268"], "reactome": ["R-ALL-76230", "R-ALL-5693978", "R-ALL-389843", "R-ALL-31633", "R-ALL-29382", "R-ALL-2022135", "R-ALL-140912", "R-ALL-113561", "R-ALL-1132163"], "metacyc": ["AMMONIUM", "AMMONIA"], "hmdb": ["HMDB41827", "HMDB00051"], "chebi": ["29340", "29337", "7435", "49783", "22534", "28938", "7434", "44404", "44284", "44269", "22533", "13771", "13407", "13406", "13405", "16134", "135980"], "metanetx": ["MNXM89593", "MNXM89589", "MNXM84", "MNXM724015", "MNXM723599", "MNXM723598", "MNXM15"], "bigg": ["M_nh4", "nh4", "M_nh3", "nh3"]}, "brsynth": {"smiles": "[H][N+]([H])([H])[H]", "inchi": "InChI=1S/H3N/h1H3/p+1", "inchikey": "QGZKDVFQNNGYKY-UHFFFAOYSA-O"}, "central_species": false, "sink_species": false, "rp_pathway": true, "id": "MNXM15__64__MNXC3"}, {"type": "species", "name": "MNXM13", "miriam": {"inchikey": ["CURLTUGMZLYLDI-UHFFFAOYSA-N"], "seed": ["cpd00011"], "sabiork": ["1266"], "reactome": ["R-ALL-5668565", "R-ALL-389536", "R-ALL-29376", "R-ALL-189480", "R-ALL-159942", "R-ALL-159751", "R-ALL-1237009", "R-ALL-113528", "R-ALL-1132345"], "metacyc": ["CARBON-DIOXIDE"], "hmdb": ["HMDB01967"], "chebi": ["48829", "3283", "23011", "13285", "13284", "13283", "13282", "16526"], "metanetx": ["MNXM89563", "MNXM723713", "MNXM13"], "bigg": ["M_co2", "co2"]}, "brsynth": {"smiles": "O=C=O", "inchi": "InChI=1S/CO2/c2-1-3", "inchikey": "CURLTUGMZLYLDI-UHFFFAOYSA-N"}, "central_species": false, "sink_species": false, "rp_pathway": true, "id": "MNXM13__64__MNXC3"}, {"type": "species", "name": "MNXM1", "miriam": {"inchikey": ["GPRLSGONYQIRFK-UHFFFAOYSA-N"], "seed": ["cpd00067"], "sabiork": ["39"], "reactome": ["R-ALL-74722", "R-ALL-70106", "R-ALL-5668577", "R-ALL-428548", "R-ALL-428040", "R-ALL-427899", "R-ALL-425999", "R-ALL-425978", "R-ALL-425969", "R-ALL-374900", "R-ALL-372511", "R-ALL-351626", "R-ALL-2872447", "R-ALL-2000349", "R-ALL-194688", "R-ALL-193465", "R-ALL-163953", "R-ALL-156540", "R-ALL-1470067", "R-ALL-113529", "R-ALL-1132304"], "metacyc": ["PROTON"], "hmdb": ["HMDB59597"], "chebi": ["5584", "13357", "10744", "15378"], "bigg": ["M_h", "h"], "metanetx": ["MNXM89553", "MNXM145872", "MNXM1", "MNXM01"]}, "brsynth": {"smiles": "[H+]", "inchi": "InChI=1S/p+1", "inchikey": "GPRLSGONYQIRFK-UHFFFAOYSA-N"}, "central_species": false, "sink_species": false, "rp_pathway": true, "id": "MNXM1__64__MNXC3"}, {"type": "reaction", "miriam": {"ec-code": ["1.13.11.1"]}, "brsynth": {"rule_id": "RR-02-a0cc0be463ff412f-16-F", "rule_ori_reac": "MNXR96458", "rule_score": {"value": 0.5982208769718989}, "step_id": {"value": 1}, "smiles": "[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H].[H+].[H+]>>O=O.[H]Oc1c([H])c([H])c([H])c([H])c1O[H]"}, "rp_pathway": true, "id": "RP1"}, {"type": "reaction", "miriam": {"ec-code": ["1.14.12.1"]}, "brsynth": {"rule_id": "RR-02-9137e79005134eeb-16-F", "rule_ori_reac": "MNXR106708", "rule_score": {"value": 0.6461261981425104}, "step_id": {"value": 2}, "smiles": "[H]Oc1c([H])c([H])c([H])c([H])c1O[H].NC(=O)c1ccc[n+](c1)[C@@H]1O[C@H](COP([O-])(=O)OP([O-])(=O)OC[C@H]2O[C@H]([C@H](OP([O-])([O-])=O)[C@@H]2O)n2cnc3c(N)ncnc23)[C@@H](O)[C@H]1O.[H][N+]([H])([H])[H].O=C=O>>O=O.[H]N=C(O[H])C1=C([H])N(C2([H])OC([H])(C([H])([H])OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C3([H])OC([H])(n4c([H])nc5c(N([H])[H])nc([H])nc54)C([H])(OP(=O)(O[H])O[H])C3([H])O[H])C([H])(O[H])C2([H])O[H])C([H])=C([H])C1([H])[H].[H]OC(=O)c1c([H])c([H])c([H])c([H])c1N([H])[H].[H+].[H+].[H+]"}, "rp_pathway": true, "id": "RP2"}], "links": [{"stoichio": 1.0, "source": "MNXM188__64__MNXC3", "target": "RP2"}, {"stoichio": 1.0, "source": "CMPD_0000000003__64__MNXC3", "target": "RP1"}, {"stoichio": 1.0, "source": "MNXM4__64__MNXC3", "target": "RP1"}, {"stoichio": 1.0, "source": "MNXM4__64__MNXC3", "target": "RP2"}, {"stoichio": 1.0, "source": "MNXM6__64__MNXC3", "target": "RP2"}, {"stoichio": 3.0, "source": "MNXM1__64__MNXC3", "target": "RP2"}, {"stoichio": 1.0, "source": "RP1", "target": "TARGET_0000000001__64__MNXC3"}, {"stoichio": 1.0, "source": "RP1", "target": "MNXM1__64__MNXC3"}, {"stoichio": 3.0, "source": "RP2", "target": "CMPD_0000000003__64__MNXC3"}, {"stoichio": 3.0, "source": "RP2", "target": "MNXM5__64__MNXC3"}, {"stoichio": 3.0, "source": "RP2", "target": "MNXM15__64__MNXC3"}, {"stoichio": 3.0, "source": "RP2", "target": "MNXM13__64__MNXC3"}]}
+{
+    "directed": true,
+    "multigraph": false,
+    "graph": {
+        "brsynth": {
+            "path_id": {
+                "value": 1
+            },
+            "sub_path_id": {
+                "value": 1
+            }
+        }
+    },
+    "nodes": [
+        {
+            "type": "species",
+            "name": "MNXM188",
+            "miriam": {
+                "inchikey": [
+                    "RWZYAGGXGHYGMB-UHFFFAOYSA-M"
+                ],
+                "seed": [
+                    "cpd00093"
+                ],
+                "sabiork": [
+                    "5005"
+                ],
+                "metacyc": [
+                    "ANTHRANILATE"
+                ],
+                "hmdb": [
+                    "HMDB01123"
+                ],
+                "chebi": [
+                    "40980",
+                    "2757",
+                    "22578",
+                    "22577",
+                    "30754",
+                    "22575",
+                    "13841",
+                    "16567"
+                ],
+                "metanetx": [
+                    "MNXM188"
+                ],
+                "bigg": [
+                    "M_anth",
+                    "anth"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H]OC(=O)c1c([H])c([H])c([H])c([H])c1N([H])[H]",
+                "inchi": "InChI=1S/C7H7NO2/c8-6-4-2-1-3-5(6)7(9)10/h1-4H,8H2,(H,9,10)/p-1",
+                "inchikey": "RWZYAGGXGHYGMB-UHFFFAOYSA-M"
+            },
+            "central_species": true,
+            "sink_species": true,
+            "rp_pathway": true,
+            "id": "MNXM188__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "TARGET_0000000001",
+            "miriam": {
+                "inchikey": [
+                    "TXXHDPDFNKHHGW-UHFFFAOYSA-N"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]",
+                "inchi": "InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)",
+                "inchikey": "TXXHDPDFNKHHGW-UHFFFAOYSA-N"
+            },
+            "central_species": true,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "TARGET_0000000001__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "CMPD_0000000003",
+            "miriam": {
+                "inchikey": [
+                    "YCIMNLLNPGFGHC-UHFFFAOYSA-N"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H]Oc1c([H])c([H])c([H])c([H])c1O[H]",
+                "inchi": "InChI=1S/C6H6O2/c7-5-3-1-2-4-6(5)8/h1-4,7-8H",
+                "inchikey": "YCIMNLLNPGFGHC-UHFFFAOYSA-N"
+            },
+            "central_species": true,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "CMPD_0000000003__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM4",
+            "miriam": {
+                "inchikey": [
+                    "MYMOFIZGZYHOMD-UHFFFAOYSA-N"
+                ],
+                "seed": [
+                    "cpd00007"
+                ],
+                "sabiork": [
+                    "1264"
+                ],
+                "reactome": [
+                    "R-ALL-5668566",
+                    "R-ALL-352327",
+                    "R-ALL-351593",
+                    "R-ALL-29368",
+                    "R-ALL-189461",
+                    "R-ALL-1236709",
+                    "R-ALL-113685",
+                    "R-ALL-113535",
+                    "R-ALL-113534",
+                    "R-ALL-113533",
+                    "R-ALL-1131511"
+                ],
+                "metacyc": [
+                    "OXYGEN-MOLECULE"
+                ],
+                "hmdb": [
+                    "HMDB01377"
+                ],
+                "chebi": [
+                    "29793",
+                    "27140",
+                    "26689",
+                    "7860",
+                    "44742",
+                    "30491",
+                    "29097",
+                    "25366",
+                    "23833",
+                    "13416",
+                    "10745",
+                    "15379"
+                ],
+                "metanetx": [
+                    "MNXM97007",
+                    "MNXM89559",
+                    "MNXM114217",
+                    "MNXM4"
+                ],
+                "bigg": [
+                    "M_o2",
+                    "o2"
+                ]
+            },
+            "brsynth": {
+                "smiles": "O=O",
+                "inchi": "InChI=1S/O2/c1-2",
+                "inchikey": "MYMOFIZGZYHOMD-UHFFFAOYSA-N"
+            },
+            "central_species": true,
+            "sink_species": true,
+            "rp_pathway": true,
+            "id": "MNXM4__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM6",
+            "miriam": {
+                "inchikey": [
+                    "ACFIXJIJDZMPPO-NNYOXOHSSA-J"
+                ],
+                "seed": [
+                    "cpd27640",
+                    "cpd00005"
+                ],
+                "sabiork": [
+                    "1262"
+                ],
+                "reactome": [
+                    "R-ALL-6790135",
+                    "R-ALL-5623644",
+                    "R-ALL-351627",
+                    "R-ALL-29364",
+                    "R-ALL-2000347",
+                    "R-ALL-194725",
+                    "R-ALL-113602",
+                    "R-ALL-113601",
+                    "R-ALL-113600"
+                ],
+                "metacyc": [
+                    "NADPH",
+                    "NADH-P-OR-NOP"
+                ],
+                "hmdb": [
+                    "HMDB06341",
+                    "HMDB00799",
+                    "HMDB00221"
+                ],
+                "chebi": [
+                    "57783",
+                    "7425",
+                    "44286",
+                    "21904",
+                    "13400",
+                    "13399",
+                    "16474"
+                ],
+                "metanetx": [
+                    "MNXM96040",
+                    "MNXM89561",
+                    "MNXM89556",
+                    "MNXM64104",
+                    "MNXM162231",
+                    "MNXM6"
+                ],
+                "bigg": [
+                    "M_nadph",
+                    "nadph"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H]N=C(O[H])C1=C([H])N(C2([H])OC([H])(C([H])([H])OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C3([H])OC([H])(n4c([H])nc5c(N([H])[H])nc([H])nc54)C([H])(OP(=O)(O[H])O[H])C3([H])O[H])C([H])(O[H])C2([H])O[H])C([H])=C([H])C1([H])[H]",
+                "inchi": "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/p-4/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1",
+                "inchikey": "ACFIXJIJDZMPPO-NNYOXOHSSA-J"
+            },
+            "central_species": true,
+            "sink_species": true,
+            "rp_pathway": true,
+            "id": "MNXM6__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM5",
+            "miriam": {
+                "inchikey": [
+                    "XJLXINKUBYWONI-NNYOXOHSSA-K"
+                ],
+                "seed": [
+                    "cpd00006"
+                ],
+                "sabiork": [
+                    "1263"
+                ],
+                "reactome": [
+                    "R-ALL-6790191",
+                    "R-ALL-5623650",
+                    "R-ALL-389556",
+                    "R-ALL-351628",
+                    "R-ALL-29366",
+                    "R-ALL-2000348",
+                    "R-ALL-194668",
+                    "R-ALL-113564",
+                    "R-ALL-113563"
+                ],
+                "metacyc": [
+                    "NADP"
+                ],
+                "hmdb": [
+                    "HMDB00217"
+                ],
+                "chebi": [
+                    "58349",
+                    "44405",
+                    "13397",
+                    "44409",
+                    "25523",
+                    "7424",
+                    "29868",
+                    "21903",
+                    "13398",
+                    "18009"
+                ],
+                "metanetx": [
+                    "MNXM96408",
+                    "MNXM89560",
+                    "MNXM64103",
+                    "MNXM588022",
+                    "MNXM5"
+                ],
+                "bigg": [
+                    "M_nadp",
+                    "nadp"
+                ]
+            },
+            "brsynth": {
+                "smiles": "NC(=O)c1ccc[n+](c1)[C@@H]1O[C@H](COP([O-])(=O)OP([O-])(=O)OC[C@H]2O[C@H]([C@H](OP([O-])([O-])=O)[C@@H]2O)n2cnc3c(N)ncnc23)[C@@H](O)[C@H]1O",
+                "inchi": "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p-3/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1",
+                "inchikey": "XJLXINKUBYWONI-NNYOXOHSSA-K"
+            },
+            "central_species": false,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "MNXM5__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM15",
+            "miriam": {
+                "inchikey": [
+                    "QGZKDVFQNNGYKY-UHFFFAOYSA-O"
+                ],
+                "seed": [
+                    "cpd19013",
+                    "cpd00013"
+                ],
+                "sabiork": [
+                    "43",
+                    "1268"
+                ],
+                "reactome": [
+                    "R-ALL-76230",
+                    "R-ALL-5693978",
+                    "R-ALL-389843",
+                    "R-ALL-31633",
+                    "R-ALL-29382",
+                    "R-ALL-2022135",
+                    "R-ALL-140912",
+                    "R-ALL-113561",
+                    "R-ALL-1132163"
+                ],
+                "metacyc": [
+                    "AMMONIUM",
+                    "AMMONIA"
+                ],
+                "hmdb": [
+                    "HMDB41827",
+                    "HMDB00051"
+                ],
+                "chebi": [
+                    "29340",
+                    "29337",
+                    "7435",
+                    "49783",
+                    "22534",
+                    "28938",
+                    "7434",
+                    "44404",
+                    "44284",
+                    "44269",
+                    "22533",
+                    "13771",
+                    "13407",
+                    "13406",
+                    "13405",
+                    "16134",
+                    "135980"
+                ],
+                "metanetx": [
+                    "MNXM89593",
+                    "MNXM89589",
+                    "MNXM84",
+                    "MNXM724015",
+                    "MNXM723599",
+                    "MNXM723598",
+                    "MNXM15"
+                ],
+                "bigg": [
+                    "M_nh4",
+                    "nh4",
+                    "M_nh3",
+                    "nh3"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H][N+]([H])([H])[H]",
+                "inchi": "InChI=1S/H3N/h1H3/p+1",
+                "inchikey": "QGZKDVFQNNGYKY-UHFFFAOYSA-O"
+            },
+            "central_species": false,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "MNXM15__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM13",
+            "miriam": {
+                "inchikey": [
+                    "CURLTUGMZLYLDI-UHFFFAOYSA-N"
+                ],
+                "seed": [
+                    "cpd00011"
+                ],
+                "sabiork": [
+                    "1266"
+                ],
+                "reactome": [
+                    "R-ALL-5668565",
+                    "R-ALL-389536",
+                    "R-ALL-29376",
+                    "R-ALL-189480",
+                    "R-ALL-159942",
+                    "R-ALL-159751",
+                    "R-ALL-1237009",
+                    "R-ALL-113528",
+                    "R-ALL-1132345"
+                ],
+                "metacyc": [
+                    "CARBON-DIOXIDE"
+                ],
+                "hmdb": [
+                    "HMDB01967"
+                ],
+                "chebi": [
+                    "48829",
+                    "3283",
+                    "23011",
+                    "13285",
+                    "13284",
+                    "13283",
+                    "13282",
+                    "16526"
+                ],
+                "metanetx": [
+                    "MNXM89563",
+                    "MNXM723713",
+                    "MNXM13"
+                ],
+                "bigg": [
+                    "M_co2",
+                    "co2"
+                ]
+            },
+            "brsynth": {
+                "smiles": "O=C=O",
+                "inchi": "InChI=1S/CO2/c2-1-3",
+                "inchikey": "CURLTUGMZLYLDI-UHFFFAOYSA-N"
+            },
+            "central_species": false,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "MNXM13__64__MNXC3"
+        },
+        {
+            "type": "species",
+            "name": "MNXM1",
+            "miriam": {
+                "inchikey": [
+                    "GPRLSGONYQIRFK-UHFFFAOYSA-N"
+                ],
+                "seed": [
+                    "cpd00067"
+                ],
+                "sabiork": [
+                    "39"
+                ],
+                "reactome": [
+                    "R-ALL-74722",
+                    "R-ALL-70106",
+                    "R-ALL-5668577",
+                    "R-ALL-428548",
+                    "R-ALL-428040",
+                    "R-ALL-427899",
+                    "R-ALL-425999",
+                    "R-ALL-425978",
+                    "R-ALL-425969",
+                    "R-ALL-374900",
+                    "R-ALL-372511",
+                    "R-ALL-351626",
+                    "R-ALL-2872447",
+                    "R-ALL-2000349",
+                    "R-ALL-194688",
+                    "R-ALL-193465",
+                    "R-ALL-163953",
+                    "R-ALL-156540",
+                    "R-ALL-1470067",
+                    "R-ALL-113529",
+                    "R-ALL-1132304"
+                ],
+                "metacyc": [
+                    "PROTON"
+                ],
+                "hmdb": [
+                    "HMDB59597"
+                ],
+                "chebi": [
+                    "5584",
+                    "13357",
+                    "10744",
+                    "15378"
+                ],
+                "bigg": [
+                    "M_h",
+                    "h"
+                ],
+                "metanetx": [
+                    "MNXM89553",
+                    "MNXM145872",
+                    "MNXM1",
+                    "MNXM01"
+                ]
+            },
+            "brsynth": {
+                "smiles": "[H+]",
+                "inchi": "InChI=1S/p+1",
+                "inchikey": "GPRLSGONYQIRFK-UHFFFAOYSA-N"
+            },
+            "central_species": false,
+            "sink_species": false,
+            "rp_pathway": true,
+            "id": "MNXM1__64__MNXC3"
+        },
+        {
+            "type": "reaction",
+            "miriam": {
+                "ec-code": [
+                    "1.13.11.1"
+                ]
+            },
+            "brsynth": {
+                "rule_id": "RR-02-a0cc0be463ff412f-16-F",
+                "rule_ori_reac": "MNXR96458",
+                "rule_score": {
+                    "value": 0.5982208769718989
+                },
+                "step_id": {
+                    "value": 1
+                },
+                "smiles": "[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H].[H+].[H+]>>O=O.[H]Oc1c([H])c([H])c([H])c([H])c1O[H]"
+            },
+            "rp_pathway": true,
+            "id": "RP1"
+        },
+        {
+            "type": "reaction",
+            "miriam": {
+                "ec-code": [
+                    "1.14.12.1"
+                ]
+            },
+            "brsynth": {
+                "rule_id": "RR-02-9137e79005134eeb-16-F",
+                "rule_ori_reac": "MNXR106708",
+                "rule_score": {
+                    "value": 0.6461261981425104
+                },
+                "step_id": {
+                    "value": 2
+                },
+                "smiles": "[H]Oc1c([H])c([H])c([H])c([H])c1O[H].NC(=O)c1ccc[n+](c1)[C@@H]1O[C@H](COP([O-])(=O)OP([O-])(=O)OC[C@H]2O[C@H]([C@H](OP([O-])([O-])=O)[C@@H]2O)n2cnc3c(N)ncnc23)[C@@H](O)[C@H]1O.[H][N+]([H])([H])[H].O=C=O>>O=O.[H]N=C(O[H])C1=C([H])N(C2([H])OC([H])(C([H])([H])OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C3([H])OC([H])(n4c([H])nc5c(N([H])[H])nc([H])nc54)C([H])(OP(=O)(O[H])O[H])C3([H])O[H])C([H])(O[H])C2([H])O[H])C([H])=C([H])C1([H])[H].[H]OC(=O)c1c([H])c([H])c([H])c([H])c1N([H])[H].[H+].[H+].[H+]"
+            },
+            "rp_pathway": true,
+            "id": "RP2"
+        }
+    ],
+    "links": [
+        {
+            "stoichio": 1.0,
+            "source": "MNXM188__64__MNXC3",
+            "target": "RP2"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "CMPD_0000000003__64__MNXC3",
+            "target": "RP1"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "MNXM4__64__MNXC3",
+            "target": "RP1"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "MNXM4__64__MNXC3",
+            "target": "RP2"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "MNXM6__64__MNXC3",
+            "target": "RP2"
+        },
+        {
+            "stoichio": 3.0,
+            "source": "MNXM1__64__MNXC3",
+            "target": "RP2"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "RP1",
+            "target": "TARGET_0000000001__64__MNXC3"
+        },
+        {
+            "stoichio": 1.0,
+            "source": "RP1",
+            "target": "MNXM1__64__MNXC3"
+        },
+        {
+            "stoichio": 3.0,
+            "source": "RP2",
+            "target": "CMPD_0000000003__64__MNXC3"
+        },
+        {
+            "stoichio": 3.0,
+            "source": "RP2",
+            "target": "MNXM5__64__MNXC3"
+        },
+        {
+            "stoichio": 3.0,
+            "source": "RP2",
+            "target": "MNXM15__64__MNXC3"
+        },
+        {
+            "stoichio": 3.0,
+            "source": "RP2",
+            "target": "MNXM13__64__MNXC3"
+        }
+    ]
+}
