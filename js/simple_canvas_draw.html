@@ -4,6 +4,7 @@
   <script src="pkgs/d3.v6.js"></script>
   <script src="pkgs/smiles-drawer.js"></script>
   <script src="pkgs/canvas2svg.js"></script>
+  <script src="pkgs/svgcanvas.js"></script>
 </head>
 <body>
   <canvas id="example-canvas" width="100" height="100"></canvas>
@@ -26,6 +27,7 @@
 
 	//cas.attr("width", width).attr("height", height)
 
+	/*
 	//Traditional way of doing it
 	var c = document.getElementById('example-canvas');
 	console.log(c)
@@ -42,19 +44,27 @@
 	makeStrc('[H]OP(=O)(O[H])OP(=O)(O[H])O[H]', canvas, 200, 200);
 	console.log(isElement(canvas))
 	console.log(canvas)
+	*/
 
-
+	/*
 	//Use the canvas to svg to convert
 	//WARNING: using this function will not work since we need to add the canvas to the dody before rendering
 	var ctx = new C2S(500,500);
 	console.log(ctx)
-	console.log(isElement(ctx.__canvas))
+	console.log(isElement(ctx.))
 	makeStrc('[H]OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C([H])([H])C(=C([H])[H])C([H])([H])[H]', ctx.__canvas, 500, 500);
 	console.log(ctx)
 	var myChem = ctx.getSerializedSvg(true);
 	console.log(myChem)
 	var cas = d3.select("body").append('div').html(myChem)
+	*/
 
+	
+	var canvas = document.createElement('canvas');
+	var body = document.getElementsByTagName("body")[0];
+	body.appendChild(canvas);
+	var facanvas = new fabric.Canvas('canvas', { isDrawingMode: true });
+	makeStrc('[H]OP(=O)(O[H])OP(=O)(O[H])OC([H])([H])C([H])([H])C(=C([H])[H])C([H])([H])[H]', facanvas, 500, 500);
 
 
 	//################ function ###################

@@ -12,16 +12,10 @@
   <script src="pkgs/d3.v6.js"></script>
   <script src="pkgs/dagre-d3.js"></script>
   <script src="pkgs/smiles-drawer.js"></script>
+  <script src="pkgs/fabric.min.js"></script>
 </head>
 <style id="css">
 
-canvas {
-  width: 100px;
-  height: 100px;
-  border: 1px solid red;
-  display: block;
-  object-fit: contain;
-}
 
 h1 {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
@@ -73,11 +67,10 @@ div#schedule-frame {
 </style>
 <body>
   <script>	
-
 	var svg = d3.select("body")
 		.append("svg")
-		  .attr("width", "100%")
-		  .attr("height", "100%")
+		  .attr("width", window.innerWidth)
+		  .attr("height", window.innerHeight)
 		  .attr('id', 'test_svg')
 		.append("g");	
 
@@ -91,8 +84,8 @@ div#schedule-frame {
 	  .setGraph({nodesep: 30,
 				 ranksep: 150,
 				 rankdir: "LR",
-				 marginx: 20,
-				 marginy: 20
+				 marginx: 10,
+				 marginy: 10
 	  })
 	  .setDefaultEdgeLabel(function() { return {}; });
 
@@ -103,16 +96,20 @@ div#schedule-frame {
 	  console.log(graph)
 	  //add the nodes
 	  for (var i = 0; i < graph.nodes.length; i++){
-		var chem_canvas = document.createElement('canvas');
-		chem_canvas.width = 100;
-		chem_canvas.height = 100;
-		chem_canvas.id = 'canvas_'+graph.nodes[i].id 
+		var chem_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		chem_svg.setAttribute("width", "100");
+		chem_svg.setAttribute("height", "100");
+		chem_svg.id = 'svg_'+graph.nodes[i].id 
+		//document.body.appendChild(chem_svg)
 		if(graph.nodes[i].type=='species') {
 		  g.setNode(graph.nodes[i].id, {labelType: 'html',
-										label: chem_canvas,
+										label: chem_svg,
 										width: 100,
 										height: 100}
 		  );
+		  /*
+		  g.setNode(graph.nodes[i].id, {labelType: 'svg', label: chem_svg})
+		  */
 		}
 		if(graph.nodes[i].type=='reaction') {
 		  g.setNode(graph.nodes[i].id, {labelType: 'string', label: graph.nodes[i].id, height: 50, width: 100}); 
@@ -147,12 +144,27 @@ div#schedule-frame {
 	  //draw the molecules in the canvas
 	  for (var i = 0; i < graph.nodes.length; i++){
 		if(graph.nodes[i].type=='species'){
-		  canvas_static = document.getElementById('canvas_'+graph.nodes[i].id)
-		  //makestrc(graph.nodes[i].brsynth.smiles, canvas_static, 100.0, 100.0) 
-		  makeSVGstrc(graph.nodes[i].brsynth.smiles, canvas_static, 100.0, 100.0) 
+		  canvas_static = document.getElementById('svg_'+graph.nodes[i].id)
+		  //makeSVGstrc(graph.nodes[i].brsynth.smiles.toUpperCase(), canvas_static, 92, 92) 
+		  makeSVGstrc(graph.nodes[i].brsynth.smiles.toUpperCase(), 'svg_'+graph.nodes[i].id, 100, 100) 
 		}
 	  }
+	  /*
+	  for (var i = 0; i < graph.nodes.length; i++){
+		if(graph.nodes[i].type=='species'){
+		  canvas_static = document.getElementById('svg_'+graph.nodes[i].id)
+		  var rect = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+		  rect.setAttributeNS(null, 'x', 0);
+		  rect.setAttributeNS(null, 'y', 0);
+		  rect.setAttributeNS(null, 'height', '50');
+		  rect.setAttributeNS(null, 'width', '50');
+		  rect.setAttributeNS(null, 'fill', 'red');
+		  canvas_static.appendChild(rect);
+		}
+	  }
+	  */
 
+		  /*
 	  // Set up zoom support
 svg.call(d3.zoom()
       .extent([[0, 0], [100, 100]])
@@ -163,9 +175,9 @@ function zoomed({transform}) {
     svg.attr("transform", transform);
 	
   }
+*/
 
 	});
-
 
 	//################ functions ########################
 
@@ -180,7 +192,7 @@ function zoomed({transform}) {
 	}
 
     function makeSVGstrc(input, in_html_element, in_width, in_height) {
-      svgDrawer = new SmilesDrawer.SvgDrawer({ width: in_width, height: in_height });
+      svgDrawer = new SmilesDrawer.SvgDrawer({ width: in_width, height: in_height, experimental: true, compactDrawing:false, terminalCarbons:true, explicitHydrogens: false, bondThickness: 0.8, atomVisualization: 'default'});
       SmilesDrawer.parse(input, function(tree) {
         // draw to the canvas
         //smilesdrawer.draw(tree, in_canvas, "light", false);
