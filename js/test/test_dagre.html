@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <script src="pkgs/d3.v6.js"></script>
+  <script src="pkgs/dagre-d3.js"></script>
+  <script src="pkgs/smiles-drawer_mel.js"></script>
+  <script src="src/draw_network.js"></script>
+</head>
+<style id="css">
+
+canvas {
+  width: 100px;
+  height: 100px;
+  border: 1px solid red;
+  display: block;
+  object-fit: contain;
+}
+
+h1 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+  margin-top: 0.8em;
+  margin-bottom: 0.2em;
+}
+
+text {
+  font-weight: 300;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+  font-size: 14px;
+}
+
+.node rect {
+  stroke: #333;
+  fill: #fff;
+  stroke-width: 1.5px;
+}
+
+.node polygon {
+  stroke: #333;
+  fill: #fff;
+  stroke-width: 1.5px;
+}
+
+.edgePath path.path {
+  stroke: #333;
+  fill: none;
+  stroke-width: 1.5px;
+}
+
+div#top-frame {
+  height: 350px;
+}
+
+div#WBS-frame {
+  float: left;
+  width: 50%;
+}
+
+div#dependencies-frame {
+  float: left;
+  width: 50%;
+}
+
+div#schedule-frame {
+  float: none;
+}
+</style>
+<body>
+  <form id="toggle_graph">
+   Only Central<input type="checkbox" name="checkfield" id="only_central"  onchange="drawGraph(this)" checked>
+  </form>
+  <script>	
+
+    const zoom = d3.zoom()
+      .on('zoom', (event) => {
+        svg.attr('transform', event.transform);
+      })
+      .scaleExtent([1, 40]);
+
+    var svg = d3.select("body")
+	    .append("svg")
+	      .attr("width", "100%")
+	      .attr("height", "100%")
+	      .attr('id', 'test_svg')
+	      .call(zoom)
+	    .append("g");	
+
+    function drawGraph(checkboxElem) {
+      if (checkboxElem.checked) {
+	drawNetwork(svg, 'networkx.json', true);
+      } else {
+	drawNetwork(svg, 'networkx.json', false);
+      }
+    }
+    
+    window.onload = drawNetwork(svg, 'networkx.json');
+
+  </script>
+</body>
+

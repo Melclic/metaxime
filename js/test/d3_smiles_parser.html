@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+circle {
+  stroke-width: 1.5px;
+}
+
+line {
+  stroke: #999;
+}
+
+</style>
+<head>
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="pkgs/smiles-drawer.js"></script>
+  <script src="pkgs/filesaver.js"></script>
+  <link
+    href="pkgs/google_styles.css"
+    rel="stylesheet"
+  />
+  <style type="text/css">
+    body, html {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+    svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    p {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<script>
+
+//var radius = 100;
+var radius = 100;
+
+var fill = d3.scale.category20();
+
+var force = d3.layout.force()
+    .gravity(.5)
+    .charge(-9800)
+    .linkDistance(750)
+    .linkStrength(0.01)
+    .size([document.body.clientWidth, document.body.clientHeight])
+    .friction(0.4)
+    .theta(.8)
+    .alpha(.1)
+
+var svg = d3.select("body")
+    .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+	  .attr('id', 'test_svg')
+      //.call(d3.behavior.zoom().on("zoom", function () {
+	  //svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+      //}))
+    .append("g");
+
+d3.json("graph.json", function(error, graph) {
+  if (error) throw error;
+
+  var link = svg.selectAll("line")
+      .data(graph.links)
+      .enter().append("line");
+
+  /*
+  var node = svg.selectAll("circle")
+      .data(graph.nodes)
+      .enter().append("circle")
+      .attr("r", radius - .75)
+      .style("fill", function(d) { return fill(d.group); })
+      .style("stroke", function(d) { return d3.rgb(fill(d.group)).darker(); })
+     .call(force.drag);
+	*/
+
+  /*
+  var node = svg.selectAll("rect")
+      .data(graph.nodes)
+      .enter().append("rect")
+      .attr("width", radius)
+      .attr("height", radius)
+      .style("fill", function(d) { return fill(d.group); })
+      .style("stroke", function(d) { return d3.rgb(fill(d.group)).darker(); })
+      //.call(force.drag);
+  */
+
+  /*
+  var node = svg.selectAll("rect")
+			  .data(graph.nodes)
+			  .enter().append("rect")
+				.attr("width", radius+10)
+				.attr("height", radius+10)
+				.style("fill", function(d) { return fill(d.group); })
+				.style("stroke", function(d) { return d3.rgb(fill(d.group)).darker(); })
+				.append("canvas")
+				  .attr("width", radius)
+				  .attr("height", radius)
+				  .attr("id", function(d) { return "canvas_"+d.name })
+				  .append("rect")
+					.attr("width", radius)
+					.attr("height", radius)
+					.style("fill", "rgb(255, 255, 255)")
+					.style("stroke", "rgb(21, 83, 125)")
+			  .call(force.drag);
+  */
+
+
+  var rnode = svg.selectAll("rect")
+	.data(graph.nodes)
+	.enter().append("rect")
+	  .attr("width", radius)
+	  .attr("height", radius)
+	  .style("fill", function(d) { return fill(d.group); })
+	  .style("stroke", function(d) { return d3.rgb(fill(d.group)).darker(); })
+	.call(force.drag);
+
+  
+  svg.selectAll("foo")
+		.data(graph.nodes).enter()
+		.append('foreignObject')
+		.attr('width', radius)
+		.attr('height', radius)
+		.attr("id", function(d) { return "canvas_"+d.name })
+		  .append('xhtml:canvas')
+		  //.attr('xmlns', 'http://www.w3.org/1999/xhtml');
+		
+  
+  var node = document.getElementsByTagName('foreignObject');
+  console.log(node)
+  console.log(svg.selectAll("foreignObject"))
+  var node = svg.selectAll("foreignObject")
+  
+
+/*
+	.append("canvas")
+		  .attr("width", radius)
+		  .attr("height", radius)
+		  .attr("id", function(d) { return "canvas_"+d.name })
+*/
+
+  var elements = document.getElementsByTagName('foreignObject');
+  for (var i=0; i<elements.length; i++) {
+	console.log(document.querySelector('#'+elements[i].id+' canvas'))
+	console.log(elements[i].id)
+	//var canvas = document.querySelector('#'+elements[i].id+' canvas')
+	makeStrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', document.querySelector('#'+elements[i].id+' canvas'), 100, 100);
+	//var canvas = document.getElementById(elements[i].id);
+	/*
+	console.log(canvas)
+	var context = canvas.getContext('2d');
+	console.log(context)
+	var centerX = canvas.width/2;
+	var centerY = canvas.height/2;
+	context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+	context.fillStyle = 'green';
+	//makeStrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', elements[i].id);
+	*/
+  }
+
+
+ // svg.selectAll("canvas")
+	//.call(function(d) { makeStrc('[H]OC(=O)C([H])=C([H])C([H])=C([H])C(=O)O[H]', d.id); });
+	//.call(function(d) { console.log(Object.keys(d[0])) });
+	//.call(function(d) { console.log(d[0]) });
+
+  /*
+  var newItem = document.createElementNS("http://www.w3.org/2000/svg", "circle_dyn");
+  newItem.setAttribute("cx", "100");
+  newItem.setAttribute("cy", "100");
+  newItem.setAttribute("r", 43);
+  newItem.setAttribute("fill", "#1118a6");
+
+  var node = svg.selectAll(".node")
+    .data(graph.nodes)
+    .enter().append("g")
+      .attr("class", "node")
+      .call(force.drag);
+
+
+  var android_img = "https://cdn0.iconfinder.com/data/icons/flat-round-system/512/android-128.png"
+
+  // Append custom images
+  node.append("svg:image")
+    .attr("xlink:href",  function(d) { return android_img;}) // update the node with the image
+    .attr("x", function(d) { return d.x;}) // how far is the image from the link??
+    .attr("y", function(d) { return d.y;}) // --- same ---
+    .attr("height", radius) // size
+    .attr("width", radius)
+  */
+
+
+  function makeStrc(input, in_canvas, in_width, in_height) {
+    smilesDrawer = new SmilesDrawer.Drawer({ width: in_width, height: in_height });
+    SmilesDrawer.parse(input, function(tree) {
+          // Draw to the canvas
+          smilesDrawer.draw(tree, in_canvas, "light", false);
+          // Alternatively, draw to SVG:
+          //svgDrawer.draw(tree, canvas, 'dark', false);
+        });
+  }
+
+
+  force.nodes(graph.nodes)
+       .links(graph.links)
+       .on("tick", tick)
+       .start();
+
+  function tick() {
+
+    node.attr("x", function(d) {return d.x = Math.max(radius, Math.min( document.body.clientWidth - radius, d.x)); })
+        .attr("y", function(d) {return d.y = Math.max(radius, Math.min( document.body.clientHeight - radius, d.y)); });
+
+    node.each(function(d){w=200*(1+d.group); d.x -= (.2* (d.x-w)) })
+
+    rnode.attr("x", function(d) {return d.x = Math.max(radius, Math.min( document.body.clientWidth - radius, d.x)); })
+        .attr("y", function(d) {return d.y = Math.max(radius, Math.min( document.body.clientHeight - radius, d.y)); });
+
+    rnode.each(function(d){w=200*(1+d.group); d.x -= (.2* (d.x-w)) })
+
+    link.attr("x1", function(d) { return d.source.x+radius/2; })
+        .attr("y1", function(d) { return d.source.y+radius/2; })
+        .attr("x2", function(d) { return d.target.x+radius/2; })
+        .attr("y2", function(d) { return d.target.y+radius/2; });
+
+  }
+});
+
+</script>
+
+<script>
+function save_as_svg(){
+
+
+		console.log(document.getElementById("test_svg").innerHTML)
+		var svg_data = document.getElementById("test_svg").innerHTML
+        //var svg_data = document.getElementById("svg").test_svg //put id of your svg element here
+
+        var head = '<svg title="graph" version="1.1" xmlns="http://www.w3.org/2000/svg">'
+
+        //if you have some additional styling like graph edges put them inside <style> tag
+
+        var style = '<style>circle {cursor: pointer;stroke-width: 1.5px;}text {font: 10px arial;}path {stroke: DimGrey;stroke-width: 1.5px;}</style>'
+
+        var full_svg = head +  style + svg_data + "</svg>"
+        var blob = new Blob([full_svg], {type: "image/svg+xml"});
+        saveAs(blob, "graph.svg");
+
+
+};
+
+
+
+</script>
+</body>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <!-- 
+  <script src="bower_components/d3/d3.js"></script>
+  <script src="bower_components/lodash/lodash.js"></script>
+  <script src="bower_components/graphlib/dist/graphlib.core.js"></script>
+  <script src="bower_components/dagre/dist/dagre.core.js"></script>
+  <script src="bower_components/dagre-d3/dist/dagre-d3.core.js"></script>
+  -->
+  <!-- <script src="pkgs/d3.v6.js"></script> -->
+  <script src="pkgs/d3.v6.js"></script>
+  <script src="pkgs/dagre-d3.js"></script>
+  <script src="pkgs/smiles-drawer.js"></script>
+</head>
+<style id="css"></style>
+<body>
+  <canvas id="myCanvas"></canvas>
+  <script>  
+	let canvas = document.getElementById('myCanvas'),
+ctx = canvas.getContext('2d'),
+    dpi = window.devicePixelRatio;
+
+function fix_dpi() {
+  let style = {
+    height() {
+      return +getComputedStyle(canvas).getPropertyValue('height').slice(0,-2);
+    },
+    width() {
+      return +getComputedStyle(canvas).getPropertyValue('width').slice(0,-2);
+    }
+  }
+  canvas.setAttribute('width', style.width() * dpi);
+  canvas.setAttribute('height', style.height() * dpi);
+}
+
+function draw() {
+  //call the dpi fix every time
+  //canvas is redrawn
+  fix_dpi();
+
+  //draw stuff!
+  ctx.strokeRect(30,30,100, 100);
+  ctx.font = "30px Arial";
+  ctx.fillText("Demo!", 35, 85);
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+      // Set up zoom support
+svg.call(d3.zoom()
+      .extent([[0, 0], [100, 100]])
+      .scaleExtent([1, 8])
+      .on("zoom", zoomed));
+
+function zoomed({transform}) {
+    svg.attr("transform", transform);
+
+  }
+  </script>
+</body>
