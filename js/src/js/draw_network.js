@@ -60,7 +60,13 @@ function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, 
     // Run the renderer. This is what draws the final graph.
     render(d3.select("svg g"), g);
     // Center the graph
+    //var inner = svg.firstChild;
+    //var xCenterOffset = (svg.attr("width") - g.graph().width) / 2;
+    //inner.attr("transform", "translate(" + xCenterOffset + ", 20)");
     svg.attr("height", g.graph().height + 40);
+
+    
+    //svg.attr("height", g.graph().height + 40);
     //draw the molecules in the svg space
     for (var i = 0; i < graph.nodes.length; i++) {
       if (graph.nodes[i].type=='species') {
