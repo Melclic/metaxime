@@ -55,7 +55,8 @@ function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, 
     // Create the renderer
     var render = new dagreD3.render();
     // Set up an SVG group so that we can translate the final graph.
-    var svg = d3.select("svg");
+	//WARNING: This overwrites the passed svg HTMLElement
+    //var svg = d3.select("svg");
     var svgGroup = svg.append("g");
     // Run the renderer. This is what draws the final graph.
     render(d3.select("svg g"), g);
@@ -69,16 +70,18 @@ function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, 
     //svg.attr("height", g.graph().height + 40);
     //draw the molecules in the svg space
     for (var i = 0; i < graph.nodes.length; i++) {
-      if (graph.nodes[i].type=='species') {
+      if (graph.nodes[i].type=='species' && !ignore_species.includes(graph.nodes[i].id)) {
 	canvas_static = document.getElementById('svg_'+graph.nodes[i].id)
 	var explicitH = false;
 	if (graph.nodes[i].id=='MNXM1__64__MNXC3') {
 	  explicitH = true;
 	}
-	makeSVGstrc(graph.nodes[i].brsynth.smiles.toUpperCase(), 
+    console.log(graph.nodes[i].brsynth.smiles);
+	//makeSVGstrc(graph.nodes[i].brsynth.smiles.toUpperCase(), //WARNING: lower case means aromatic atoms. 
+	makeSVGstrc(graph.nodes[i].brsynth.smiles, //WARNING: lower case means aromatic atoms. 
 		    'svg_'+graph.nodes[i].id,
-		    100,
-		    100,
+		    chem_width,
+		    chem_height,
 		    explicitH) 
       }
     }
