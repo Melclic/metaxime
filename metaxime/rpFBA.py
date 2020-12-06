@@ -495,7 +495,8 @@ class rpFBA(rpMerge):
                           coefficients,
                           is_max=True,
                           pathway_id='rp_pathway',
-                          objective_id=None):
+                          objective_id=None,
+                          write_results=True):
         """Run FBA using multiple objectives
 
         :param reactions: The ids of the reactions involved in the objective
@@ -534,7 +535,7 @@ class rpFBA(rpMerge):
     #def runMultiObjectiveParsimonou
 
 
-    def runFBA(self, reaction_id, coefficient=1.0, is_max=True, pathway_id='rp_pathway', objective_id=None, write_results=False):
+    def runFBA(self, reaction_id, coefficient=1.0, is_max=True, pathway_id='rp_pathway', objective_id=None, write_results=True):
         """Run FBA using a single objective
 
         :param reaction_id: The id of the reactions involved in the objective
@@ -619,7 +620,7 @@ class rpFBA(rpMerge):
                             is_max=True,
                             pathway_id='rp_pathway',
                             objective_id='obj_fraction',
-                            write_results=False):
+                            write_results=True):
         """Optimise for a target reaction while fixing a source reaction to the fraction of its optimum
 
         :param source_reaction: The id of the source reaction
@@ -671,18 +672,20 @@ class rpFBA(rpMerge):
                 return 0.0, False
             cobra_results = self.cobra_model.optimize()
             self.logger.debug('Source reaction optimisation results: '+str(cobra_results.objective_value))
-            if write_results:
+            if not write_results:
+                source_flux = cobra_results.objective_value
+            else:
                 self._writeAnalysisResults(source_obj_id, cobra_results, pathway_id)
-            # cobra_results.objective_value
-            fbc_obj = fbc_plugin.getObjective(source_obj_id)
-            fbc_obj_annot = fbc_obj.getAnnotation()
-            try:
-                self._checklibSBML(fbc_obj_annot, 'Retreiving the annotation: '+str(source_obj_id))
-            except AttributeError:
-                self.logger.error('No annotation available for: '+str(source_obj_id))
-                return 0.0, False
-            source_flux = float(fbc_obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(0).getAttrValue('value'))
-            self.logger.debug('The source flux is: '+str(source_flux))
+                # cobra_results.objective_value
+                fbc_obj = fbc_plugin.getObjective(source_obj_id)
+                fbc_obj_annot = fbc_obj.getAnnotation()
+                try:
+                    self._checklibSBML(fbc_obj_annot, 'Retreiving the annotation: '+str(source_obj_id))
+                except AttributeError:
+                    self.logger.error('No annotation available for: '+str(source_obj_id))
+                    return 0.0, False
+                source_flux = float(fbc_obj_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild(0).getAttrValue('value'))
+                self.logger.debug('The source flux is: '+str(source_flux))
         #TODO: add another to check if the objective id exists
         self.logger.debug('FBA source flux ('+str(source_reaction)+') is: '+str(source_flux))
         if not objective_id:

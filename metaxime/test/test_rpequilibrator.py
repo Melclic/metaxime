@@ -13,9 +13,9 @@ from metaxime import rpEquilibrator
 class TestRPEquilibrator(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
-        cls.rpeq = rpEquilibrator(path=os.path.join('data', 'rpequilibrator', 'rpsbml.xml'))
-        cls.data = json.load(open(os.path.join('data', 'rpequilibrator', 'data.json'), 'r'))
+    def setUpClass(self):
+        self.rpeq = rpEquilibrator(path=os.path.join('data', 'rpequilibrator', 'rpsbml.xml'))
+        self.data = json.load(open(os.path.join('data', 'rpequilibrator', 'data.json'), 'r'))
 
     def test_makeSpeciesStr(self):
         self.assertEqual(self.rpeq._makeSpeciesStr(self.rpeq.model.getSpecies('MNXM89557__64__MNXC3')), 'CHEBI:5431')
