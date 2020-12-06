@@ -13,28 +13,31 @@ from metaxime import rpSBML
 class TestRPSBML(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         #load a rpSBML file
-        cls.rpsbml = rpSBML('test', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'rpsbml.xml'))
-        cls.gem = rpSBML('gem', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'gem.xml'))
-        cls.data = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'data.json'), 'r'))
-        cls.maxDiff = None #to be able to compare large dict
+        self.rpsbml = rpSBML('test', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'rpsbml.xml'))
+        self.gem = rpSBML('gem', path=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'gem.xml'))
+        self.data = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'rpsbml', 'data.json'), 'r'))
+        self.maxDiff = None #to be able to compare large dict
 
     def test_isRPsbml(self):
         self.assertTrue(self.rpsbml._isRPsbml())
         self.assertFalse(self.gem._isRPsbml())
 
     def test_getGroupsMembers(self):
-        self.assertCountEqual(self.rpsbml.getGroupsMembers('rp_pathway'), ['RP1', 'RP2', 'RP3'])
+        self.assertCountEqual(self.rpsbml.getGroupsMembers('rp_pathway'), ['RP1'])
         self.assertRaises(AttributeError, self.gem.getGroupsMembers, 'rp_pathway')
 
     def test_computeMeanRulesScore(self):
-        self.assertAlmostEqual(self.rpsbml._computeMeanRulesScore(), 0.5684564101634014)
+        self.assertAlmostEqual(self.rpsbml._computeMeanRulesScore(), 0.6702613998846042)
         self.assertRaises(AttributeError, self.gem._computeMeanRulesScore)
 
     def test_dictRPpathway(self):
-        self.assertDictEqual(self.rpsbml._dictRPpathway(), self.data['dictrppathway'])
-        self.assertRaises(AttributeError, self.gem._dictRPpathway)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'rppathway': self.rpsbml._dictRPpathway()}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['rppathway'], self.data['dictrppathway'])
+            self.assertRaises(AttributeError, self.gem._dictRPpathway)
 
     def test_nameToSbmlId(self):
         self.assertEqual(self.rpsbml._nameToSbmlId('test123-_!"£$%^&*(){}@~><>?'), 'test123___________________')
@@ -43,15 +46,21 @@ class TestRPSBML(unittest.TestCase):
         self.assertEqual(self.rpsbml._genMetaID('test123'), 'cc03e747a6afbbcbf8be7668acfebee5')
 
     def test_readRPrules(self):
-        self.assertDictEqual(self.rpsbml.readRPrules(), self.data['readrprules'])
-        self.assertRaises(AttributeError, self.gem.readRPrules)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'rprules': self.rpsbml.readRPrules()}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['rprules'], self.data['readrprules'])
+            self.assertRaises(AttributeError, self.gem.readRPrules)
 
     def test_readRPspecies(self):
-        self.assertDictEqual(self.rpsbml.readRPspecies(), self.data['readrpspecies'])
-        self.assertRaises(AttributeError, self.gem.readRPspecies)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'rpspecies': self.rpsbml.readRPspecies()}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['rpspecies'], self.data['readrpspecies'])
+            self.assertRaises(AttributeError, self.gem.readRPspecies)
 
     def test_readUniqueRPspecies(self):
-        self.assertCountEqual(self.rpsbml.readUniqueRPspecies(), ['TARGET_0000000001__64__MNXC3', 'MNXM13__64__MNXC3', 'CMPD_0000000004__64__MNXC3', 'MNXM1__64__MNXC3', 'MNXM20__64__MNXC3', 'CMPD_0000000013__64__MNXC3', 'MNXM89557__64__MNXC3', 'MNXM5__64__MNXC3', 'MNXM7__64__MNXC3', 'MNXM9__64__MNXC3', 'MNXM6__64__MNXC3', 'MNXM3__64__MNXC3'])
+        self.assertCountEqual(self.rpsbml.readUniqueRPspecies(), ['TARGET_0000000001__64__MNXC3', 'MNXM100__64__MNXC3'])
         self.assertRaises(AttributeError, self.gem.readUniqueRPspecies)
 
     def test_readTaxonAnnotation(self):
@@ -69,21 +78,20 @@ class TestRPSBML(unittest.TestCase):
 
     def test_updateBRSynthPathway(self):
         rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
-        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.5760957019721074)
-        rpsbml.updateBRSynthPathway(self.rpsbml.asDict())
-        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['global_score']['value'], 0.5760957019721074)
+        tmp_dict = rpsbml.asDict()
+        tmp_dict['pathway']['brsynth']['test'] = {'value': 99}
+        rpsbml.updateBRSynthPathway(tmp_dict)
+        self.assertEqual(rpsbml.asDict()['pathway']['brsynth']['test']['value'], 99)
 
     def test_addMIRIAMinchiKey(self):
         #no inchikeys should be added
-        self.assertTrue(self.rpsbml.addMIRIAMinchiKey())
-        with tempfile.TemporaryDirectory() as tmp_output_folder:
-            self.assertTrue(self.rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.sbml')))
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbml'), 'rb').read()).hexdigest(), '6e9eafb99f4d2432188d6ecbda12a726')
+        rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
+        self.assertTrue(rpsbml.addMIRIAMinchiKey())
+        self.assertEqual(rpsbml.readMIRIAMAnnotation(rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation())['inchikey'][0], 'GVVPGTZRZFNKDS-JXMROGBWSA-K')
         #inchikeys are added
-        self.assertTrue(self.gem.addMIRIAMinchiKey())
-        with tempfile.TemporaryDirectory() as tmp_output_folder:
-            self.assertTrue(self.gem.writeSBML(os.path.join(tmp_output_folder, 'test.sbml')))
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbml'), 'rb').read()).hexdigest(), 'e7baa7d1a0a096a9dfe5c8160853df05')
+        gem = rpSBML('test', path=os.path.join('data', 'rpsbml', 'gem.xml'))
+        self.assertTrue(gem.addMIRIAMinchiKey())
+        self.assertEqual(gem.readMIRIAMAnnotation(gem.model.getSpecies('M_2pg_c').getAnnotation())['inchikey'][0], 'GXIURPTVHJPJLF-UWTATZPHSA-K') 
 
     #def test_overwriteRPannot(self):
 
@@ -92,8 +100,11 @@ class TestRPSBML(unittest.TestCase):
     #def addUpdateMIRIAM(self):
 
     def test_asDict(self):
-        self.assertDictEqual(self.rpsbml.asDict(), self.data['asdict'])
-        self.assertRaises(AttributeError, self.gem.asDict)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'asdict': self.rpsbml.asDict()}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['asdict'], self.data['asdict'])
+            self.assertRaises(AttributeError, self.gem.asDict)
 
     #def test_readSBML(self):
 
@@ -101,44 +112,50 @@ class TestRPSBML(unittest.TestCase):
 
     def test_findCreateObjective(self):
         #the find part
-        self.assertEqual(self.rpsbml.findCreateObjective(['RP1_sink'], [1.0]), 'obj_fraction')
+        self.assertEqual(self.rpsbml.findCreateObjective(['RP1_sink'], [1.0]), 'obj_RP1_sink')
         #the create part
         with tempfile.TemporaryDirectory() as tmp_output_folder:
             rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             self.assertEqual(rpsbml.findCreateObjective(['RP2'], [1.0]), 'obj_RP2')
-            self.assertTrue(rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.sbml')))
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.sbml'), 'rb').read()).hexdigest(), '66cb235c127e2bb07c6c13bea7bc6df2')
+
 
     def test_readMIRIAMAnnotation(self):
-        self.assertDictEqual(self.rpsbml.readMIRIAMAnnotation(self.rpsbml.model.getReaction('RP1').getAnnotation()), {'ec-code': ['4.1.1.17']})
+        self.assertDictEqual(self.rpsbml.readMIRIAMAnnotation(self.rpsbml.model.getReaction('RP1').getAnnotation()), {'ec-code': ['4.2.3.16', '4.2.3.20']})
         self.assertDictEqual(self.gem.readMIRIAMAnnotation(self.gem.model.getReaction('R_ALATA_D2').getAnnotation()), {'bigg': ['ALATA_D2'], 'biocyc': ['RXN0-5240'], 'kegg': ['R01147'], 'metanetx': ['MNXR95697'], 'rhea': ['28562', '28563', '28564', '28565']})
 
     def test_readBRSYNTHAnnotation(self):
-        self.assertDictEqual(self.rpsbml.readBRSYNTHAnnotation(self.rpsbml.model.getReaction('RP1').getAnnotation()), self.data['readbrsynthannotation'])
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'readbrsynthannotation': self.rpsbml.readBRSYNTHAnnotation(self.rpsbml.model.getReaction('RP1').getAnnotation())},
+                    open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['readbrsynthannotation'], self.data['readbrsynthannotation'])
 
     def test_readReactionSpecies(self):
-        self.assertDictEqual(self.rpsbml.readReactionSpecies(self.rpsbml.model.getReaction('RP1')), {'left': {'CMPD_0000000004__64__MNXC3': 1, 'MNXM1__64__MNXC3': 1}, 'right': {'TARGET_0000000001__64__MNXC3': 1, 'MNXM13__64__MNXC3': 1}})
+        self.assertDictEqual(self.rpsbml.readReactionSpecies(self.rpsbml.model.getReaction('RP1')), {'left': {'MNXM100__64__MNXC3': 1}, 'right': {'TARGET_0000000001__64__MNXC3': 1}})
 
     def test_speciesExists(self):
-        self.assertTrue(self.rpsbml.speciesExists('MNXM89557'))
+        self.assertTrue(self.rpsbml.speciesExists('MNXM100'))
         self.assertFalse(self.rpsbml.speciesExists('test'))
 
     def test_isSpeciesProduct(self):
         self.assertTrue(self.rpsbml.isSpeciesProduct('TARGET_0000000001__64__MNXC3'))
-        self.assertFalse(self.rpsbml.isSpeciesProduct('MNXM1__64__MNXC3'))
+        self.assertFalse(self.rpsbml.isSpeciesProduct('MNXM100__64__MNXC3'))
 
     def test_outPathsDict(self):
-        self.assertDictEqual(self.rpsbml.outPathsDict(), self.data['outpathsdict'])
-        self.assertRaises(AttributeError, self.gem.outPathsDict)
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            json.dump({'outpathsdict': self.rpsbml.outPathsDict()}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['outpathsdict'], self.data['outpathsdict'])
+            self.assertRaises(AttributeError, self.gem.outPathsDict)
 
     def test_compareBRSYNTHAnnotations(self):
-        self.assertTrue(self.rpsbml.compareBRSYNTHAnnotations(self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation()))
-        self.assertFalse(self.rpsbml.compareBRSYNTHAnnotations(self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('CMPD_0000000013__64__MNXC3').getAnnotation()))
+        self.assertTrue(self.rpsbml.compareBRSYNTHAnnotations(self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation()))
+        self.assertFalse(self.rpsbml.compareBRSYNTHAnnotations(self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('TARGET_0000000001__64__MNXC3').getAnnotation()))
         self.assertFalse(self.gem.compareBRSYNTHAnnotations(self.gem.model.getSpecies('M_2pg_c').getAnnotation(), self.gem.model.getSpecies('M_13dpg_c').getAnnotation()))
 
     def test_compareMIRIAMAnnotations(self):
-        self.assertTrue(self.rpsbml.compareMIRIAMAnnotations(self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation()))
-        self.assertFalse(self.rpsbml.compareMIRIAMAnnotations(self.rpsbml.model.getSpecies('MNXM89557__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('CMPD_0000000013__64__MNXC3').getAnnotation()))
+        self.assertTrue(self.rpsbml.compareMIRIAMAnnotations(self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation()))
+        self.assertFalse(self.rpsbml.compareMIRIAMAnnotations(self.rpsbml.model.getSpecies('MNXM100__64__MNXC3').getAnnotation(), self.rpsbml.model.getSpecies('TARGET_0000000001__64__MNXC3').getAnnotation()))
         
     def test_genericModel(self):
         with tempfile.TemporaryDirectory() as tmp_output_folder:
@@ -182,10 +199,6 @@ class TestRPSBML(unittest.TestCase):
             self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '7e98e6667c2de2fa9078795121203c99')
         
     def test_createReturnFluxParameter(self):
-        #return feature
-        param = self.rpsbml.createReturnFluxParameter(None, parameter_id='B_999999')
-        self.assertEqual(param.id, 'B_999999')
-        self.assertEqual(param.value, 999999.0)
         #create feature
         new = rpSBML('test')
         new.createModel('test_name', 'test_id')
@@ -213,20 +226,20 @@ class TestRPSBML(unittest.TestCase):
                                   'MNXC3',
                                   xref={'ec': ['1.1.1.1']})  
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml')) 
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '4d73b3390ec35368d4fbc63b961908d1')
+            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '6c832eb02bb3f1849d2e0b754e44e748')
 
     def test_createSpecies(self):
         #create new species
         with tempfile.TemporaryDirectory() as tmp_output_folder:
             rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
             spe = rpsbml.createSpecies('test', 'MNXC3')
-            self.assertEqual(spe.getId(), 'test__64__MNXC3')
+            self.assertEqual(spe.getId(), 'test')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))            
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '7d3291b8b2fe43ed9066b9baf0889fc6')
+            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '8222edc93f5c1430231d7e16afbf3079')
         #recover already existing species
         rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         spe = rpsbml.createSpecies('MNXM6', 'MNXC3')
-        self.assertEqual(spe.getId(), 'MNXM6__64__MNXC3')
+        self.assertEqual(spe.getId(), 'MNXM6')
             
     def test_createGroup(self):
         #create new group
@@ -235,7 +248,7 @@ class TestRPSBML(unittest.TestCase):
             gro = rpsbml.createGroup('test')
             self.assertEqual(gro.getId(), 'test')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))            
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), 'd39a236d397fa3a480bd9a8e3eb63678')
+            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '19c61349df77d97118210a359710dbbf')
         #recover already existing group
         rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         gro = rpsbml.createGroup('rp_pathway', 'MNXC3')
@@ -250,7 +263,7 @@ class TestRPSBML(unittest.TestCase):
             flux_obj = rpsbml.createMultiFluxObj('test', ['RP1'], [1.0])
             self.assertEqual(flux_obj.getId(), 'test')
             rpsbml.writeSBML(os.path.join(tmp_output_folder, 'test.xml'))
-            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), '844dd8e5c344783d43bca1331f057ad4')
+            self.assertEqual(hashlib.md5(open(os.path.join(tmp_output_folder, 'test.xml'), 'rb').read()).hexdigest(), 'c4647ea976dbf1eebbf0e7400af4b65d')
         #recover already existing group
         rpsbml = rpSBML('test', path=os.path.join('data', 'rpsbml', 'rpsbml.xml'))
         flux_obj = rpsbml.createMultiFluxObj('obj_fraction', ['RP1'], [1.0])
