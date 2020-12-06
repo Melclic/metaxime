@@ -272,17 +272,17 @@ if __name__ == "__main__":
         shutil.copy(params.sourcefile, sourcefile)
         sinkfile = tmpInputFolder+'/sink.csv'
         shutil.copy(params.sinkfile, sinkfile)
-        result = rpTool.run_rp2(sourcefile,
-                                sinkfile,
-                                rulesfile,
-                                params.max_steps,
-                                params.topx,
-                                params.dmin,
-                                params.dmax,
-                                params.mwmax_source,
-                                params.mwmax_cof,
-                                params.timeout,
-                                partial_retro)
+        result = run_rp2(sourcefile,
+                         sinkfile,
+                         rulesfile,
+                         params.max_steps,
+                         params.topx,
+                         params.dmin,
+                         params.dmax,
+                         params.mwmax_source,
+                         params.mwmax_cof,
+                         params.timeout,
+                         partial_retro)
         ###########################
         if result[1]==b'timeouterror' or result[1]==b'timeoutwarning':
             if not partial_retro:

@@ -100,7 +100,7 @@ if __name__ == "__main__":
     if params.timeout<=0:
         logging.error('Timeout cannot be less or equal to 0 :'+str(params.timeout))
         exit(1)
-    result = rpTool.run_rp2paths(params.rp_pathways, params.timeout)
+    result = run_rp2paths(params.rp_pathways, params.timeout)
     if result[2]==b'timeout':
         logging.error('RP2paths has reached its timeout limit')
         exit(1)
