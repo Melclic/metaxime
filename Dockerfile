@@ -1,22 +1,38 @@
-FROM ubuntu:18.04
+FROM continuumio/conda-ci-linux-64-python3.8:latest
 
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/
 
-###### copy all the necessary files #####
-
-COPY license.cxl /home/
-ENV CHEMAXON_LICENSE_URL /home/license.cxl
-COPY init_equilibrator.py /home/
-
 ### install all the requirements ###
-
+COPY docker_files/apt_requirements.txt /home/
+RUN sh -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
+#fix because of debian update-alternatives limitations of not considering anything outside of /usr/share/man
+RUN mkdir -p /usr/share/man/man1
 RUN apt-get update
-RUN sed 's/#.*//' apt_requirements.txt | xargs apt-get install
+RUN sed 's/#.*//' /home/conda_apt_requirements.txt | xargs apt-get install -y
 RUN apt-get clean
-RUN apt-get autoremove
-RUN rm -rf /var/lib/apt/lists/*
-RUN rm -rf /usr/local/lib/python3.8/site-packages/ruamel*
-RUN pip install -r pip_requirements.txt
+RUN apt-get autoremove -y
+#RUN rm -rf /var/lib/apt/lists/*
+
+##### conda install ###
+RUN conda update -n base -c defaults conda
+RUN conda install -y -c conda-forge python-libsbml rdkit networkx==2.3 numpy pandas openbabel timeout-decorator cython
+RUN conda install -y -c anaconda biopython==1.77
+RUN conda install -y -c biobuilds t-coffee
+RUN conda install -y -c bioconda emboss
+
+RUN pip install equilibrator-pathway==0.3.1
+#RUN rm -rf /usr/local/lib/python3/site-packages/ruamel*
+RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
+RUN pip install cobra
+
+###### MARVIN ####
+
+COPY docker_files/rp2/marvin_linux_20.9.deb /home/
+COPY docker_files/rp2/license.cxl /home/
+ENV CHEMAXON_LICENSE_URL /home/license.cxl
+RUN dpkg -i /home/marvin_linux_20.9.deb
 
 #### extra install from source or from git ####
 
@@ -26,43 +42,8 @@ RUN cd GMatch4py && pip install . && cd ..
 RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
 RUN cd equilibrator-api && pip install -e . && cd ..
 
-#equilibrator-assets
 RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
 RUN cd equilibrator-assets && pip install -e . && cd ..
-
-##############################
-######### RDkit ##############
-##############################
-
-ARG RDKIT_VERSION=Release_2020_03_2
-RUN wget --quiet https://github.com/rdkit/rdkit/archive/${RDKIT_VERSION}.tar.gz \
- && tar -xzf ${RDKIT_VERSION}.tar.gz \
- && mv rdkit-${RDKIT_VERSION} rdkit \
- && rm ${RDKIT_VERSION}.tar.gz
-
-RUN mkdir /rdkit/build
-WORKDIR /rdkit/build
-
-RUN cmake -Wno-dev \
-    -D CMAKE_BUILD_TYPE=Release \
-    -D CMAKE_INSTALL_PREFIX=/usr \
-    -D Boost_NO_BOOST_CMAKE=ON \
-    -D PYTHON_EXECUTABLE=/usr/bin/python3 \
-    -D RDK_BUILD_AVALON_SUPPORT=ON \
-    -D RDK_BUILD_CAIRO_SUPPORT=ON \
-    -D RDK_BUILD_CPP_TESTS=OFF \
-    -D RDK_BUILD_INCHI_SUPPORT=ON \
-    -D RDK_BUILD_FREESASA_SUPPORT=ON \
-    -D RDK_INSTALL_INTREE=OFF \
-    -D RDK_INSTALL_STATIC_LIBS=OFF \
-    ..
-
-# Copy rdkit installation from rdkit-build-env
-COPY --from=rdkit-build-env /usr/lib/libRDKit* /usr/lib/
-COPY --from=rdkit-build-env /usr/lib/cmake/rdkit/* /usr/lib/cmake/rdkit/
-COPY --from=rdkit-build-env /usr/share/RDKit /usr/share/RDKit
-COPY --from=rdkit-build-env /usr/include/rdkit /usr/include/rdkit
-COPY --from=rdkit-build-env /usr/lib/python3/dist-packages/rdkit /usr/lib/python3/dist-packages/rdkit
 
 ###############################
 ########## RETROPATH 2 ########
@@ -95,10 +76,10 @@ ONBUILD COPY $WORKFLOW_DIR /payload/workflow
 ONBUILD RUN mkdir -p /payload/meta
 
 # Copy necessary scripts onto the image
-COPY rp2_docker_conf/getversion.py /scripts/getversion.py
-COPY rp2_docker_conf/listvariables.py /scripts/listvariables.py
-COPY rp2_docker_conf/listplugins.py /scripts/listplugins.py
-COPY rp2_docker_conf/run.sh /scripts/run.sh
+COPY docker_files/rp2/docker_conf/getversion.py /scripts/getversion.py
+COPY docker_files/rp2/docker_conf/listvariables.py /scripts/listvariables.py
+COPY docker_files/rp2/docker_conf/listplugins.py /scripts/listplugins.py
+COPY docker_files/rp2/docker_conf/run.sh /scripts/run.sh
 
 # Let anyone run the workflow
 RUN chmod +x /scripts/run.sh
@@ -157,14 +138,13 @@ org.rdkit.knime.feature.feature.group \
 
 ############################# Files and Tests #############################
 
-COPY rpTool.py /home/
-COPY galaxy/code/tool_RetroPath2.py /home/
-COPY rp2_sanity_test.tar.xz /home/
+COPY docker_files/rp2/callRP2.py /home/
+COPY docker_files/rp2/rp2_sanity_test.tar.xz /home/
 
 #test
 ENV RP2_RESULTS_SHA256 7428ebc0c25d464fbfdd6eb789440ddc88011fb6fc14f4ce7beb57a6d1fbaec2
 RUN tar xf /home/rp2_sanity_test.tar.xz -C /home/ 
-RUN /home/tool_RetroPath2.py -sinkfile /home/test/sink.csv -sourcefile /home/test/source.csv -rulesfile /home/test/rules.tar -rulesfile_format tar -max_steps 3 -scope_csv test_scope.csv
+RUN /home/callRP2.py -sinkfile /home/test/sink.csv -sourcefile /home/test/source.csv -rulesfile /home/test/rules.tar -rulesfile_format tar -max_steps 3 -scope_csv test_scope.csv
 RUN echo "$RP2_RESULTS_SHA256 test_scope.csv" | sha256sum --check
 
 ############################################
@@ -187,8 +167,7 @@ RUN curl -v -L -o rp2paths.tar.gz $RP2PATHS_URL && sha256sum rp2paths.tar.gz && 
 RUN tar xfv rp2paths.tar.gz && mv rp2paths*/* /home/
 RUN grep -q '^#!/' RP2paths.py || sed -i '1i #!/usr/bin/env python3' RP2paths.py
 
-COPY rpTool.py /home/
-COPY galaxy/code/tool_rp2paths.py /home/
+COPY docker_files/callRP2paths.py /home/
 
 #############################################
 ######### RetroRules ########################
@@ -204,3 +183,9 @@ RUN wget https://retrorules.org/dl/preparsed/rr02/rp2/hs -O /home/rules_rall_rp2
     rm -r /home/retrorules_rr02_rp2_hs && \
     rm /home/rules_rall_rp2.tar.gz
 
+#############################################
+########## Equilibrator #####################
+#############################################
+
+COPY docker_files/init_equilibrator.py /home/
+RUN python /home/init_equilibrator.py
