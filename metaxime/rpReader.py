@@ -108,6 +108,7 @@ class rpReader(rpCache):
                         rpcache=None):
         if not rpcache:
             rpcache = rpCache()
+            #WARNING: there is no real need to populate the cache as its done dynamically now
             rpcache.populateCache()
         rpreader = rpReader(rpcache)
         with tempfile.TemporaryDirectory() as tmp_output_folder:
