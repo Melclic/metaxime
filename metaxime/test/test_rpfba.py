@@ -35,8 +35,6 @@ class TestRPFBA(unittest.TestCase):
             self.assertTrue(len(glob.glob(os.path.join(tmp_output_folder, 'results', 'rpsbml_collection', 'models', '*')))==1)
             rpsbml = rpSBML(path=glob.glob(os.path.join(tmp_output_folder, 'results', 'rpsbml_collection', 'models', '*'))[0])
             asdict = rpsbml.asDict()
-            print('88888888888888888888 test_runCollection')
-            print(asdict)
             self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass_restricted']['value'], 0.6577479108178588)
             self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_fraction']['value'], 0.9438866396863238)
             self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass']['value'], 0.8769972144238116)
@@ -52,8 +50,6 @@ class TestRPFBA(unittest.TestCase):
         rpfba.mergeModels(os.path.join('data', 'rpfba', 'rpsbml.xml'))
         rpfba.runFBA('biomass', 1.0, write_results=True)
         asdict = rpfba.asDict()
-        print('88888888888888888888 test_runFBA')
-        print(asdict)
         self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass']['value'], 0.8769972144238116)
 
     def test_runParsimoniousFBA(self):
@@ -61,8 +57,6 @@ class TestRPFBA(unittest.TestCase):
         rpfba.mergeModels(os.path.join('data', 'rpfba', 'rpsbml.xml'))
         rpfba.runParsimoniousFBA('biomass', 1.0, write_results=True)
         asdict = rpfba.asDict()
-        print('88888888888888888888 test_runParsimoniousFBA')
-        print(asdict)
         self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass']['value'], 732.4143562781677)
 
     def test_runFractionReaction(self):
@@ -71,8 +65,6 @@ class TestRPFBA(unittest.TestCase):
         rpfba.mergeModels(os.path.join('data', 'rpfba', 'rpsbml.xml'))
         rpfba.runFractionReaction('biomass', 1.0, 'RP1_sink', 1.0, write_results=True)
         asdict = rpfba.asDict()
-        print('88888888888888888888 test_runFractionReaction')
-        print(asdict)
         self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass_restricted']['value'], 0.6577479108178588)
         self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_fraction']['value'], 0.9438866396863238)
         self.assertAlmostEqual(asdict['pathway']['brsynth']['fba_obj_biomass']['value'], 0.8769972144238116)
