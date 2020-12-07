@@ -32,24 +32,28 @@ class TestRPGraph(unittest.TestCase):
 
     #onlyConsumedSpecies
     def test_onlyConsumedSpecies(self):
-        self.assertCountEqual(self.rpgraph.onlyConsumedSpecies(True, True), ['MNXM89557__64__MNXC3', 'MNXM1__64__MNXC3', 'MNXM6__64__MNXC3', 'MNXM3__64__MNXC3'])
-        self.assertCountEqual(self.rpgraph.onlyConsumedSpecies(True, False), ['MNXM89557__64__MNXC3', 'MNXM1__64__MNXC3'])
+        self.assertCountEqual(self.rpgraph.onlyConsumedSpecies(True, True), ['MNXM100__64__MNXC3'])
+        self.assertCountEqual(self.rpgraph.onlyConsumedSpecies(True, False), ['MNXM100__64__MNXC3'])
 
     #onlyProducedSpecies
     def test_onlyProducedSpecies(self):
-        self.assertCountEqual(self.rpgraph.onlyProducedSpecies(True, True), ['TARGET_0000000001__64__MNXC3', 'MNXM9__64__MNXC3', 'MNXM5__64__MNXC3', 'MNXM7__64__MNXC3', 'MNXM20__64__MNXC3', 'MNXM13__64__MNXC3'])
+        self.assertCountEqual(self.rpgraph.onlyProducedSpecies(True, True), ['TARGET_0000000001__64__MNXC3'])
         self.assertCountEqual(self.rpgraph.onlyProducedSpecies(True, False), ['TARGET_0000000001__64__MNXC3'])
 
     #compare
     def test_compare(self):
         rpgraph = rpGraph(model_name='test', path=os.path.join('data', 'rpgraph', 'rpsbml_compare.xml'))
-        self.assertEqual(rpGraph.compare(self.rpgraph, rpgraph), 0.75)
+        self.assertAlmostEqual(rpGraph.compare(self.rpgraph, rpgraph), 0.23529411764705888)
 
     #orderedRetroReactions
 
-    #exportJSON
-    def test_exportJSON(self):
-        self.assertDictEqual(self.rpgraph.exportJSON(), self.data['exportjson'])
+    #asDict
+    def test_networkDict(self):
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            net_dict = self.rpgraph.networkDict()
+            json.dump({'asdict': net_dict}, open(os.path.join(tmp_output_folder, 'data.json'), 'w'))
+            new_data = json.load(open(os.path.join(tmp_output_folder, 'data.json')))
+            self.assertDictEqual(new_data['asdict'], self.data['asdict'])
 
     #orderedRetroReactions
 

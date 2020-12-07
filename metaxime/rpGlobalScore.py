@@ -333,10 +333,13 @@ class rpGlobalScore(rpSBML):
         except KeyError as e:
             #self.logger.error(rpsbml_dict['pathway']['brsynth'].keys())
             self.logger.error('KeyError for :'+str(e))
+            logging.error('Make sure that you run both thermodynamics and FBA')
+            '''
             if 'dfG' in e:
                 self.logger.error('Have you ran the thermodynamics?')
             elif 'fba' in e:
                 self.logger.error('Have you run the FBA on the heterologous pathways?')
+            '''
             globalScore = 0.0
         rpsbml_dict['pathway']['brsynth']['global_score'] = {}
         rpsbml_dict['pathway']['brsynth']['global_score']['value'] = globalScore

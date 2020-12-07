@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 import os
 import itertools
 import numpy as np
@@ -525,32 +526,28 @@ class rpGraph(rpSBML):
         #source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
         target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        #NOTE: here we use the greedy edit distance method but others may be used... 
         ged = gm.GreedyEditDistance(1,1,1,1)
-        #ged = gm.GraphEditDistance(1,1,1,1)
-        result = ged.compare([i[0] for i in source_compare_graphs]+[i[0] for i in target_compare_graphs], None)
-        logging.debug('result: \n'+str([list(i) for i in result]))
-        #seven is an arbitrary unit where 7==full info on ec number, smiles, inchikey etc...
-        weights = np.array([sum(i[1])/7.0 for i in source_compare_graphs]+[sum(i[1])/7.0 for i in target_compare_graphs])
-        weighted_similarity = np.array([i*weights for i in ged.similarity(result)])
-        logging.debug('weighted_similarity: \n'+str([list(i) for i in weighted_similarity]))
-        #weighted_distance = np.array([i*weights for i in ged.distance(result)])
-        #rpGraph.logger.debug('weighted_distance: \n'+str([list(i) for i in weighted_distance]))
-        filtered_weighted_similarity =  []
-        source_pos = [i for i in range(len(source_compare_graphs))]
-        for i in range(len(weighted_similarity)):
-            tmp = []
-            for y in range(len(weighted_similarity[i])):
-                if i in source_pos and not y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                elif i not in source_pos and y in source_pos:
-                    tmp.append(weighted_similarity[i][y])
-                else:
-                    tmp.append(0.0)
-            filtered_weighted_similarity.append(tmp)
-        logging.debug('filtered_weighted_similarity: \n'+str([list(i) for i in filtered_weighted_similarity]))
-        return max(map(max, filtered_weighted_similarity))
-
+        all_scores = []
+        for t_s_comb in list(itertools.product(target_compare_graphs, source_compare_graphs)):
+            result = ged.compare([t_s_comb[0][0], t_s_comb[1][0]], None)    
+            similarity = ged.similarity(result)
+            logging.debug(t_s_comb[0])
+            logging.debug(t_s_comb[1])
+            logging.debug(similarity)
+            logging.debug('----------')
+            logging.debug(similarity[0][1])
+            logging.debug(t_s_comb[0][1])
+            logging.debug(similarity[1][0])
+            logging.debug(t_s_comb[1][1])
+            #7.0 is an arbiratry number
+            scores = [similarity[0][1]*(sum(t_s_comb[0][1])/7.0), similarity[1][0]*(sum(t_s_comb[1][1])/7.0)]
+            if scores[0]>scores[1]:
+                score = scores[0]
+            else:
+                score = scores[1]
+            all_scores.append(score)
+        logging.debug(all_scores)
+        return max(all_scores)
 
     def orderedRetroReactions(self):
         """Public function to return the linear list of reactions
@@ -571,7 +568,7 @@ class rpGraph(rpSBML):
     ############################# graph analysis ################################
 
 
-    def exportJSON(self):
+    def networkDict(self):
         return json_graph.node_link_data(self.G)
 
 
