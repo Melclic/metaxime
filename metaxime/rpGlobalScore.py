@@ -23,14 +23,6 @@ __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
 
-logging.basicConfig(
-    #level=self.logger.DEBUG,
-    level=logging.WARNING,
-    #level=self.logger.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
 class rpGlobalScore(rpSBML):
     """Class combining all the different characteristics of a pathway and calculate the global score
     """
@@ -40,7 +32,8 @@ class rpGlobalScore(rpSBML):
                  path=None,
                  rpcache=None):
         super().__init__(model_name, document, path, rpcache)
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.logger.info('Starting instance of rpGlobalScore')
 
     '''

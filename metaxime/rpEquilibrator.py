@@ -22,16 +22,6 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-#logging.root.setLevel(logging.NOTSET)
-
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
 
 #TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
 class rpEquilibrator(rpSBML):
@@ -68,7 +58,8 @@ class rpEquilibrator(rpSBML):
         .. automethod:: _reactionStrQuery
         """
         super().__init__(model_name, document, path, rpcache)
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.logger.debug('Started instance of rpEquilibrator')
         if not cc:
             self.cc = ComponentContribution()

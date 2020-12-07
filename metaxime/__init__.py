@@ -1,3 +1,4 @@
+import logging
 from .version import __version__
 from .rpCache import rpCache
 from .rpSBML import rpSBML
@@ -9,6 +10,16 @@ from .rpFBA import rpFBA
 from .rpEquilibrator import rpEquilibrator
 from .rpSelenzyme import rpSelenzyme
 from .rpGlobalScore import rpGlobalScore
+
+
+logging.basicConfig(
+    #level=logging.DEBUG,
+    #level=logging.WARNING,
+    level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+
 
 __all__ = [
     'rpSBML',

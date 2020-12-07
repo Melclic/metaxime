@@ -23,15 +23,6 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-#logging.root.setLevel(logging.NOTSET)
-
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
 
 
 class rpSelenzyme(rpSBML):
@@ -54,7 +45,8 @@ class rpSelenzyme(rpSBML):
         #WARNING: you have to close the data_dir when you are done!!!!
         """
         super().__init__(model_name, document, path, rpcache)
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.dirname = os.path.dirname(os.path.abspath( __file__ ))
         if not cache_tar_path:
             self.cache_tar_path = os.path.join(self.dirname, 'input_cache', 'rpselenzyme_data.tar.xz')

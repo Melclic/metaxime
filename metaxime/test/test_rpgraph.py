@@ -13,10 +13,11 @@ from metaxime import rpGraph
 class TestRPGraph(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         #load a rpSBML file
-        cls.rpgraph = rpGraph(model_name='test', path=os.path.join('data', 'rpgraph', 'rpsbml.xml'))
-        cls.data = json.load(open(os.path.join('data', 'rpgraph', 'data.json'), 'r'))
+        self.rpgraph = rpGraph(model_name='test', path=os.path.join('data', 'rpgraph', 'rpsbml.xml'))
+        self.data = json.load(open(os.path.join('data', 'rpgraph', 'data.json'), 'r'))
+        self.maxDiff = None
 
 
     #_makeCompareGraphs

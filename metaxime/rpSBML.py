@@ -21,17 +21,6 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-logging.root.setLevel(logging.NOTSET)
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
-
 
 #WARNING: listOfGeneProducts and other gene products in the fbc package are not saved!!!!! TODO: need to include that information if provided
 class rpSBML(rpCache):
@@ -82,7 +71,8 @@ class rpSBML(rpCache):
             self.inchikey_cid = rpcache.inchikey_cid
             self.rr_reactions = rpcache.rr_reactions
             self.rr_full_reactions = rpcache.rr_full_reactions
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
         if model_name:

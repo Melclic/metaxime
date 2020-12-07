@@ -26,16 +26,6 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-logging.root.setLevel(logging.NOTSET)
-
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
 
 ###########################################################
 ######################### main ############################
@@ -69,7 +59,8 @@ class rpFBA(rpMerge):
                          model_name=model_name,
                          path=sbml_path,
                          rpcache=rpcache)
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.logger.debug('Started instance of rpFBA')
         self.species_source_target = None
         self.reactions_source_target = None

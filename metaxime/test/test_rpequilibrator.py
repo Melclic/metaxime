@@ -1,4 +1,6 @@
 import unittest
+import tarfile
+import glob
 import os
 import json
 import hashlib
@@ -9,13 +11,25 @@ import sys
 sys.path.insert(0, '../..')
 
 from metaxime import rpEquilibrator
+from metaxime import rpSBML
 
 class TestRPEquilibrator(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
         self.rpeq = rpEquilibrator(path=os.path.join('data', 'rpequilibrator', 'rpsbml.xml'))
-        self.data = json.load(open(os.path.join('data', 'rpequilibrator', 'data.json'), 'r'))
+
+    def test_runCollection(self):
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            rpEquilibrator.runCollection(os.path.join('data', 'rpequilibrator', 'test.rpcol'),
+                                         os.path.join(tmp_output_folder, 'test.rpcol'))
+            tar = tarfile.open(os.path.join(tmp_output_folder, 'test.rpcol'), mode='r')
+            os.mkdir(os.path.join(tmp_output_folder, 'results'))
+            tar.extractall(os.path.join(tmp_output_folder, 'results'))
+            self.assertTrue(len(glob.glob(os.path.join(tmp_output_folder, 'results', 'rpsbml_collection', 'models', '*')))==1)
+            rpsbml = rpSBML(path=glob.glob(os.path.join(tmp_output_folder, 'results', 'rpsbml_collection', 'models', '*'))[0])
+            asdict = rpsbml.asDict()
+            self.assertAlmostEqual(asdict['pathway']['brsynth']['dfG_prime_o']['value'], 1784.7384959433493)
 
     def test_makeSpeciesStr(self):
         self.assertEqual(self.rpeq._makeSpeciesStr(self.rpeq.model.getSpecies('MNXM100__64__MNXC3')), 'CHEBI:5332')

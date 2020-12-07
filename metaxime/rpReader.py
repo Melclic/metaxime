@@ -25,15 +25,6 @@ __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
 
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
-
 class Species:
     """Class holding all the possible gathered information that we have for a chemical species
     """
@@ -81,7 +72,8 @@ class rpReader(rpCache):
             self.rr_reactions = rpcache.rr_reactions
             self.rr_full_reactions = rpcache.rr_full_reactions
         self.rpcache = rpcache
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.logger.info('Starting instance of rpReader')
         #species
         self.species_obj_dict = []

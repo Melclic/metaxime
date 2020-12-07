@@ -15,13 +15,6 @@ __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
 
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
 
 class rpDraw(rpGraph):
     """Class that contains a collection to draw a rpSBML file
@@ -48,7 +41,8 @@ class rpDraw(rpGraph):
                          document,
                          path,
                          rpcache)
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(os.path.basename(__file__))
         self.mnx_cofactors = json.load(open('data/mnx_cofactors.json', 'r'))
         #some drawing constants
         self.arrowhead = draw.Marker(-0.1, -0.5, 0.9, 0.5, scale=4, orient='auto', id='normal_arrow')
