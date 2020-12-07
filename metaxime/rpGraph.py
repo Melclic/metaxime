@@ -476,6 +476,9 @@ class rpGraph(rpSBML):
         only_consumed_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
+            if not node:
+                self.logger.warning('The node ('+str(node_name)+') is empty: '+str(node))
+                continue
             if node['type']=='species':
                 #NOTE: if central species then must also be rp_pathway species
                 if (only_central and node['central_species']==True) or (only_rp_pathway and node['rp_pathway']==True) or (not only_central and not only_rp_pathway):
@@ -497,8 +500,9 @@ class rpGraph(rpSBML):
         only_produced_species = []
         for node_name in self.G.nodes():
             node = self.G.node.get(node_name)
-            self.logger.debug('node_name: '+str(node_name))
-            self.logger.debug('node: '+str(node))
+            if not node:
+                self.logger.warning('The node ('+str(node_name)+') is empty: '+str(node))
+                continue
             if node['type']=='species':
                 #NOTE: if central species then must also be rp_pathway species
                 if (only_central and node['central_species']==True) or (only_rp_pathway and node['rp_pathway']==True) or (not only_central and not only_rp_pathway):
