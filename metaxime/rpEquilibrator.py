@@ -195,7 +195,8 @@ class rpEquilibrator(rpSBML):
             except AttributeError:
                 self.logger.error('Cannot retreive the id')
                 return False
-            return spe_id.split('__')[0]
+            #return spe_id.split('__')[0]
+            return spe_id
         elif ret_type=='xref':
             try:
                 annot = libsbml_species.getAnnotation()
