@@ -10,12 +10,12 @@ from .rpFBA import rpFBA
 from .rpEquilibrator import rpEquilibrator
 from .rpSelenzyme import rpSelenzyme
 from .rpGlobalScore import rpGlobalScore
-
+from .rpExtractSink import rpExtractSink
 
 logging.basicConfig(
-    #level=logging.DEBUG,
+    level=logging.DEBUG,
     #level=logging.WARNING,
-    level=logging.ERROR,
+    #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -31,5 +31,6 @@ __all__ = [
     'rpFBA',
     'rpEquilibrator',
     'rpSelenzyme',
-    'rpGlobalScore'
+    'rpGlobalScore',
+    'rpExtractSink'
 ]

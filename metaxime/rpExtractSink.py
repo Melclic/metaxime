@@ -87,7 +87,7 @@ class rpExtractSink(rpSBML):
         self._reduce_model()
         with tempfile.TemporaryDirectory() as tmp_output_folder:
             cobra.io.write_sbml_model(self.cobra_model, os.path.join(tmp_output_folder, 'tmp.xml'))
-            self.readSBML(os.path.join(tmp_output_folder, 'tmp.xml')
+            self.readSBML(os.path.join(tmp_output_folder, 'tmp.xml'))
 
 
     #######################################################################
@@ -97,7 +97,8 @@ class rpExtractSink(rpSBML):
 
     # NOTE: this only works for MNX models, since we are parsing the id
     # TODO: change this to read the annotations and extract the MNX id's
-    def genSink(self, input_sbml, output_sink, remove_dead_end=False, compartment_id='MNXC3'):
+    @staticmethod
+    def genSink(input_sbml, output_sink, remove_dead_end=False, compartment_id='MNXC3', model_name=None, rpcache=None):
         """Generate the sink from an SBML model
 
         :param input_sbml: The path to the SBML file
@@ -114,43 +115,44 @@ class rpExtractSink(rpSBML):
         :return: Sucess or failure of the function
         """
         ### because cobrapy can be terrible and cause infinite loop depending on the input SBML model
+        rpextractsink = rpExtractSink(model_name=model_name, document=None, path=None, rpcache=rpcache)
         if remove_dead_end:
             try:
-                self._removeDeadEnd(input_sbml)
+                rpextractsink._removeDeadEnd(input_sbml)
             except timeout_decorator.timeout_decorator.TimeoutError:
-                self.logger.warning('removeDeadEnd reached its timeout... parsing the whole model')
-                self.readSBML(input_sbml)
+                rpextractsink.logger.warning('removeDeadEnd reached its timeout... parsing the whole model')
+                rpextractsink.readSBML(input_sbml)
         else:
-            self.readSBML(input_sbml)
+            rpextractsink.readSBML(input_sbml)
         ### open the cache ###
-        cytoplasm_species = []
-        for i in self.model.getListOfSpecies():
+        compartment_species = []
+        for i in rpextractsink.model.getListOfSpecies():
             if i.getCompartment()==compartment_id:
-                cytoplasm_species.append(i)
-        if not cytoplasm_species:
-            self.logger.error('Could not retreive any species in the compartment: '+str(compartment_id))
-            self.logger.error('Is the right compartment set?')
+                compartment_species.append(i)
+        if not compartment_species:
+            rpextractsink.logger.error('Could not retreive any species in the compartment: '+str(compartment_id))
+            rpextractsink.logger.error('Is the right compartment set?')
             return False
         at_least_one_added = False
         with open(output_sink, 'w') as outS:
             writer = csv.writer(outS, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
             writer.writerow(['Name','InChI'])
-            for i in cytoplasm_species:
-                res = self.readMIRIAMAnnotation(i.getAnnotation())
+            for i in compartment_species:
+                res = rpextractsink.readMIRIAMAnnotation(i.getAnnotation())
                 #extract the MNX id's
                 try:
                     mnx = res['metanetx'][0]
                 except KeyError:
-                    self.logger.warning('Cannot find MetaNetX ID for '+str(i.getId()))
+                    rpextractsink.logger.warning('Cannot find MetaNetX ID for '+str(i.getId()))
                     continue
                 try:
-                    inchi = self.cid_strc[mnx]['inchi']
+                    inchi = rpextractsink.queryCIDstrc(mnx)['inchi']
                 except (KeyError, TypeError):
-                    self.logger.warning('Either cache has not been passed or cannot detect the following mnx: '+str(mnx))
+                    rpextractsink.logger.warning('Either cache has not been passed or cannot detect the following mnx: '+str(mnx))
                     inchi = None
                 if inchi:
                     at_least_one_added = True
                     writer.writerow([mnx,inchi])
         if not at_least_one_added:
-            self.logger.error('Cannot extract a single inchi from the SBML at the given compartment')
+            rpextractsink.logger.error('Cannot extract a single inchi from the SBML at the given compartment')
             return False

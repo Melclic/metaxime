@@ -22,7 +22,7 @@ RUN conda install -y -c anaconda biopython==1.77
 RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
 
-RUN pip install equilibrator-pathway==0.3.1
+RUN pip install equilibrator-pathway==0.3.1 timeout-decorator
 #RUN rm -rf /usr/local/lib/python3/site-packages/ruamel*
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 RUN pip install cobra
