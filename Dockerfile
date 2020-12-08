@@ -191,3 +191,8 @@ RUN wget https://retrorules.org/dl/preparsed/rr02/rp2/hs -O /home/rules_rall_rp2
 COPY docker_files/init_equilibrator.py /home/
 RUN chmod +x /home/init_equilibrator.py
 RUN python /home/init_equilibrator.py
+
+############################################
+############# REST #########################
+############################################
+

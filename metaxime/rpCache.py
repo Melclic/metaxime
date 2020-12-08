@@ -13,6 +13,7 @@ import tarfile
 import shutil
 import argparse
 from ast import literal_eval
+from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 import json
 
 import objsize
@@ -319,7 +320,6 @@ class rpCache:
         :rtype: dict
         :return: Dictionnary of results
         """
-        from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
         # Import (if needed)
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)

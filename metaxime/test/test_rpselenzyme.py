@@ -13,11 +13,11 @@ from metaxime import rpSelenzyme
 class TestRPSelenzyme(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         #load a rpSBML file
-        cls.rpsele = rpSelenzyme(path=os.path.join('data', 'rpselenzyme', 'rpsbml.xml'))
-        #cls.data = json.load(open(os.path.join('data', 'rpselenzyme', 'data.json'), 'r'))
-        cls.maxDiff = None
+        self.rpsele = rpSelenzyme(path=os.path.join('data', 'rpselenzyme', 'rpsbml.xml'))
+        #self.data = json.load(open(os.path.join('data', 'rpselenzyme', 'data.json'), 'r'))
+        self.maxDiff = None
 
     def test_singleReactionRule(self):
         reac = self.rpsele.model.getReaction('RP1')
