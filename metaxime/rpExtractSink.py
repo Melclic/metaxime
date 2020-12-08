@@ -134,8 +134,8 @@ class rpExtractSink(rpSBML):
             rpextractsink.logger.error('Is the right compartment set?')
             return False
         at_least_one_added = False
-        with open(output_sink, 'w') as outS:
-            writer = csv.writer(outS, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        with open(output_sink, 'w') as out_sink:
+            writer = csv.writer(out_sink, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
             writer.writerow(['Name','InChI'])
             for i in compartment_species:
                 res = rpextractsink.readMIRIAMAnnotation(i.getAnnotation())
@@ -156,3 +156,4 @@ class rpExtractSink(rpSBML):
         if not at_least_one_added:
             rpextractsink.logger.error('Cannot extract a single inchi from the SBML at the given compartment')
             return False
+        return True
