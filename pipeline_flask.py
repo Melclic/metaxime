@@ -12,6 +12,7 @@ from flask import Flask, request, jsonify, send_file, abort, Response, make_resp
 from flask_restful import Resource, Api
 import io
 import json
+import tempfile
 import time
 import sys
 
@@ -21,7 +22,7 @@ from logging.handlers import RotatingFileHandler
 from logging.config import dictConfig
 
 dictConfig({
-    'version': 1,
+    'version': 0.1,
     'formatters': {'default': {
         'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
     }},
@@ -39,7 +40,6 @@ dictConfig({
 
 from rq import Connection, Queue
 from redis import Redis
-
 
 
 #######################################################
@@ -168,7 +168,7 @@ class RestQuery(Resource):
                     return Response('Memory limit reached by RetroPath2.0 caused it to not find any solutions', status=404)
                 else:
                     app.logger.warning('RetroPath2.0 has exceeded its memory limit')
-                    app.logger.warning('Returning partial results') 
+                    app.logger.warning('Returning partial results')
                     status_message = 'WARNING: RetroPath2.0 has exceeded its memory limit--Returning partial results'
                     scope_csv = io.BytesIO()
                     scope_csv.write(result[0])
@@ -226,13 +226,52 @@ class RestQuery(Resource):
             return Response('Could not recognise the status message returned: '+str(results[1]), status=500)
 
 
-
 api.add_resource(RestApp, '/REST')
 api.add_resource(RestQuery, '/REST/Query')
 
 
+##############################################################
+########################## PIPELINE ##########################
+##############################################################
+
+from metaxime import rpCache
+from metaxime import rpReader
+from metaxime import rpFBA
+from metaxime import rpEquilibrator
+from metaxime import rpSelenzyme
+from metaxime import rpGlobalScore
+from metaxime import rpExtractSink
+import callRP2
+import callRP2paths
+
+global global_rpcache = rpCache()
+global_rpcache.populateCache()
+
+def pipeline(target_smiles, gem_name, topx, dmin, dmax, mwmax_source, mwmax_cof, timeout, partial_retro, pubchem_search):
+    target_inchi = MolToInchi(MolFromSmiles(target_smiles, sanitize=True))
+    with tempfile.TemporaryDirectory() as tmp_output_folder:
+        ############# source file #############
+        sourcefile = os.path.join(tmp_output_folder, 'source.csv')
+        with open(sourcefile, 'w') as csvfile:
+            filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            filewriter.writerow(['Name', 'InChI'])
+            filewriter.writerow(['target', target_inchi])
+
+        callRP2.run()
+        run_rp2(source_path,
+                sink_path,
+                rules_path,
+                max_steps,
+                topx=topx,
+                dmin=dmin,
+                dmax=dmax,
+                mwmax_source=mwmax_source,
+                mwmax_cof=mwmax_cof,
+                timeout=timeout,
+                partial_retro=partial_retro)
+
 if __name__== "__main__":
-    handler = RotatingFileHandler('retropath2.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.DEBUG)
+    handler = RotatingFileHandler('metaxime.log', maxBytes=10000, backupCount=1)
+    handler.setLevel(logging.ERROR)
     app.logger.addHandler(handler)
     app.run(host="0.0.0.0", port=8888, debug=True, threaded=True)

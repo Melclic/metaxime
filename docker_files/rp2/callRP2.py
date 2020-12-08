@@ -42,7 +42,7 @@ def limit_virtual_memory():
 
 from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 
-def run(source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=1000, mwmax_source=1000, mwmax_cof=1000, timeout=30, partial_retro=False, logger=None):
+def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=1000, mwmax_source=1000, mwmax_cof=1000, timeout=30, partial_retro=False, logger=None):
     """Call the KNIME RetroPath2.0 workflow
 
     :param source_path: The path to the source file
@@ -87,8 +87,8 @@ def run(source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=10
             knime_command = KPATH+' -nosplash -nosave -reset --launcher.suppressErrors -application org.knime.product.KNIME_BATCH_APPLICATION -workflowFile='+RP_WORK_PATH+' -workflow.variable=input.dmin,"'+str(dmin)+'",int -workflow.variable=input.dmax,"'+str(dmax)+'",int -workflow.variable=input.max-steps,"'+str(max_steps)+'",int -workflow.variable=input.sourcefile,"'+str(source_path)+'",String -workflow.variable=input.sinkfile,"'+str(sink_path)+'",String -workflow.variable=input.rulesfile,"'+str(rules_path)+'",String -workflow.variable=input.topx,"'+str(topx)+'",int -workflow.variable=input.mwmax-source,"'+str(mwmax_source)+'",int -workflow.variable=input.mwmax-cof,"'+str(mwmax_cof)+'",int -workflow.variable=output.dir,"'+str(tmp_output_folder)+'/",String -workflow.variable=output.solutionfile,"results.csv",String -workflow.variable=output.sourceinsinkfile,"source-in-sink.csv",String'
             logger.debug('KNIME command: '+str(knime_command))
             commandObj = subprocess.Popen(knime_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
-            result = b''
-            error = b''
+            result = ''
+            error = ''
             try:
                 #commandObj.wait(timeout=timeout) #subprocess timeout is in seconds while we input minutes
                 result, error = commandObj.communicate(timeout=timeout*60.0) #subprocess timeout is in seconds while we input minutes
@@ -105,7 +105,7 @@ def run(source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=10
             #check to see if the results.csv is empty
             try:
                 count = 0
-                with open(os.path.join(tmp_output_folder, 'results.csv')) as f:
+                with open(output_path) as f:
                     reader = csv.reader(f, delimiter=',', quotechar='"')
                     for i in reader:
                         count += 1
@@ -125,74 +125,68 @@ def run(source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=10
                     for i in reader:
                         count += 1
                 if count>1:
-                    logger.error('Source has been found in the sink')
-                    return b'', b'sourceinsinkerror', str('Command: '+str(knime_command)+'\n Error: Source found in sink\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    logger.error('Execution problem of RetroPath2.0. Source has been found in the sink')
+                    return 'sourceinsinkerror', str('Command: '+str(knime_command)+'\n Error: Source found in sink\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             except FileNotFoundError as e:
                 logger.error('Cannot find source-in-sink.csv file')
                 logger.error(e)
-                return b'', b'sourceinsinknotfounderror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                return 'sourceinsinknotfounderror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             ### handle timeout
             if is_timeout:
                 if not is_results_empty and partial_retro:
                     logger.warning('Timeout from retropath2.0 ('+str(timeout)+' minutes)')
-                    with open(os.path.join(tmp_output_folder, 'results.csv'), 'rb') as op:
-                        results_csv = op.read()
-                    return results_csv, b'timeoutwarning', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    shutil.copy2(os.path.join(tmp_output_folder, 'results.csv'), output_path)
+                    return 'timeoutwarning', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
                 else:
                     logger.error('Timeout from retropath2.0 ('+str(timeout)+' minutes)')
-                    return b'', b'timeouterror', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    return 'timeouterror', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             ### if java has an memory issue
             if 'There is insufficient memory for the Java Runtime Environment to continue' in result:
                 if not is_results_empty and partial_retro:
                     logger.warning('RetroPath2.0 does not have sufficient memory to continue')
-                    with open(os.path.join(tmp_output_folder, 'results.csv'), 'rb') as op:
-                        results_csv = op.read()
+                    shutil.copy2(os.path.join(tmp_output_folder, 'results.csv'), output_path)
                     logger.warning('Passing the results file instead')
-                    return results_csv, b'memwarning', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    return 'memwarning', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
                 else:
                     logger.error('RetroPath2.0 does not have sufficient memory to continue')
-                    return b'', b'memerror', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    return 'memerror', str('Command: '+str(knime_command)+'\n Error: Memory error \n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             ############## IF ALL IS GOOD ##############
             ### csv scope copy to the .dat location
             try:
                 csv_scope = glob.glob(os.path.join(tmp_output_folder, '*_scope.csv'))
-                with open(csv_scope[0], 'rb') as op:
-                    scope_csv = op.read()
-                return scope_csv, b'noerror', str('').encode('utf-8')
+                shutil.copy2(os.path.join(csv_scope[0], output_path)
+                return 'noerror', str('').encode('utf-8')
             except IndexError as e:
                 if not is_results_empty and partial_retro:
                     logger.warning('No scope file generated')
-                    with open(os.path.join(tmp_output_folder, 'results.csv'), 'rb') as op:
-                        results_csv = op.read()
+                    shutil.copy2(os.path.join(os.path.join(tmp_output_folder, 'results.csv'), output_path)
                     logger.warning('Passing the results file instead')
-                    return results_csv, b'noresultwarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    return 'noresultwarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
                 else:
                     logger.error('RetroPath2.0 has not found any results')
-                    return b'', b'noresulterror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                    return 'noresulterror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
         except OSError as e:
             if not is_results_empty and partial_retro:
                 logger.warning('Running the RetroPath2.0 Knime program produced an OSError')
                 logger.warning(e)
-                with open(os.path.join(tmp_output_folder, 'results.csv'), 'rb') as op:
-                    results_csv = op.read()
+                shutil.copy2(os.path.join(os.path.join(tmp_output_folder, 'results.csv'), output_path)
                 logger.warning('Passing the results file instead')
-                return results_csv, b'oswarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                return 'oswarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             else:
                 logger.error('Running the RetroPath2.0 Knime program produced an OSError')
                 logger.error(e)
-                return b'', b'oserror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                return 'oserror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
         except ValueError as e:
             if not is_results_empty and partial_retro:
                 logger.warning('Cannot set the RAM usage limit')
                 logger.warning(e)
-                with open(os.path.join(tmp_output_folder, 'results.csv'), 'rb') as op:
-                    results_csv = op.read()
+                shutil.copy2(os.path.join(os.path.join(tmp_output_folder, 'results.csv'), output_path)
                 logger.warning('Passing the results file instead')
-                return results_csv, b'ramwarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                return 'ramwarning', str('Command: '+str(knime_command)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
             else:
                 logger.error('Cannot set the RAM usage limit')
                 logger.error(e)
-                return b'', b'ramerror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
+                return 'ramerror', str('Command: '+str(knime_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*')))).encode('utf-8')
 
 
 if __name__ == "__main__":
@@ -203,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('-max_steps', type=int)
     parser.add_argument('-rulesfile', type=str)
     parser.add_argument('-rulesfile_format', type=str)
-    parser.add_argument('-scope_csv', type=str)
+    parser.add_argument('-output_csv', type=str)
     parser.add_argument('-topx', type=int, default=100)
     parser.add_argument('-dmin', type=int, default=0)
     parser.add_argument('-dmax', type=int, default=100)
@@ -238,8 +232,8 @@ if __name__ == "__main__":
         logging.error('Cannot interpret partial_retro: '+str(params.partial_retro))
         exit(1)
     '''
-    if not os.path.exists(params.scope_csv):
-        logging.error('The scope file cannot be found: '+str(params.scope_csv))
+    if not os.path.exists(params.output_csv):
+        logging.error('The scope file cannot be found: '+str(params.output_csv))
         exit(1)
     '''
     if not os.path.exists(params.rulesfile):
@@ -273,7 +267,8 @@ if __name__ == "__main__":
         shutil.copy(params.sourcefile, sourcefile)
         sinkfile = os.path.join(tmp_input_folder, 'sink.csv')
         shutil.copy(params.sinkfile, sinkfile)
-        result = run(sourcefile,
+        result = run(params.output_csv,
+                     sourcefile,
                      sinkfile,
                      rulesfile,
                      params.max_steps,
@@ -285,65 +280,56 @@ if __name__ == "__main__":
                      params.timeout,
                      partial_retro)
         ###########################
-        if result[1]==b'timeouterror' or result[1]==b'timeoutwarning':
+        if result[1]=='timeouterror' or result[1]=='timeoutwarning':
             if not partial_retro:
                 logging.error('Timeout of RetroPath2.0 -- Try increasing the timeout limit of the tool')
             else:
-                if result[0]==b'':
+                if result[0]=='':
                     logging.error('Timeout caused RetroPath2.0 to not find any solutions')
                     exit(1)
                 else:
                     logging.warning('Timeout of RetroPath2.0 -- Try increasing the timeout limit of the tool')
-                    logging.warning('Returning partial results')
-                    with open(params.scope_csv, 'wb') as scope_csv:
-                        scope_csv.write(result[0])
                     exit(0)
-        elif result[1]==b'memwarning' or result[1]==b'memerror':
+        elif result[1]=='memwarning' or result[1]=='memerror':
             if not partial_retro:
                 logging.error('RetroPath2.0 has exceeded its memory limit')
                 exit(0)
             else:
-                if result[0]==b'':
+                if result[0]=='':
                     logging.error('Memory limit reached by RetroPath2.0 caused it to not find any solutions')
                     exit[0]
                 else:
                     logging.warning('RetroPath2.0 has exceeded its memory limit')
                     logging.warning('Returning partial results')
-                    with open(params.scope_csv, 'wb') as scope_csv:
-                        scope_csv.write(result[0])
                     exit(0)
-        elif result[1]==b'sourceinsinkerror':
+        elif result[1]=='sourceinsinkerror':
             logging.error('Source exists in the sink')
             exit(1)
-        elif result[1]==b'sourceinsinknotfounderror':
+        elif result[1]=='sourceinsinknotfounderror':
             logging.error('Cannot find the sink-in-source file')
             exit(1)
-        elif result[1]==b'ramerror' or result[1]==b'ramwarning':
+        elif result[1]=='ramerror' or result[1]=='ramwarning':
             logging.error('Memory allocation error')
             exit(1)
-        elif result[1]==b'oserror' or result[1]==b'oswarning':
+        elif result[1]=='oserror' or result[1]=='oswarning':
             logging.error('RetroPath2.0 has generated an OS error')
             exit(1)
-        elif result[1]==b'noresultwarning':
+        elif result[1]=='noresultwarning':
             if partial_retro:
-                if result[0]==b'':
+                if result[0]=='':
                     logging.error('No results warning caused it to return no results')
                     exit(1)
                 else:
                     logging.warning('RetroPath2.0 did not complete successfully')
                     logging.warning('Returning partial results')
-                    with open(params.scope_csv, 'wb') as scope_csv:
-                        scope_csv.write(result[0])
             else:
                 logging.error('RetroPath2.0 did not complete successfully')
                 exit(1)
-        elif result[1]==b'noresulterror':
+        elif result[1]=='noresulterror':
             logging.error('Empty results')
             exit(1)
-        elif result[1]==b'noerror':
+        elif result[1]=='noerror':
             logging.info('Successfull execution')
-            with open(params.scope_csv, 'wb') as scope_csv:
-                scope_csv.write(result[0])
         else:
             logging.error('Could not recognise the status message returned: '+str(results[1]))
             exit(1)
