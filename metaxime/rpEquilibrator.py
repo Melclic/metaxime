@@ -127,7 +127,7 @@ class rpEquilibrator(rpSBML):
                 rpequilibrator = rpEquilibrator(path=rpsbml_path, model_name=file_name, rpcache=rpcache, cc=cc, calc_cmp=calc_cmp)
                 rpequilibrator.pathway(pathway_id, True)
                 rpequilibrator.writeSBML(path=rpsbml_path)
-                calc_cmp = rpequilibrator.calc_cmp    
+                calc_cmp = rpequilibrator.calc_cmp
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False

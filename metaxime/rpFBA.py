@@ -97,26 +97,26 @@ class rpFBA(rpMerge):
                  fraction_of=0.75,
                  is_max=True,
                  objective_id='obj_fraction'):
-        logging.debug('################ '+str(model_name)+' ###############')
         rpfba = rpFBA(sbml_path=gem_sbml_path,
                       is_gem_sbml=True,
                       model_name=model_name,
                       rpcache=None)
+        rpfba.logger.debug('################ '+str(model_name)+' ###############')
         """Function to run as process
         """
         if shared_rpcache_name:
             rpcache_shared_dict = SharedMemoryDict(name=shared_rpcache_name, size=None) #not sure why I need to pass size although not used
             rpfba.setFromDict(rpcache_shared_dict)
             '''
-            logging.debug('rpcache_shared_dict[deprecatedCID_cid]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']))))
-            logging.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))
-            logging.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))))
-            logging.debug('rpfba.deprecatedCID_cid: '+str(hex(id(rpfba.deprecatedCID_cid))))
-            logging.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(rpfba.deprecatedCID_cid['MNXM95986']))
-            logging.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(hex(id(rpfba.deprecatedCID_cid['MNXM95986']))))
+            rpfba.logger.debug('rpcache_shared_dict[deprecatedCID_cid]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']))))
+            rpfba.logger.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))
+            rpfba.logger.debug('rpcache_shared_dict[deprecatedCID_cid][MNXM95986]: '+str(hex(id(rpcache_shared_dict['deprecatedCID_cid']['MNXM95986']))))
+            rpfba.logger.debug('rpfba.deprecatedCID_cid: '+str(hex(id(rpfba.deprecatedCID_cid))))
+            rpfba.logger.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(rpfba.deprecatedCID_cid['MNXM95986']))
+            rpfba.logger.debug('rpfba.deprecatedCID_cid[MNXM95986]: '+str(hex(id(rpfba.deprecatedCID_cid['MNXM95986']))))
             '''
         else:
-            logging.warning('No shared memory: rpcache_shared_dict')
+            rpfba.logger.warning('No shared memory: rpcache_shared_dict')
         status = rpfba.mergeModels(input_model=rpsbml_path,
                                    del_sp_pro=del_sp_pro,
                                    del_sp_react=del_sp_react,
@@ -126,7 +126,7 @@ class rpFBA(rpMerge):
                                    pathway_id=pathway_id,
                                    created_reaction_pathway_id=created_reaction_pathway_id)
         if not status:
-            logging.error('Problem merging the models: '+str(file_name))
+            rpfba.logger.error('Problem merging the models: '+str(file_name))
             return False
         ####### fraction of reaction ######
         if sim_type=='fraction':
@@ -139,7 +139,7 @@ class rpFBA(rpMerge):
         elif sim_type=='pfba':
             status = rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
         if not status:
-            logging.error('Problem running the FBA')
+            rpfba.logger.error('Problem running the FBA')
             return False
         #cleanup the shared memory
         if shared_rpcache_name:
