@@ -95,6 +95,7 @@ class rpSelenzyme(rpSBML):
                       pathway_id='rp_pathway',
                       pc=None,
                       uniprot_aa_length=None,
+                      data_dir=None,
                       cache_path=None,
                       rpcache=None):
         with tempfile.TemporaryDirectory() as tmp_folder:
@@ -137,6 +138,8 @@ class rpSelenzyme(rpSBML):
                     cache_selenzyme = rpSelenzyme(cache_tar_path=os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'input_cache', 'rpselenzyme_data.tar.xz'))
                 else:
                     cache_selenzyme = rpSelenzyme(cache_tar_path=cache_path)
+            else:
+                cache_selenzyme = rpSelenzyme(pc=pc, uniprot_aa_length=uniprot_aa_length, data_dir=data_dir)
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                 logging.debug('################### '+str(file_name)+' ##################')

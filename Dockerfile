@@ -22,7 +22,7 @@ RUN conda install -y -c anaconda biopython==1.77
 RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
 
-RUN pip install equilibrator-pathway==0.3.1 timeout-decorator
+RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml
 #RUN rm -rf /usr/local/lib/python3/site-packages/ruamel*
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 RUN pip install cobra
@@ -145,7 +145,7 @@ COPY docker_files/rp2/rp2_sanity_test.tar.xz /home/
 ENV RP2_RESULTS_SHA256 7428ebc0c25d464fbfdd6eb789440ddc88011fb6fc14f4ce7beb57a6d1fbaec2
 RUN tar xf /home/rp2_sanity_test.tar.xz -C /home/ 
 RUN chmod +x /home/callRP2.py
-RUN /home/callRP2.py -sinkfile /home/test/sink.csv -sourcefile /home/test/source.csv -rulesfile /home/test/rules.tar -rulesfile_format tar -max_steps 3 -scope_csv test_scope.csv
+RUN /home/callRP2.py -sinkfile /home/test/sink.csv -sourcefile /home/test/source.csv -rulesfile /home/test/rules.tar -rulesfile_format tar -max_steps 3 -output_csv test_scope.csv
 RUN echo "$RP2_RESULTS_SHA256 test_scope.csv" | sha256sum --check
 
 ############################################
@@ -174,7 +174,7 @@ COPY docker_files/callRP2paths.py /home/
 ######### RetroRules ########################
 #############################################
 
-WORKDIR home/
+WORKDIR /home/
 
 RUN wget https://retrorules.org/dl/preparsed/rr02/rp2/hs -O /home/rules_rall_rp2.tar.gz && \
     tar xf /home/rules_rall_rp2.tar.gz -C /home/ && \
@@ -196,3 +196,9 @@ RUN python /home/init_equilibrator.py
 ############# REST #########################
 ############################################
 
+COPY metaxime/ /home/metaxime/
+COPY selenzy/ /home/selenzy/
+COPY pipeline_flask.py /home/
+COPY docker_files/callRR.py /home/
+COPY docker_files/models.tar.xz /home/
+RUN tar xf /home/models.tar.xz -C /home/ 

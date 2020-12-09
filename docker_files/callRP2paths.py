@@ -12,8 +12,11 @@ import resource
 import tempfile
 import glob
 import io
+import shutil
 import logging
 import argparse
+import os
+import glob
 
 
 logging.basicConfig(
@@ -35,7 +38,7 @@ def limit_virtual_memory():
     """
     resource.setrlimit(resource.RLIMIT_AS, (MAX_VIRTUAL_MEMORY, resource.RLIM_INFINITY))
 
-def run_rp2paths(rp2_pathways, timeout, logger=None):
+def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30, logger=None):
     """Call the KNIME RetroPath2.0 workflow
 
     :param rp2_pathways: The path to the RetroPath2.0 scope results
@@ -53,40 +56,39 @@ def run_rp2paths(rp2_pathways, timeout, logger=None):
     if logger==None:
         logging.basicConfig(level=logging.DEBUG)
         logger = logging.getLogger(__name__)
-    out_paths = b''
-    out_compounds = b''
+    out_paths = ''
+    out_compounds = ''
     with tempfile.TemporaryDirectory() as tmp_output_folder:
         rp2paths_command = 'python /home/RP2paths.py all '+str(rp2_pathways)+' --outdir '+str(tmp_output_folder)+' --timeout '+str(int(timeout*60.0))
         try:
             commandObj = subprocess.Popen(rp2paths_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
-            result = b''
-            error = b''
+            result = ''
+            error = ''
             result, error = commandObj.communicate()
             result = result.decode('utf-8')
             error = error.decode('utf-8')
             #TODO test to see what is the correct phrase
             if 'TIMEOUT' in result:
                 logger.error('Timeout from of ('+str(timeout)+' minutes)')
-                return b'', b'', b'timeout', str.encode('Command: '+str(rp2paths_command)+'\n Error: '+str(error)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*'))))
+                return False
             if 'failed to map segment from shared object' in error:
                 logger.error('RP2paths does not have sufficient memory to continue')
-                return b'', b'', b'memoryerror', str.encode('Command: '+str(rp2paths_command)+'\n Error: '+str(error)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*'))))
+                return False
             ### convert the result to binary and return ###
+            logger.debug(glob.glob(os.path.join(tmp_output_folder, '*')))
             try:
-                with open(os.path.join(tmp_output_folder, 'out_paths.csv'), 'rb') as op:
-                    out_paths = op.read()
-                with open(os.path.join(tmp_output_folder, 'compounds.txt'), 'rb') as c:
-                    out_compounds = c.read()
-                return out_paths, out_compounds, b'noerror', b''
+                shutil.copy2(os.path.join(tmp_output_folder, 'out_paths.csv'), rp2paths_pathways)
+                shutil.copy2(os.path.join(tmp_output_folder, 'compounds.txt'), rp2paths_compounds)
+                return True
             except FileNotFoundError as e:
                 logger.error('Cannot find the output files out_paths.csv or compounds.txt')
-                return b'', b'', b'filenotfounderror', str.encode('Command: '+str(rp2paths_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*'))))
+                return False
         except OSError as e:
             logger.error('Subprocess detected an error when calling the rp2paths command')
-            return b'', b'', b'oserror', str.encode('Command: '+str(rp2paths_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*'))))
+            return False
         except ValueError as e:
             logger.error('Cannot set the RAM usage limit')
-            return b'', b'', b'ramerror', str.encode('Command: '+str(rp2paths_command)+'\n Error: '+str(e)+'\n tmp_output_folder: '+str(glob.glob(os.path.join(tmp_output_folder, '*'))))
+            return False
 
 # Wrapper for the RP2paths script that takes the same input (results.csv) as the original script but returns
 # the out_paths.csv so as to be compliant with Galaxy
@@ -100,29 +102,4 @@ if __name__ == "__main__":
     if params.timeout<=0:
         logging.error('Timeout cannot be less or equal to 0 :'+str(params.timeout))
         exit(1)
-    result = run_rp2paths(params.rp_pathways, params.timeout)
-    if result[2]==b'timeout':
-        logging.error('RP2paths has reached its timeout limit')
-        exit(1)
-    if result[2]==b'filenotfounderror':
-        logging.error('Cannot detect the out_path.csv and/or compounds.txt files')
-        exit(1)
-    elif result[2]==b'memoryerror':
-        logging.error('Memory allocation error')
-        exit(1)
-    elif result[2]==b'oserror':
-        logging.error('rp2paths has generated an OS error')
-        exit(1)
-    elif result[2]==b'ramerror':
-        logging.error('Could not setup a RAM limit')
-        exit(1)
-    elif result[0]==b'':
-        logging.error('Empty rp2paths_pathways')
-        exit(1)
-    elif result[1]==b'':
-        logging.error('Empty rp2paths_compounds')
-        exit(1)
-    with open(params.rp2paths_pathways, 'wb') as out_paths:
-        out_paths.write(result[0])
-    with open(params.rp2paths_compounds, 'wb') as out_compounds:
-        out_compounds.write(result[1])
+    result = run(params.rp_pathways, params.rp2paths_pathways, params.rp2paths_compounds, params.timeout)
