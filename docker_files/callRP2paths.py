@@ -59,7 +59,7 @@ def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30, logger=
     out_paths = ''
     out_compounds = ''
     with tempfile.TemporaryDirectory() as tmp_output_folder:
-        rp2paths_command = 'python /home/RP2paths.py all '+str(rp2_pathways)+' --outdir '+str(tmp_output_folder)+' --timeout '+str(int(timeout*60.0))
+        rp2paths_command = 'python /home/rp2paths/RP2paths.py all '+str(rp2_pathways)+' --outdir '+str(tmp_output_folder)+' --timeout '+str(int(timeout*60.0))
         try:
             commandObj = subprocess.Popen(rp2paths_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
             result = ''

@@ -20,7 +20,7 @@ import os
 
 
 KPATH = '/usr/local/knime/knime'
-RP_WORK_PATH = '/home/RetroPath2.0.knwf'
+RP_WORK_PATH = '/home/rp2/RetroPath2.0.knwf'
 
 
 logging.basicConfig(
