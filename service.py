@@ -110,20 +110,21 @@ class RestQuery(Resource):
             rpcoll = os.path.join(tmp_output_folder, fi_name)
             logger.debug('rpcoll: '+str(rpcoll))
             logger.debug('pipeline: '+str(pipeline.pipeline))
-            async_results = q.enqueue(pipeline.pipeline, str(rpcoll), str(params['smiles']), str(params['gem']), int(params['steps']))
+            async_results = q.enqueue(pipeline.pipeline, str(rpcoll), str(params['smiles']), str(params['gem']), int(params['steps']), job_timeout='5h')
             result = None
             while result is None:
                 result = async_results.return_value
                 if async_results.get_status()=='failed':
                     return Response('Redis job failed \n '+str(result), status=500)
                 time.sleep(5.0)
-            if status:
+            if result[0]==True:
                 response = make_response(send_file(rpcoll, as_attachment=True, attachment_filename=fi_name, mimetype='application/x-tar'))
-                response.headers['status_message'] = err_type
+                #response.headers['status_message'] = err_type
+                response.headers['status_message'] = 'Successfull execution'
                 return response
             else:
-                logger.error('There was an error running the pipeline: '+str(err_type))
-                return Response('There was an error running the pipeline: '+str(err_type), status=500)
+                logger.error('There was an error running the pipeline: '+str(result))
+                return Response('There was an error running the pipeline: '+str(result[1]), status=500)
 
 api.add_resource(RestApp, '/REST')
 api.add_resource(RestQuery, '/REST/Query')
@@ -132,4 +133,4 @@ if __name__== "__main__":
     #handler = RotatingFileHandler('metaxime.log', maxBytes=10000, backupCount=1)
     #handler.setLevel(logging.DEBUG)
     #logger.addHandler(handler)
-    app.run(host="0.0.0.0", port=8888, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=8888, debug=True, threaded=False)

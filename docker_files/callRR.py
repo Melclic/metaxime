@@ -22,9 +22,10 @@ import logging
 
 
 #logging.config.dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
+logger = logging.getLogger(os.path.basename(__file__))
 
-def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_format='csv', logger=None):
+def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_format='csv'):
     """Parse the input file and return the reactions rules at the appropriate diameters
 
     :param output: Path to the output file
@@ -40,8 +41,7 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
     :rtype: bool
     :return: Success or failure of the function
     """
-    if logger==None:
-        logger = logging.getLogger(__name__)
+    logger.debug('Parsing the rules diamters '+str(siamters)+' for type '+str(rules_type)+' with output '+str(output_format)) 
     rule_file = None
     if rules_type=='all':
         rule_file = '/home/retrorules/rules_rall_rp2.csv' 

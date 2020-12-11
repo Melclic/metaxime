@@ -1,0 +1,2 @@
+org.knime.python2/python2Path=/usr/bin/python2.7
+org.knime.python2/python3Path=/opt/conda/bin/python3.8

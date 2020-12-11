@@ -221,8 +221,13 @@ RUN tar xf /home/sinks.tar.xz -C /home/
 RUN rm /home/models.tar.xz
 COPY docker_files/start.sh /home/
 COPY docker_files/supervisor.conf /home/
-COPY pipeline.py /home/
 COPY service.py /home/
+COPY docker_files/init_cache.py /home/
+RUN chmod +x /home/init_cache.py
+RUN python /home/init_cache.py
+COPY docker_files/config/ /usr/local/knime/
+
+COPY pipeline.py /home/pipeline.py
 
 ###### Server #####
 

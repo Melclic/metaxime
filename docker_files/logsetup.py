@@ -5,7 +5,7 @@ LOGGING_CONFIG = {
         '': {  # root logger
             'level': 'DEBUG',
             'handlers': ['info_rotating_file_handler'],
-            'propagate': False
+            'propagate': True
         }
     },
     'handlers': {

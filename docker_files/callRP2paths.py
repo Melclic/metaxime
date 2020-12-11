@@ -23,7 +23,9 @@ import logging
 
 
 #logging.config.dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
+logger = logging.getLogger(os.path.basename(__file__))
+
 
 
 MAX_VIRTUAL_MEMORY = 20000 * 1024 * 1024 # 20GB -- define what is the best
@@ -37,7 +39,7 @@ def limit_virtual_memory():
     """
     resource.setrlimit(resource.RLIMIT_AS, (MAX_VIRTUAL_MEMORY, resource.RLIM_INFINITY))
 
-def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30, logger=None):
+def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30):
     """Call the KNIME RetroPath2.0 workflow
 
     :param rp2_pathways: The path to the RetroPath2.0 scope results
@@ -52,16 +54,17 @@ def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30, logger=
     :return: tuple of bytes with the out_paths results, compounds results, the status message, the command used
     """
     ### not sure why throws an error:
-    if logger==None:
-        logger = logging.getLogger(__name__)
-    out_paths = ''
-    out_compounds = ''
+    #if logger==None:
+    #    logger = logging.getLogger(__name__)
+    logger.debug('Running RP2paths with timeout of '+str(timeout))
+    out_paths = b''
+    out_compounds = b''
     with tempfile.TemporaryDirectory() as tmp_output_folder:
         rp2paths_command = 'python /home/rp2paths/RP2paths.py all '+str(rp2_pathways)+' --outdir '+str(tmp_output_folder)+' --timeout '+str(int(timeout*60.0))
         try:
             commandObj = subprocess.Popen(rp2paths_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
-            result = ''
-            error = ''
+            result = b''
+            error = b''
             result, error = commandObj.communicate()
             result = result.decode('utf-8')
             error = error.decode('utf-8')

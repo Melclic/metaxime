@@ -76,7 +76,7 @@ logging.basicConfig(
 
 
 
-def pipeline(rpcollection_file,
+def pipeline(input_rpcollection_file,
              target_smiles,
              gem_name,
              max_steps,
@@ -88,7 +88,7 @@ def pipeline(rpcollection_file,
              ph=7.5,
              ionic_strength=200,
              temp_k=298.15):
-    logger.debug('rpcollection_file: '+str(rpcollection_file))
+    logger.debug('input_rpcollection_file: '+str(input_rpcollection_file))
     logger.debug('target_smiles: '+str(target_smiles))
     logger.debug('gem_name: '+str(gem_name))
     logger.debug('max_steps: '+str(max_steps))
@@ -98,6 +98,7 @@ def pipeline(rpcollection_file,
         ############# source file #############
         logger.debug('------ source file -----')
         source_file = os.path.join(tmp_output_folder, 'source.csv')
+        rpcollection_file = os.path.join(tmp_output_folder, 'tmp.rpcol')
         with open(source_file, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['Name', 'InChI'])
@@ -135,8 +136,7 @@ def pipeline(rpcollection_file,
                                  max_steps,
                                  topx=topx,
                                  timeout=timeout,
-                                 partial_retro=partial_retro,
-                                 logger=logger)
+                                 partial_retro=partial_retro)
         if not rp2_status:
             logger.error('Problem running RP2')
             return False, 'rp2'
@@ -196,4 +196,5 @@ def pipeline(rpcollection_file,
         if not rpglo_status:
             logger.error('Problem running rpGlobalScore')
             return False, 'rpglo'
+        shutil.copy2(rpcollection_file, input_rpcollection_file)
         return True, 'success'

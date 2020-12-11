@@ -7,6 +7,7 @@ import os
 import csv
 import subprocess
 import glob
+import sys
 import resource
 import tempfile
 import sys
@@ -26,11 +27,12 @@ from metaxime import rpGlobalScore
 from metaxime import rpExtractSink
 
 #import callRP2
-import callRP2paths
-import callRR
+#import callRP2paths
+#import callRR
 
 from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 
+#make sure that you call the logging after metaxime to overwite their configuation
 import logging
 import logging.config
 from logsetup import LOGGING_CONFIG
@@ -44,7 +46,9 @@ global_cc = ComponentContribution()
 
 KPATH = '/usr/local/knime/knime'
 RP_WORK_PATH = '/home/rp2/RetroPath2.0.knwf'
-MAX_VIRTUAL_MEMORY = 30000*1024*1024 # 30 GB -- define what is the best
+MAX_VIRTUAL_MEMORY = 30000*1024*1024 #30GB
+#MAX_VIRTUAL_MEMORY = 30*1024*1024 # 30 GB -- define what is the best
+#MAX_VIRTUAL_MEMORY = 3.0*1024*1024 # 1 GB -- define what is the best
 
 
 model_list = {'b_subtilis_iYO844': '/home/models/b_subtilis_iYO844.sbml',
@@ -101,7 +105,7 @@ def pipeline(rpcollection_file,
              rules_diameters='2,4,6,8,10,12,14,16',
              rules_type='all',
              topx=100,
-             timeout=90.0,
+             sub_timeout=90.0,
              partial_retro=False,
              ph=7.5,
              ionic_strength=200,
@@ -136,50 +140,100 @@ def pipeline(rpcollection_file,
             logger.error('Problem generating sink')
             return False, 'gensink'
         '''
-        ########## reaction rules ##########
+        ####################################
+        ########## Reaction Rules ##########
+        ####################################
         logger.debug('---------- reaction rules -----')
         rules_file = os.path.join(tmp_output_folder, 'reaction_rules.csv')
-        rr_status = callRR.passRules(rules_file, rules_type, rules_diameters, 'csv', logger)
-        if not rr_status:
-            logger.error('Problem generating the reaction rules')
-            return False, 'reactionrules'
+        rule_file = None
+        if rules_type=='all':
+            rule_file = '/home/retrorules/rules_rall_rp2.csv'
+        elif rules_type=='forward':
+            rule_file = '/home/retrorules/rules_rall_rp2_forward.csv'
+        elif rules_type=='retro':
+            rule_file = '/home/retrorules/rules_rall_rp2_retro.csv'
+        else:
+            logger.error('RR: Cannot detect input: '+str(rules_type))
+            return False, 'rr'
+        #check the input diameters are valid #
+        try:
+            s_diameters = [int(i) for i in rules_diameters.split(',')]
+            valid_diameters = []
+            for i in s_diameters:
+                if i not in [2,4,6,8,10,12,14,16]:
+                    logger.warning('RR: Diameters must be either 2,4,6,8,10,12,14,16. Ignoring entry: '+str(i))
+                else:
+                    valid_diameters.append(i)
+        except ValueError:
+            logger.error('RR: Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
+            return False, 'rr'
+        ##### create temp file to write ####
+        with tempfile.TemporaryDirectory() as tmp_rr_folder:
+            outfile_path = os.path.join(tmp_rr_folder, 'tmp_rules.csv')
+            with open(rule_file, 'r') as rf:
+                with open(outfile_path, 'w') as o:
+                    rf_csv = csv.reader(rf)
+                    o_csv = csv.writer(o, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+                    o_csv.writerow(next(rf_csv))
+                    for row in rf_csv:
+                        try:
+                            if int(row[4]) in valid_diameters:
+                                o_csv.writerow(row)
+                        except ValueError:
+                            logger.error('RR: Cannot convert diameter to integer: '+str(row[4]))
+                            return False, 'rr'
+            shutil.copy2(outfile_path, rules_file)
         ####################################
         ########## Retropath2 ##############
         ####################################
         logger.debug('---------- RP2 -----')
         rp2_file = os.path.join(tmp_output_folder, 'rp2_pathways.csv')
         logger.debug('Rules file: '+str(rules_file))
-        logger.debug('Timeout: '+str(timeout*60.0)+' seconds')
+        logger.debug('Timeout: '+str(sub_timeout*60.0)+' seconds')
+        dmin = 0
+        dmax = 1000
+        mwmax_source = 1000
+        mwmax_cof = 1000
+        logger.debug('Default RP2 configrations:')
+        logger.debug('dmin: '+str(dmin))
+        logger.debug('dmanx: '+str(dmax))
+        logger.debug('mwmax_source: '+str(mwmax_source))
+        logger.debug('mwmax_cof: '+str(mwmax_cof))
         is_timeout = False
         is_results_empty = True
-        dmin=0
-        dmax=1000
-        mwmax_source=1000
-        mwmax_cof=1000
         ### run the KNIME RETROPATH2.0 workflow
         with tempfile.TemporaryDirectory() as tmp_rp2_folder:
+            knime_command = KPATH+' -nosplash -nosave -reset --launcher.suppressErrors -application org.knime.product.KNIME_BATCH_APPLICATION -workflowFile='+RP_WORK_PATH+' -workflow.variable=input.dmin,"'+str(dmin)+'",int -workflow.variable=input.dmax,"'+str(dmax)+'",int -workflow.variable=input.max-steps,"'+str(max_steps)+'",int -workflow.variable=input.sourcefile,"'+str(source_file)+'",String -workflow.variable=input.sinkfile,"'+str(sink_file)+'",String -workflow.variable=input.rulesfile,"'+str(rules_file)+'",String -workflow.variable=input.topx,"'+str(topx)+'",int -workflow.variable=input.mwmax-source,"'+str(mwmax_source)+'",int -workflow.variable=input.mwmax-cof,"'+str(mwmax_cof)+'",int -workflow.variable=output.dir,"'+str(tmp_rp2_folder)+'/",String -workflow.variable=output.solutionfile,"results.csv",String -workflow.variable=output.sourceinsinkfile,"source-in-sink.csv",String'
+            logger.debug('KNIME command: '+str(knime_command))
+            commandObj = subprocess.Popen(knime_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
             try:
-                knime_command = KPATH+' -nosplash -nosave -reset --launcher.suppressErrors -application org.knime.product.KNIME_BATCH_APPLICATION -workflowFile='+RP_WORK_PATH+' -workflow.variable=input.dmin,"'+str(dmin)+'",int -workflow.variable=input.dmax,"'+str(dmax)+'",int -workflow.variable=input.max-steps,"'+str(max_steps)+'",int -workflow.variable=input.sourcefile,"'+str(source_file)+'",String -workflow.variable=input.sinkfile,"'+str(sink_file)+'",String -workflow.variable=input.rulesfile,"'+str(rules_file)+'",String -workflow.variable=input.topx,"'+str(topx)+'",int -workflow.variable=input.mwmax-source,"'+str(mwmax_source)+'",int -workflow.variable=input.mwmax-cof,"'+str(mwmax_cof)+'",int -workflow.variable=output.dir,"'+str(tmp_rp2_folder)+'/",String -workflow.variable=output.solutionfile,"results.csv",String -workflow.variable=output.sourceinsinkfile,"source-in-sink.csv",String'
-                logger.debug('KNIME command: '+str(knime_command))
-                commandObj = subprocess.Popen(knime_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
-                result = ''
-                error = ''
+                stdout = b''
+                stderr = b''
                 try:
-                    #commandObj.wait(timeout=timeout) #subprocess timeout is in seconds while we input minutes
                     logger.debug('Running...')
-                    result, error = commandObj.communicate(timeout=timeout*60.0) #subprocess timeout is in seconds while we input minutes
-                    logger.debug('Ran')
-                    result = result.decode('utf-8')
-                    error = error.decode('utf-8')
+                    stdout, stderr = commandObj.communicate(timeout=sub_timeout*60.0) #subprocess timeout is in seconds while we input minutes
+                    logger.debug('Ran RetroPath2.0!')
+                    stdout = stdout.decode('utf-8')
+                    stderr = stderr.decode('utf-8')
                 except subprocess.TimeoutExpired as e:
                     logger.warning('RetroPath2.0 has reached its execution timeout limit')
                     commandObj.kill()
                     is_timeout = True
-                #(result, error) = commandObj.communicate()
-                logger.debug('RetroPath2.0 results message: '+str(result))
-                logger.debug('RetroPath2.0 error message: '+str(error))
+                except subprocess.CalledProcessError as e:
+                    logger.error('Non-zero raised by RetroPath2.0')
+                    logger.error(e)
+                    logger.debug(stdout)
+                    logger.debug(stderr)
+                except subprocess.SubprocessError as e:
+                    logger.error('The subprocess throws an error')
+                    logger.error(e)
+                except:
+                    logger.error('All other exceptions')
+                    e = sys.exc_info()[0]
+                    logger.error(e)
                 logger.debug('Output folder: '+str(glob.glob(os.path.join(tmp_rp2_folder, '*'))))
                 #check to see if the results.csv is empty
+                logger.debug('Checking the results.csv file')
                 try:
                     count = 0
                     with open(os.path.join(tmp_rp2_folder, 'results.csv')) as f:
@@ -191,10 +245,25 @@ def pipeline(rpcollection_file,
                 except (IndexError, FileNotFoundError) as e:
                     logger.debug('No results.csv file')
                     pass
-                ########################################################################
                 ##################### HANDLE all the different cases ###################
-                ########################################################################
                 ### if source is in sink. Note making sure that it contains more than the default first line
+                ### if java has an memory issue
+                if 'There is insufficient memory for the Java Runtime Environment to continue' in stdout:
+                    if not is_results_empty and partial_retro:
+                        logger.warning('RetroPath2.0 does not have sufficient memory to continue')
+                        shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
+                        logger.warning('Passing the results file instead')
+                    else:
+                        logger.error('RetroPath2.0 does not have sufficient memory to continue')
+                        return False, 'rp2'
+                ### handle timeout
+                if is_timeout:
+                    if not is_results_empty and partial_retro:
+                        logger.warning('Timeout from retropath2.0 ('+str(sub_timeout)+' minutes)')
+                        shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
+                    else:
+                        logger.error('Timeout from retropath2.0 ('+str(sub_timeout)+' minutes)')
+                        return False, 'rp2'
                 try:
                     count = 0
                     with open(os.path.join(tmp_rp2_folder, 'source-in-sink.csv')) as f:
@@ -205,26 +274,9 @@ def pipeline(rpcollection_file,
                         logger.error('Execution problem of RetroPath2.0. Source has been found in the sink')
                         return False, 'rp2'
                 except FileNotFoundError as e:
-                    logger.error('Cannot find source-in-sink.csv file')
+                    logger.error('Cannot find source-in-sink.csv file. Probably an execution error.')
                     logger.error(e)
                     return False, 'rp2'
-                ### handle timeout
-                if is_timeout:
-                    if not is_results_empty and partial_retro:
-                        logger.warning('Timeout from retropath2.0 ('+str(timeout)+' minutes)')
-                        shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
-                    else:
-                        logger.error('Timeout from retropath2.0 ('+str(timeout)+' minutes)')
-                        return False, 'rp2'
-                ### if java has an memory issue
-                if 'There is insufficient memory for the Java Runtime Environment to continue' in result:
-                    if not is_results_empty and partial_retro:
-                        logger.warning('RetroPath2.0 does not have sufficient memory to continue')
-                        shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
-                        logger.warning('Passing the results file instead')
-                    else:
-                        logger.error('RetroPath2.0 does not have sufficient memory to continue')
-                        return False, 'rp2'
                 ############## IF ALL IS GOOD ##############
                 ### csv scope copy to the .dat location
                 try:
@@ -258,15 +310,45 @@ def pipeline(rpcollection_file,
                     logger.error('Cannot set the RAM usage limit')
                     logger.error(e)
                     return False, 'rp2'
+        ###################################
         ######### rp2paths ################
+        ###################################
         logger.debug('---------- RP2paths -----')
         rp2paths_pathways_file = os.path.join(tmp_output_folder, 'rp2paths_pathways.csv')
         rp2paths_compounds_file = os.path.join(tmp_output_folder, 'rp2paths_compounds.tsv')
-        rp2paths_status = callRP2paths.run(rp2_file, rp2paths_pathways_file, rp2paths_compounds_file, logger=logger)
-        if not rp2paths_status:
-            logger.error('Problem running RP2paths')
-            return False, 'rp2paths'
+        with tempfile.TemporaryDirectory() as tmp_rp2paths_folder:
+            rp2paths_command = 'python /home/rp2paths/RP2paths.py all '+str(rp2_file)+' --outdir '+str(tmp_rp2paths_folder)+' --timeout '+str(int(sub_timeout*60.0))
+            try:
+                commandObj = subprocess.Popen(rp2paths_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
+                result = b''
+                error = b''
+                result, error = commandObj.communicate()
+                result = result.decode('utf-8')
+                error = error.decode('utf-8')
+                #TODO test to see what is the correct phrase
+                if 'TIMEOUT' in result:
+                    logger.error('Timeout from of ('+str(timeout)+' minutes)')
+                    return False, 'rp2paths'
+                if 'failed to map segment from shared object' in error:
+                    logger.error('RP2paths does not have sufficient memory to continue')
+                    return False, 'rp2paths'
+                ### convert the result to binary and return ###
+                logger.debug(glob.glob(os.path.join(tmp_rp2paths_folder, '*')))
+                try:
+                    shutil.copy2(os.path.join(tmp_rp2paths_folder, 'out_paths.csv'), rp2paths_pathways_file)
+                    shutil.copy2(os.path.join(tmp_rp2paths_folder, 'compounds.txt'), rp2paths_compounds_file)
+                except FileNotFoundError as e:
+                    logger.error('Cannot find the output files out_paths.csv or compounds.txt')
+                    return False, 'rp2paths'
+            except OSError as e:
+                logger.error('Subprocess detected an error when calling the rp2paths command')
+                return False, 'rp2paths'
+            except ValueError as e:
+                logger.error('Cannot set the RAM usage limit')
+                return False, 'rp2paths'
+        ##################################
         ####### Analysis #################
+        ##################################
         logger.debug('---------- rpReader -----')
         rpreader_status = rpReader.rp2ToCollection(rp2_file,
                                                    rp2paths_compounds_file,

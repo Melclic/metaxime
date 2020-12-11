@@ -28,7 +28,6 @@ import logging
 
 
 #logging.config.dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger(__name__)
 
 """
 logging.basicConfig(
@@ -84,6 +83,8 @@ def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dm
     """
     if passed_logger:
         logger = passed_logger
+    else:
+        logger = logging.getLogger(__name__)
     logger.debug('Rules file: '+str(rules_path))
     logger.debug('Timeout: '+str(timeout*60.0)+' seconds')
     is_timeout = False
@@ -94,8 +95,8 @@ def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dm
             knime_command = KPATH+' -nosplash -nosave -reset --launcher.suppressErrors -application org.knime.product.KNIME_BATCH_APPLICATION -workflowFile='+RP_WORK_PATH+' -workflow.variable=input.dmin,"'+str(dmin)+'",int -workflow.variable=input.dmax,"'+str(dmax)+'",int -workflow.variable=input.max-steps,"'+str(max_steps)+'",int -workflow.variable=input.sourcefile,"'+str(source_path)+'",String -workflow.variable=input.sinkfile,"'+str(sink_path)+'",String -workflow.variable=input.rulesfile,"'+str(rules_path)+'",String -workflow.variable=input.topx,"'+str(topx)+'",int -workflow.variable=input.mwmax-source,"'+str(mwmax_source)+'",int -workflow.variable=input.mwmax-cof,"'+str(mwmax_cof)+'",int -workflow.variable=output.dir,"'+str(tmp_output_folder)+'/",String -workflow.variable=output.solutionfile,"results.csv",String -workflow.variable=output.sourceinsinkfile,"source-in-sink.csv",String'
             logger.debug('KNIME command: '+str(knime_command))
             commandObj = subprocess.Popen(knime_command.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=limit_virtual_memory)
-            result = ''
-            error = ''
+            result = b''
+            error = b''
             try:
                 #commandObj.wait(timeout=timeout) #subprocess timeout is in seconds while we input minutes
                 result, error = commandObj.communicate(timeout=timeout*60.0) #subprocess timeout is in seconds while we input minutes
