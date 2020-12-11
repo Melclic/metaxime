@@ -8,7 +8,6 @@ Created on September 21 2019
 """
 
 import shutil
-import logging
 import csv
 import io
 import os
@@ -17,8 +16,15 @@ import argparse
 import tarfile
 import tempfile
 
+import logging
+#import logging.config
+#from logsetup import LOGGING_CONFIG
 
-def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_format='csv'):
+
+#logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
+
+def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_format='csv', logger=None):
     """Parse the input file and return the reactions rules at the appropriate diameters
 
     :param output: Path to the output file
@@ -34,6 +40,8 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
     :rtype: bool
     :return: Success or failure of the function
     """
+    if logger==None:
+        logger = logging.getLogger(__name__)
     rule_file = None
     if rules_type=='all':
         rule_file = '/home/retrorules/rules_rall_rp2.csv' 
@@ -42,7 +50,7 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
     elif rules_type=='retro':
         rule_file = '/home/retrorules/rules_rall_rp2_retro.csv'
     else:
-        logging.error('Cannot detect input: '+str(rules_type))
+        logger.error('Cannot detect input: '+str(rules_type))
         return False
     #check the input diameters are valid #
     try:
@@ -50,11 +58,11 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
         valid_diameters = []
         for i in s_diameters:
             if i not in [2,4,6,8,10,12,14,16]:
-                logging.warning('Diameters must be either 2,4,6,8,10,12,14,16. Ignoring entry: '+str(i))
+                logger.warning('Diameters must be either 2,4,6,8,10,12,14,16. Ignoring entry: '+str(i))
             else:
                 valid_diameters.append(i)
     except ValueError:
-        logging.error('Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
+        logger.error('Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
         return False
     ##### create temp file to write ####
     with tempfile.TemporaryDirectory() as tmp_output_folder:
@@ -69,7 +77,7 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
                         if int(row[4]) in valid_diameters:
                             o_csv.writerow(row)
                     except ValueError:
-                        logging.error('Cannot convert diameter to integer: '+str(row[4]))
+                        logger.error('Cannot convert diameter to integer: '+str(row[4]))
                         return False
         if output_format=='tar':
             with tarfile.open(output, mode='w:gz') as ot:
@@ -79,7 +87,7 @@ def passRules(output, rules_type='all', diameters=[2,4,6,8,10,12,14,16], output_
         elif output_format=='csv':
             shutil.copy(outfile_path, output)
         else:
-            logging.error('Cannot detect the output_format: '+str(output_format))
+            logger.error('Cannot detect the output_format: '+str(output_format))
             return False
     return True
 
@@ -113,11 +121,11 @@ def parseRules(rule_file, output, rules_type='all', diameters=[2,4,6,8,10,12,14,
         valid_diameters = []
         for i in s_diameters:
             if i not in [2,4,6,8,10,12,14,16]:
-                logging.warning('Diameters must be either 2,4,6,8,10,12,14,16. Ignoring entry: '+str(i))
+                logger.warning('Diameters must be either 2,4,6,8,10,12,14,16. Ignoring entry: '+str(i))
             else:
                 valid_diameters.append(i)
     except ValueError:
-        logging.error('Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
+        logger.error('Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
     ##### create temp file to write ####
     with tempfile.TemporaryDirectory() as tmp_output_folder:
         ##### parse the input ######
@@ -156,7 +164,7 @@ def parseRules(rule_file, output, rules_type='all', diameters=[2,4,6,8,10,12,14,
                                         row['Score_normalized']])
                         except ValueError:
                             #TODO: consider changing this to warning and passing to the next row
-                            logging.error('Cannot convert diameter to integer: '+str(row['Diameter']))
+                            logger.error('Cannot convert diameter to integer: '+str(row['Diameter']))
                             return False
         elif input_format=='csv':
             with open(rule_file, 'r') as rf:
@@ -170,10 +178,10 @@ def parseRules(rule_file, output, rules_type='all', diameters=[2,4,6,8,10,12,14,
                                 if rules_type=='all' or (rules_type=='retro' and (row[9]=='both' or row[9]=='retro')) or (rules_type=='forward' and (row[9]=='both' or row[9]=='forward')):
                                     o_csv.writerow(row)
                         except ValueError:
-                            logging.error('Cannot convert diameter to integer: '+str(row[4]))
+                            logger.error('Cannot convert diameter to integer: '+str(row[4]))
                             return False
         else:
-            logging.error('Can only have input formats of TSV or CSV')
+            logger.error('Can only have input formats of TSV or CSV')
             return False
         ##### build the output #####
         if output_format=='tar':
@@ -184,7 +192,7 @@ def parseRules(rule_file, output, rules_type='all', diameters=[2,4,6,8,10,12,14,
         elif output_format=='csv':
             shutil.copy(outfile_path, output)
         else:
-            logging.error('Cannot detect the output_format: '+str(output_format))
+            logger.error('Cannot detect the output_format: '+str(output_format))
             return False
     return True
 

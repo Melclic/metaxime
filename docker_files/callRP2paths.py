@@ -13,19 +13,18 @@ import tempfile
 import glob
 import io
 import shutil
-import logging
 import argparse
 import os
 import glob
 
+import logging
+#import logging.config
+#from logsetup import LOGGING_CONFIG
 
-logging.basicConfig(
-    #level=logging.DEBUG,
-    #level=logging.WARNING,
-    level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
+
+#logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
+
 
 MAX_VIRTUAL_MEMORY = 20000 * 1024 * 1024 # 20GB -- define what is the best
 #MAX_VIRTUAL_MEMORY = 20 * 1024 * 1024 # 20GB -- define what is the best
@@ -54,7 +53,6 @@ def run(rp2_pathways, rp2paths_pathways, rp2paths_compounds, timeout=30, logger=
     """
     ### not sure why throws an error:
     if logger==None:
-        logging.basicConfig(level=logging.DEBUG)
         logger = logging.getLogger(__name__)
     out_paths = ''
     out_compounds = ''
@@ -100,6 +98,6 @@ if __name__ == "__main__":
     parser.add_argument('-timeout', type=int, default=30)
     params = parser.parse_args()
     if params.timeout<=0:
-        logging.error('Timeout cannot be less or equal to 0 :'+str(params.timeout))
+        logger.error('Timeout cannot be less or equal to 0 :'+str(params.timeout))
         exit(1)
     result = run(params.rp_pathways, params.rp2paths_pathways, params.rp2paths_compounds, params.timeout)

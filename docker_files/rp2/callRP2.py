@@ -7,7 +7,6 @@ Created on January 16 2020
 
 """
 import subprocess
-import logging
 import csv
 import glob
 import resource
@@ -23,6 +22,15 @@ KPATH = '/usr/local/knime/knime'
 RP_WORK_PATH = '/home/rp2/RetroPath2.0.knwf'
 
 
+import logging
+#import logging.config
+#from logsetup import LOGGING_CONFIG
+
+
+#logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
+
+"""
 logging.basicConfig(
     #level=logging.DEBUG,
     #level=logging.WARNING,
@@ -30,7 +38,7 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-
+"""
 
 #MAX_VIRTUAL_MEMORY = 20000*1024*1024 # 20 GB -- define what is the best
 MAX_VIRTUAL_MEMORY = 30000*1024*1024 # 30 GB -- define what is the best
@@ -40,9 +48,8 @@ def limit_virtual_memory():
     """
     resource.setrlimit(resource.RLIMIT_AS, (MAX_VIRTUAL_MEMORY, resource.RLIM_INFINITY))
 
-from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 
-def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=1000, mwmax_source=1000, mwmax_cof=1000, timeout=30, partial_retro=False, logger=None):
+def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dmin=0, dmax=1000, mwmax_source=1000, mwmax_cof=1000, timeout=30, partial_retro=False, passed_logger=None):
     """Call the KNIME RetroPath2.0 workflow
 
     :param source_path: The path to the source file
@@ -75,8 +82,8 @@ def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dm
     :rtype: tuple
     :return: tuple of bytes with the results, the status message, the KNIME command used
     """
-    if logger==None:
-        logger = logging.getLogger(__name__)
+    if passed_logger:
+        logger = passed_logger
     logger.debug('Rules file: '+str(rules_path))
     logger.debug('Timeout: '+str(timeout*60.0)+' seconds')
     is_timeout = False
@@ -95,7 +102,7 @@ def run(output_path, source_path, sink_path, rules_path, max_steps, topx=100, dm
                 result = result.decode('utf-8')
                 error = error.decode('utf-8')
             except subprocess.TimeoutExpired as e:
-                logging.warning('RetroPath2.0 has reached its execution timeout limit')
+                logger.warning('RetroPath2.0 has reached its execution timeout limit')
                 commandObj.kill()
                 is_timeout = True
             #(result, error) = commandObj.communicate()
@@ -207,61 +214,61 @@ if __name__ == "__main__":
     parser.add_argument('-partial_retro', type=str, default='False')
     params = parser.parse_args()
     if params.max_steps<=0:
-        logging.error('Maximal number of steps cannot be less or equal to 0')
+        logger.error('Maximal number of steps cannot be less or equal to 0')
         exit(1)
     if params.topx<0:
-        logging.error('Cannot have a topx value that is <0: '+str(params.topx))
+        logger.error('Cannot have a topx value that is <0: '+str(params.topx))
         exit(1)
     if params.dmin<0:
-        logging.error('Cannot have a dmin value that is <0: '+str(params.dmin))
+        logger.error('Cannot have a dmin value that is <0: '+str(params.dmin))
         exit(1)
     if params.dmax<0:
-        logging.error('Cannot have a dmax value that is <0: '+str(params.dmax))
+        logger.error('Cannot have a dmax value that is <0: '+str(params.dmax))
         exit(1)
     if params.dmax>1000:
-        logging.error('Cannot have a dmax valie that is >1000: '+str(params.dmax))
+        logger.error('Cannot have a dmax valie that is >1000: '+str(params.dmax))
         exit(1)
     if params.dmax<params.dmin:
-        logging.error('Cannot have dmin>dmax : dmin: '+str(params.dmin)+', dmax: '+str(params.dmax))
+        logger.error('Cannot have dmin>dmax : dmin: '+str(params.dmin)+', dmax: '+str(params.dmax))
         exit(1)
     if params.partial_retro=='False' or params.partial_retro=='false' or params.partial_retro=='F':
         partial_retro = False
     elif params.partial_retro=='True' or params.partial_retro=='true' or params.partial_retro=='T':
         partial_retro = True
     else:
-        logging.error('Cannot interpret partial_retro: '+str(params.partial_retro))
+        logger.error('Cannot interpret partial_retro: '+str(params.partial_retro))
         exit(1)
     '''
     if not os.path.exists(params.output_csv):
-        logging.error('The scope file cannot be found: '+str(params.output_csv))
+        logger.error('The scope file cannot be found: '+str(params.output_csv))
         exit(1)
     '''
     if not os.path.exists(params.rulesfile):
-        logging.error('The rules file cannot be found: '+str(params.rulesfile))
+        logger.error('The rules file cannot be found: '+str(params.rulesfile))
         exit(1)
     if not os.path.exists(params.sinkfile):
-        logging.error('The sink file cannot be found: '+str(params.sinkfile))
+        logger.error('The sink file cannot be found: '+str(params.sinkfile))
         exit(1)
     ########## handle the call ###########
     with tempfile.TemporaryDirectory() as tmp_input_folder:
         if params.rulesfile_format=='csv':
-            logging.debug('Rules file: '+str(params.rulesfile))
+            logger.debug('Rules file: '+str(params.rulesfile))
             rulesfile = os.path.join(tmp_input_folder, 'rules.csv')
             shutil.copy(params.rulesfile, rulesfile)
-            logging.debug('Rules file: '+str(rulesfile))
+            logger.debug('Rules file: '+str(rulesfile))
         elif params.rulesfile_format=='tar':
             with tarfile.open(params.rulesfile) as rf:
                 rf.extractall(tmp_input_folder)
             out_file = glob.glob(os.path.join(tmp_input_folder, '*.csv'))
             if len(out_file)>1:
-                logging.error('Cannot detect file: '+str(glob.glob(os.path.join(tmp_input_folder, '*.csv'))))
+                logger.error('Cannot detect file: '+str(glob.glob(os.path.join(tmp_input_folder, '*.csv'))))
                 exit(1)
             elif len(out_file)==0:
-                logging.error('The rules tar input is empty')
+                logger.error('The rules tar input is empty')
                 exit(1)
             rulesfile = out_file[0]
         else:
-            logging.error('Cannot detect the rules_format: '+str(params.rulesfile_format))
+            logger.error('Cannot detect the rules_format: '+str(params.rulesfile_format))
             exit(1)
         sourcefile = os.path.join(tmp_input_folder, 'source.csv')
         shutil.copy(params.sourcefile, sourcefile)

@@ -23,10 +23,10 @@ RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
 RUN conda update -n base -c defaults conda
 
-RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq
+RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
-RUN pip install cobra==0.20.0
+RUN pip install cobra==0.16
 
 ###### MARVIN ####
 
@@ -147,6 +147,8 @@ org.rdkit.knime.feature.feature.group \
 
 COPY docker_files/rp2/callRP2.py /home/
 COPY docker_files/rp2/rp2_sanity_test.tar.xz /home/rp2/
+COPY docker_files/logsetup.py /home/
+RUN mkdir /home/logs/
 
 #test
 ENV RP2_RESULTS_SHA256 7428ebc0c25d464fbfdd6eb789440ddc88011fb6fc14f4ce7beb57a6d1fbaec2
@@ -211,13 +213,16 @@ RUN python /home/extra_packages/init_equilibrator.py
 
 COPY metaxime/ /home/metaxime/
 COPY selenzy/ /home/selenzy/
-COPY pipeline_service.py /home/
 COPY docker_files/callRR.py /home/
 COPY docker_files/models.tar.xz /home/
+COPY docker_files/sinks.tar.xz /home/
 RUN tar xf /home/models.tar.xz -C /home/ 
+RUN tar xf /home/sinks.tar.xz -C /home/ 
 RUN rm /home/models.tar.xz
 COPY docker_files/start.sh /home/
 COPY docker_files/supervisor.conf /home/
+COPY pipeline.py /home/
+COPY service.py /home/
 
 ###### Server #####
 
@@ -225,5 +230,4 @@ RUN chmod +x /home/start.sh
 CMD ["/home/start.sh"]
 
 # Open server port
-RUN pip install flask-restful
 EXPOSE 8888
