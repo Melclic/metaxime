@@ -58,6 +58,8 @@ model_list = {'b_subtilis_iYO844': '/home/models/b_subtilis_iYO844.sbml',
               'e_coli_iJR904': '/home/models/e_coli_iJR904.sbml',
               's_cerevisiae_iMM904': '/home/models/s_cerevisiae_iMM904.sbml',
               'e_coli_iAF1260': '/home/models/e_coli_iAF1260.sbml',
+              'y_lipolytica_iMK735': '/home/models/y_lipolytica_iMK735.sbml',
+              's_cerevisiae_iND750': '/home/models/s_cerevisiae_iND750.sbml',
               'e_coli_iML1515': '/home/models/e_coli_iML1515.sbml'}
 
 sink_list = {'b_subtilis_iYO844': '/home/sinks/b_subtilis_iYO844__sink.csv',
@@ -67,15 +69,19 @@ sink_list = {'b_subtilis_iYO844': '/home/sinks/b_subtilis_iYO844__sink.csv',
               'e_coli_iJR904': '/home/sinks/e_coli_iJR904__sink.csv',
               's_cerevisiae_iMM904': '/home/sinks/s_cerevisiae_iMM904__sink.csv',
               'e_coli_iAF1260': '/home/sinks/e_coli_iAF1260__sink.csv',
+              'y_lipolytica_iMK735': '/home/sinks/y_lipolytica_iMK735__sink.csv',
+              's_cerevisiae_iND750': '/home/sinks/s_cerevisiae_iND750__sink.csv',
               'e_coli_iML1515': '/home/sinks/e_coli_iML1515__sink.csv'}
 
-model_taxo_id = {'b_subtilis_iYO844': 1423,
+model_taxo_id = {'b_subtilis_iYO844': 224308,
                  'e_coli_iJO1366': 83333,
                  'p_putida_iJN746': 160488,
                  'e_coli_core_model': 83333,
                  'e_coli_iJR904': 83333,
                  's_cerevisiae_iMM904': 559292,
                  'e_coli_iAF1260': 83333,
+                 'y_lipolytica_iMK735': 284591,
+                 's_cerevisiae_iND750': 559292,
                  'e_coli_iML1515': 83333}
 
 #global_selenzyme = rpSelenzyme(cache_tar_path=os.path.dirname('home', 'metaxime', 'metaxime', 'input_cache', 'rpselenzyme_data.tar.xz'))
