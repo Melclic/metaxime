@@ -211,28 +211,35 @@ RUN python /home/extra_packages/init_equilibrator.py
 ############# REST #########################
 ############################################
 
+##### projects #####
 COPY metaxime/ /home/metaxime/
 COPY selenzy/ /home/selenzy/
 COPY docker_files/callRR.py /home/
+#### init cache #####
+COPY docker_files/init_cache.py /home/
+RUN chmod +x /home/init_cache.py
+RUN python /home/init_cache.py
+###### extra files #####
 COPY docker_files/models.tar.xz /home/
 COPY docker_files/sinks.tar.xz /home/
 RUN tar xf /home/models.tar.xz -C /home/ 
 RUN tar xf /home/sinks.tar.xz -C /home/ 
 RUN rm /home/models.tar.xz
-COPY docker_files/start.sh /home/
-COPY docker_files/supervisor.conf /home/
-COPY service.py /home/
-COPY docker_files/init_cache.py /home/
-RUN chmod +x /home/init_cache.py
-RUN python /home/init_cache.py
+RUN rm /home/sinks.tar.xz
+######## KNIME extra config files ######
 COPY docker_files/config/ /usr/local/knime/
-
-COPY pipeline.py /home/pipeline.py
+######## service files #####
+COPY docker_files/start.sh /home/
+RUN chmod +x /home/start.sh
+COPY docker_files/supervisor.conf /home/
+COPY pipeline.py /home/
+COPY service.py /home/
 
 ###### Server #####
 
-RUN chmod +x /home/start.sh
 CMD ["/home/start.sh"]
+#ENTRYPOINT "/bin/bash /home/start.sh"
 
 # Open server port
-EXPOSE 8888
+#EXPOSE 8888
+EXPOSE 80

@@ -29,3 +29,5 @@ libxrender1
 supervisor
 redis
 redis-server
+####### HTTP ######
+apache2

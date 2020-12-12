@@ -11,6 +11,7 @@ import json
 import os
 import tempfile
 import time
+import io
 
 import logging
 from datetime import datetime
@@ -21,6 +22,7 @@ from logging.handlers import RotatingFileHandler
 
 from rq import Connection, Queue
 from redis import Redis
+from rq.job import Job
 
 import pipeline
 
@@ -87,7 +89,7 @@ class RestApp(Resource):
 
 
 # NOTE: Avoid returning numpy or pandas object in order to keep the client lighter.
-class RestQuery(Resource):
+class RestSubmitJob(Resource):
     """Class containing the REST requests for the pipeline
     """
     def post(self):
@@ -102,32 +104,80 @@ class RestQuery(Resource):
         logger.debug('GEM: '+str(params['gem']))
         logger.debug('Steps: '+str(params['steps']))
         ##### REDIS ##############
-        conn = Redis()
-        q = Queue('default', connection=conn, default_time_out='24h')
-        with tempfile.TemporaryDirectory() as tmp_output_folder:
-            fi_name = params['name']+'__'+params['gem']+'__'+str(time.time())+'.rpcol'
-            logger.debug('fi_name: '+str(fi_name))
-            rpcoll = os.path.join(tmp_output_folder, fi_name)
-            logger.debug('rpcoll: '+str(rpcoll))
-            logger.debug('pipeline: '+str(pipeline.pipeline))
-            async_results = q.enqueue(pipeline.pipeline, str(rpcoll), str(params['smiles']), str(params['gem']), int(params['steps']), job_timeout='5h')
-            result = None
-            while result is None:
-                result = async_results.return_value
-                if async_results.get_status()=='failed':
-                    return Response('Redis job failed \n '+str(result), status=500)
-                time.sleep(5.0)
-            if result[0]==True:
-                response = make_response(send_file(rpcoll, as_attachment=True, attachment_filename=fi_name, mimetype='application/x-tar'))
-                #response.headers['status_message'] = err_type
-                response.headers['status_message'] = 'Successfull execution'
+        redis_conn = Redis()
+        q = Queue('default', connection=redis_conn, default_time_out='24h')
+        job = q.enqueue(pipeline.pipeline, str(params['smiles']), str(params['gem']), int(params['steps']), job_timeout='24h')
+        job.meta['progress'] = 0
+        job.save_meta()
+        logger.debug('job: '+str(job))
+        logger.debug('job.id: '+str(job.id))
+        toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+        logger.debug(toret)
+        response = make_response(jsonify(toret), 201)
+        response.headers["Content-Type"] = "application/json"
+        return response
+
+
+class RestRetreiveJob(Resource):
+    def post(self):
+        params = json.load(request.files['data'])
+        redis_conn = Redis()
+        logger.debug('Retreiving results from job: '+str(params['job_id']))
+        job = Job.fetch(params['job_id'], connection=redis_conn)
+        logger.debug('job status: '+str(job.get_status()))
+        if job.get_status()=='failed':
+            logger.error('The job '+str(job.id)+' failed: '+str(job.return_value))
+            toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+            logger.debug(toret)
+            response = make_response(jsonify(toret), 500)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        elif job.get_status()=='finished':
+            pipeline_result = job.return_value
+            if not pipeline_result[0]:
+                logger.error('The job '+str(job.id)+' failed: '+str(pipeline_result[1]))
+                toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta, 'pipeline_status': pipeline_result[0], 'pipeline_error_msg': pipeline_result[2]}
+                logger.debug(toret)
+                response = make_response(jsonify(toret), 500)
+                response.headers["Content-Type"] = "application/json"
                 return response
             else:
-                logger.error('There was an error running the pipeline: '+str(result))
-                return Response('There was an error running the pipeline: '+str(result[1]), status=500)
+                logger.debug('Successfull run')
+                binary_rpcol = io.BytesIO()
+                binary_rpcol.write(pipeline_result[2])
+                ###### IMPORTANT ######
+                binary_rpcol.seek(0)
+                #######################
+                response = make_response(send_file(binary_rpcol, as_attachment=True, attachment_filename=str(job.id)+'.tar.xz', mimetype='application/x-tar'), 200)
+                response.headers['status_message'] = 'success'
+                return response
+        else:
+            logger.debug('The job does not seem to be ready: '+str(job.get_status()))
+            toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+            logger.debug(toret)
+            response = make_response(jsonify(toret), 102)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+class RestQueryJob(Resource):
+    def post(self):
+        params = json.load(request.files['data'])
+        redis_conn = Redis()
+        logger.debug('Received a query for job: '+str(params['job_id']))
+        job = Job.fetch(params['job_id'], connection=redis_conn)
+        logger.debug(job)
+        toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+        logger.debug(toret)
+        response = make_response(jsonify(toret), 200)
+        response.headers["Content-Type"] = "application/json"
+        return response
+        
 
 api.add_resource(RestApp, '/REST')
-api.add_resource(RestQuery, '/REST/Query')
+api.add_resource(RestSubmitJob, '/REST/SubmitJob')
+api.add_resource(RestQueryJob, '/REST/QueryJob')
+api.add_resource(RestRetreiveJob, '/REST/RetreiveJob')
 
 if __name__== "__main__":
     #handler = RotatingFileHandler('metaxime.log', maxBytes=10000, backupCount=1)

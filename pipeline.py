@@ -15,8 +15,9 @@ import argparse
 import tarfile
 import shutil
 import os
-
+import rq
 from equilibrator_api import ComponentContribution
+
 
 from metaxime import rpCache
 from metaxime import rpReader
@@ -40,9 +41,6 @@ from logsetup import LOGGING_CONFIG
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
-global_rpcache = rpCache()
-global_rpcache.populateCache()
-global_cc = ComponentContribution()
 
 KPATH = '/usr/local/knime/knime'
 RP_WORK_PATH = '/home/rp2/RetroPath2.0.knwf'
@@ -104,8 +102,7 @@ def limit_virtual_memory():
     resource.setrlimit(resource.RLIMIT_AS, (MAX_VIRTUAL_MEMORY, resource.RLIM_INFINITY))
 
 
-def pipeline(rpcollection_file,
-             target_smiles,
+def pipeline(target_smiles,
              gem_name,
              max_steps,
              rules_diameters='2,4,6,8,10,12,14,16',
@@ -116,15 +113,29 @@ def pipeline(rpcollection_file,
              ph=7.5,
              ionic_strength=200,
              temp_k=298.15):
-    logger.debug('rpcollection_file: '+str(rpcollection_file))
-    logger.debug('target_smiles: '+str(target_smiles))
-    logger.debug('gem_name: '+str(gem_name))
-    logger.debug('max_steps: '+str(max_steps))
+    logger.info('####### pipieline ######')
+    job = rq.get_current_job()
+    job.meta['progress'] = 1
+    job.save_meta()
+    logger.debug('cache')
+    global_rpcache = rpCache()
+    logger.debug('populate cache')
+    global_rpcache.populateCache()
+    logger.debug('Component Contribution')
+    global_cc = ComponentContribution()
+    logger.info('target_smiles: '+str(target_smiles))
+    logger.info('gem_name: '+str(gem_name))
+    logger.info('max_steps: '+str(max_steps))
+    logger.info('job: '+str(job))
+    logger.info('job.id: '+str(job.id))
     target_inchi = MolToInchi(MolFromSmiles(target_smiles, sanitize=True))
-    logger.debug('target_inchi: '+str(target_inchi))
+    logger.info('target_inchi: '+str(target_inchi))
     with tempfile.TemporaryDirectory() as tmp_output_folder:
         ############# source file #############
         logger.debug('------ source file -----')
+        job.meta['progress'] = 2
+        job.save_meta()
+        rpcollection_file = os.path.join(tmp_output_folder, 'tmp.rpcol')
         source_file = os.path.join(tmp_output_folder, 'source.csv')
         with open(source_file, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -132,13 +143,15 @@ def pipeline(rpcollection_file,
             filewriter.writerow(['target', target_inchi])
         ############ sink file ##############
         logger.debug('-------- sink file --------')
+        job.meta['progress'] = 3
+        job.save_meta()
         try:
             gem_file = model_list[gem_name]
             taxo_id = model_taxo_id[gem_name]
             sink_file = sink_list[gem_name]
         except KeyError:
             logger.error('Cannot find the following GEM model: '+str(gem_name))
-            return False, 'gem'
+            return False, 'gem', b''
         '''#only when passing an SBML file to process
         sink_file = os.path.join(tmp_output_folder, 'sink.csv')
         gensink_status = rpExtractSink.genSink(gem_file, sink_file, remove_dead_end=True)
@@ -150,6 +163,8 @@ def pipeline(rpcollection_file,
         ########## Reaction Rules ##########
         ####################################
         logger.debug('---------- reaction rules -----')
+        job.meta['progress'] = 4
+        job.save_meta()
         rules_file = os.path.join(tmp_output_folder, 'reaction_rules.csv')
         rule_file = None
         if rules_type=='all':
@@ -160,7 +175,7 @@ def pipeline(rpcollection_file,
             rule_file = '/home/retrorules/rules_rall_rp2_retro.csv'
         else:
             logger.error('RR: Cannot detect input: '+str(rules_type))
-            return False, 'rr'
+            return False, 'rr_inputerror', b''
         #check the input diameters are valid #
         try:
             s_diameters = [int(i) for i in rules_diameters.split(',')]
@@ -172,7 +187,7 @@ def pipeline(rpcollection_file,
                     valid_diameters.append(i)
         except ValueError:
             logger.error('RR: Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
-            return False, 'rr'
+            return False, 'rr_invaliddiameters', b''
         ##### create temp file to write ####
         with tempfile.TemporaryDirectory() as tmp_rr_folder:
             outfile_path = os.path.join(tmp_rr_folder, 'tmp_rules.csv')
@@ -187,12 +202,14 @@ def pipeline(rpcollection_file,
                                 o_csv.writerow(row)
                         except ValueError:
                             logger.error('RR: Cannot convert diameter to integer: '+str(row[4]))
-                            return False, 'rr'
+                            return False, 'rr_valuerror', b''
             shutil.copy2(outfile_path, rules_file)
         ####################################
         ########## Retropath2 ##############
         ####################################
         logger.debug('---------- RP2 -----')
+        job.meta['progress'] = 5
+        job.save_meta()
         rp2_file = os.path.join(tmp_output_folder, 'rp2_pathways.csv')
         logger.debug('Rules file: '+str(rules_file))
         logger.debug('Timeout: '+str(sub_timeout*60.0)+' seconds')
@@ -261,7 +278,7 @@ def pipeline(rpcollection_file,
                         logger.warning('Passing the results file instead')
                     else:
                         logger.error('RetroPath2.0 does not have sufficient memory to continue')
-                        return False, 'rp2'
+                        return False, 'rp2_ram', b''
                 ### handle timeout
                 if is_timeout:
                     if not is_results_empty and partial_retro:
@@ -269,7 +286,7 @@ def pipeline(rpcollection_file,
                         shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
                     else:
                         logger.error('Timeout from retropath2.0 ('+str(sub_timeout)+' minutes)')
-                        return False, 'rp2'
+                        return False, 'rp2_timeout', b''
                 try:
                     count = 0
                     with open(os.path.join(tmp_rp2_folder, 'source-in-sink.csv')) as f:
@@ -278,11 +295,11 @@ def pipeline(rpcollection_file,
                             count += 1
                     if count>1:
                         logger.error('Execution problem of RetroPath2.0. Source has been found in the sink')
-                        return False, 'rp2'
+                        return False, 'rp2_sourceinsink', b''
                 except FileNotFoundError as e:
                     logger.error('Cannot find source-in-sink.csv file. Probably an execution error.')
                     logger.error(e)
-                    return False, 'rp2'
+                    return False, 'rp2_execerror', b''
                 ############## IF ALL IS GOOD ##############
                 ### csv scope copy to the .dat location
                 try:
@@ -295,7 +312,7 @@ def pipeline(rpcollection_file,
                         logger.warning('Passing the results file instead')
                     else:
                         logger.error('RetroPath2.0 has not found any results')
-                        return False, 'rp2'
+                        return False, 'rp2_noresults', b''
             except OSError as e:
                 if not is_results_empty and partial_retro:
                     logger.warning('Running the RetroPath2.0 Knime program produced an OSError')
@@ -305,7 +322,7 @@ def pipeline(rpcollection_file,
                 else:
                     logger.error('Running the RetroPath2.0 Knime program produced an OSError')
                     logger.error(e)
-                    return False, 'rp2'
+                    return False, 'rp2_oserror', b''
             except ValueError as e:
                 if not is_results_empty and partial_retro:
                     logger.warning('Cannot set the RAM usage limit')
@@ -315,11 +332,13 @@ def pipeline(rpcollection_file,
                 else:
                     logger.error('Cannot set the RAM usage limit')
                     logger.error(e)
-                    return False, 'rp2'
+                    return False, 'rp2_ram', b''
         ###################################
         ######### rp2paths ################
         ###################################
         logger.debug('---------- RP2paths -----')
+        job.meta['progress'] = 6
+        job.save_meta()
         rp2paths_pathways_file = os.path.join(tmp_output_folder, 'rp2paths_pathways.csv')
         rp2paths_compounds_file = os.path.join(tmp_output_folder, 'rp2paths_compounds.tsv')
         with tempfile.TemporaryDirectory() as tmp_rp2paths_folder:
@@ -334,10 +353,10 @@ def pipeline(rpcollection_file,
                 #TODO test to see what is the correct phrase
                 if 'TIMEOUT' in result:
                     logger.error('Timeout from of ('+str(timeout)+' minutes)')
-                    return False, 'rp2paths'
+                    return False, 'rp2paths_timeout', b''
                 if 'failed to map segment from shared object' in error:
                     logger.error('RP2paths does not have sufficient memory to continue')
-                    return False, 'rp2paths'
+                    return False, 'rp2paths_ram', b''
                 ### convert the result to binary and return ###
                 logger.debug(glob.glob(os.path.join(tmp_rp2paths_folder, '*')))
                 try:
@@ -345,17 +364,19 @@ def pipeline(rpcollection_file,
                     shutil.copy2(os.path.join(tmp_rp2paths_folder, 'compounds.txt'), rp2paths_compounds_file)
                 except FileNotFoundError as e:
                     logger.error('Cannot find the output files out_paths.csv or compounds.txt')
-                    return False, 'rp2paths'
+                    return False, 'rp2paths_outputerr', b''
             except OSError as e:
                 logger.error('Subprocess detected an error when calling the rp2paths command')
-                return False, 'rp2paths'
+                return False, 'rp2paths_subprocess', b''
             except ValueError as e:
                 logger.error('Cannot set the RAM usage limit')
-                return False, 'rp2paths'
+                return False, 'rp2paths_ram', b''
         ##################################
         ####### Analysis #################
         ##################################
         logger.debug('---------- rpReader -----')
+        job.meta['progress'] = 7
+        job.save_meta()
         rpreader_status = rpReader.rp2ToCollection(rp2_file,
                                                    rp2paths_compounds_file,
                                                    rp2paths_pathways_file,
@@ -363,7 +384,10 @@ def pipeline(rpcollection_file,
                                                    rpcache=global_rpcache)
         if not rpreader_status:
             logger.error('Problem running rpReader')
-            return False, 'rpreader'
+            return False, 'rpreader', b''
+        logger.debug('---------- rpFBA -----')
+        job.meta['progress'] = 8
+        job.save_meta()
         rpfba_status = rpFBA.runCollection(rpcollection_file,
                                            gem_file,
                                            rpcollection_file,
@@ -374,8 +398,10 @@ def pipeline(rpcollection_file,
                                            rpcache=global_rpcache)
         if not rpfba_status:
             logger.error('Problem running rpFBA')
-            return False, 'rpfba'
+            return False, 'rpfba', b''
         logger.debug('---------- rpEquilibrator -----')
+        job.meta['progress'] = 9
+        job.save_meta()
         rpeq_status = rpEquilibrator.runCollection(rpcollection_file,
                                                    rpcollection_file,
                                                    cc=global_cc,
@@ -385,8 +411,10 @@ def pipeline(rpcollection_file,
                                                    rpcache=global_rpcache)
         if not rpeq_status:
             logger.error('Problem running rpEquilibrator')
-            return False, 'rpeq'
+            return False, 'rpeq', b''
         logger.debug('---------- rpSelenzyme -----')
+        job.meta['progress'] = 10
+        job.save_meta()
         rpsel_status = rpSelenzyme.runCollection(rpcollection_file,
                                                  taxo_id,
                                                  rpcollection_file,
@@ -394,12 +422,18 @@ def pipeline(rpcollection_file,
                                                  rpcache=global_rpcache)
         if not rpsel_status:
             logger.error('Problem running rpSelenzyme')
-            return False, 'rpsel'
+            return False, 'rpsel', b''
         logger.debug('---------- rpGlobalScore -----')
+        job.meta['progress'] = 11
+        job.save_meta()
         rpglo_status = rpGlobalScore.runCollection(rpcollection_file,
                                                    rpcollection_file,
                                                    rpcache=global_rpcache)
         if not rpglo_status:
             logger.error('Problem running rpGlobalScore')
-            return False, 'rpglo'
-        return True, 'success'
+            return False, 'rpglo', b''
+        job.meta['progress'] = 12
+        job.save_meta()
+        with open(rpcollection_file, 'rb') as op:
+            binary_rpcol = op.read()
+        return True, 'success', binary_rpcol 
