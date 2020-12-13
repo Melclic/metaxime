@@ -84,13 +84,13 @@
 	  <button class='btn btn-default' id='name_search_btn' type="button" onclick='searchStrc();'>search</button>
 	  <input type="text" class="form-control" id='search_txt_smiles'></input>
 	</div>
-	<canvas id="canvas_smiles" width="300" height="300">
+	<canvas id="search_canvas_smiles" width="300" height="300">
       </div>
       <div class="collapse" id="txt_coll" data-parent="#input_group">
 	<div class="card card-body">
 	  <input type="text" class="form-control" id='txt_smiles'></input>
 	</div>
-	<canvas id="canvas_smiles" width="300" height="300">
+	<canvas id="txt_canvas_smiles" width="300" height="300">
       </div>
       <div class="collapse" id="draw_coll" data-parent="#input_group">
 	<div class="card card-body">
@@ -108,7 +108,7 @@
       $('#txt_smiles').on('input', function() {
 	console.log($(this).val())
 	if ($(this).val()) {
-	  makeStrc($(this).val(), 'canvas_smiles', 300, 300, 'light');
+	  makeStrc($(this).val(), 'txt_canvas_smiles', 300, 300, 'light');
 	}
       });
 
@@ -125,14 +125,15 @@
       $('#search_txt_smiles').on('input', function() {
 	console.log($(this).val())
 	if ($(this).val()) {
-	  makeStrc($(this).val(), 'canvas_smiles', 300, 300, 'light');
+	  makeStrc($(this).val(), 'search_canvas_smiles', 300, 300, 'light');
 	}
       });
 
       function searchStrc() {
 	var in_strc = searchSMILESbyName(document.getElementById('name_search_txt').value);
 	if (in_strc) {
-	  makeStrc(in_strc, 'canvas_smiles', 300, 300, 'light');
+	  makeStrc(in_strc, 'search_canvas_smiles', 300, 300, 'light');
+	  document.getElementById('search_txt_smiles').value = in_strc;
 	}
       }
     </script>
@@ -192,5 +193,13 @@
     </script>
 
   </form>
+  <!-- on load clear some values-->
+  <script>
+    window.onload = function(){
+      document.getElementById('txt_smiles').value = "";
+      document.getElementById('search_txt_smiles').value = "";
+      document.getElementById('name_search_txt').value = "";
+    }
+  </script>
 </body>
 </html>
