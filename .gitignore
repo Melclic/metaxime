@@ -11,3 +11,4 @@ node_modules
 .ipynb_checkpoints/
 docker_files/rp2/license.cxl
 docker_files/rp2/marvin_linux_20.9.deb
+html/js/jsme
