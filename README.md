@@ -6,3 +6,4 @@ Metabolic engineering project that provides different analysis of heterologous p
 docker build -t metaxime -f Dockerfile .
 docker run -it -p 80:80 --entrypoint /bin/bash metaxime
 docker run -it -p 80:80 metaxime
+docker run -it -p 80:80 -p 8888:8888 metaxime

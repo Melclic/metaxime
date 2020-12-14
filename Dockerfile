@@ -239,19 +239,19 @@ COPY service.py /home/
 ############# HTML ##########
 #############################
 
-COPY js/src/* /var/www/html/
+COPY html/ /var/www/html/
 
 ######## JSME ############
 
-ENV JSME_VERSION JSME_2020-06-11
+#ENV JSME_VERSION JSME_2020-06-11
 
-RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
-RUN unzip $JSME_VERSION.zip
-RUN mv $JSME_VERSION/jsme/ /var/www/html/js/ 
-RUN rm -r $JSME_VERSION
-RUN rm $JSME_VERSION.zip
+#RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
+#RUN unzip $JSME_VERSION.zip
+#RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
+#RUN rm -r $JSME_VERSION
+#RUN rm $JSME_VERSION.zip
 
 CMD ["/home/start.sh"]
 # Open server port
 #EXPOSE 8888
-EXPOSE 80
+EXPOSE 80 8888

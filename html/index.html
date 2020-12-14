@@ -139,6 +139,10 @@
     </script>
 
     <div class="form-group">
+      <label for="name_target_txt">Name of target: </label>
+      <input type="text" placeholder="Taget Name" name="name" id='name_target_txt'>
+    </div>
+    <div class="form-group">
       <label for="organism_list">Orgnism: </label>
       <select class="form-control" id='organism_list'>
 	<option>e_coli_iML1515</option>
@@ -169,6 +173,12 @@
 
     <script>
       function getInfo() {
+	var target_name = document.getElementById('name_target_txt').value;
+	console.log(target_name)
+	if (!(target_name)) {
+	  target_name = 'target'
+	}
+	console.log(target_name)
 	var orga = document.getElementById('organism_list').value;
 	var steps = document.getElementById('steps_list').value;
 	var smiles = null;
@@ -188,7 +198,26 @@
 	else {
 	  console.log('Need to select a structure')
 	}
-	console.log('organism: '+orga+', steps: '+steps+' smiles: '+smiles)
+	//var formData = new FormData();
+	//console.log({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
+	//formData.append({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
+	//console.log(formData)
+	data = JSON.stringify({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles});
+	$.ajax({
+	  url: 'http://'+location.host+':8888/REST/SubmitJob',
+	  type: 'POST',
+	  data: data,
+	  //data: formData,
+	  processData: false,
+	  contentType: 'application/json',
+	  dataType: 'json',
+	  success: function(response) {
+	    console.log(response);
+	  },
+	  headers: {
+              'Access-Control-Allow-Origin': '*'
+          }
+	});
       }
     </script>
 

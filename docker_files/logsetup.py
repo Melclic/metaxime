@@ -3,14 +3,14 @@ LOGGING_CONFIG = {
     'disable_existing_loggers': True,
     'loggers': {
         '': {  # root logger
-            'level': 'WARNING',
+            'level': 'DEBUG',
             'handlers': ['info_rotating_file_handler'],
             'propagate': True
         }
     },
     'handlers': {
         'info_rotating_file_handler': {
-            'level': 'WARNING',
+            'level': 'DEBUG',
             'formatter': 'info',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': 'logs/info.log',
