@@ -1,4 +1,5 @@
 *.swp
+mx-results/
 .DS_Store
 metaxime/input_cache/
 metaxime/cache/

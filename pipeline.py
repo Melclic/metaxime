@@ -135,7 +135,7 @@ def pipeline(target_smiles,
         logger.debug('------ source file -----')
         job.meta['progress'] = 2
         job.save_meta()
-        rpcollection_file = os.path.join(tmp_output_folder, 'tmp.rpcol')
+        rpcollection_file = os.path.join(tmp_output_folder, str(job.id)+'.tar.xz')
         source_file = os.path.join(tmp_output_folder, 'source.csv')
         with open(source_file, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -151,7 +151,10 @@ def pipeline(target_smiles,
             sink_file = sink_list[gem_name]
         except KeyError:
             logger.error('Cannot find the following GEM model: '+str(gem_name))
-            return False, 'gem', b''
+            job.meta['err_msg'] = 'gem'
+            job.save_meta()
+            #return False, 'gem', b''
+            return False, 'gem', ''
         '''#only when passing an SBML file to process
         sink_file = os.path.join(tmp_output_folder, 'sink.csv')
         gensink_status = rpExtractSink.genSink(gem_file, sink_file, remove_dead_end=True)
@@ -175,7 +178,10 @@ def pipeline(target_smiles,
             rule_file = '/home/retrorules/rules_rall_rp2_retro.csv'
         else:
             logger.error('RR: Cannot detect input: '+str(rules_type))
-            return False, 'rr_inputerror', b''
+            job.meta['err_msg'] = 'rr_inputerror'
+            job.save_meta()
+            #return False, 'rr_inputerror', b''
+            return False, 'rr_inputerror', ''
         #check the input diameters are valid #
         try:
             s_diameters = [int(i) for i in rules_diameters.split(',')]
@@ -187,7 +193,10 @@ def pipeline(target_smiles,
                     valid_diameters.append(i)
         except ValueError:
             logger.error('RR: Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
-            return False, 'rr_invaliddiameters', b''
+            job.meta['err_msg'] = 'rr_invaliddiameters'
+            job.save_meta()
+            #return False, 'rr_invaliddiameters', b''
+            return False, 'rr_invaliddiameters', ''
         ##### create temp file to write ####
         with tempfile.TemporaryDirectory() as tmp_rr_folder:
             outfile_path = os.path.join(tmp_rr_folder, 'tmp_rules.csv')
@@ -202,7 +211,10 @@ def pipeline(target_smiles,
                                 o_csv.writerow(row)
                         except ValueError:
                             logger.error('RR: Cannot convert diameter to integer: '+str(row[4]))
-                            return False, 'rr_valuerror', b''
+                            job.meta['err_msg'] = 'rr_valueerror'
+                            job.save_meta()
+                            #return False, 'rr_valueerror', b''
+                            return False, 'rr_valueerror', ''
             shutil.copy2(outfile_path, rules_file)
         ####################################
         ########## Retropath2 ##############
@@ -278,7 +290,10 @@ def pipeline(target_smiles,
                         logger.warning('Passing the results file instead')
                     else:
                         logger.error('RetroPath2.0 does not have sufficient memory to continue')
-                        return False, 'rp2_ram', b''
+                        job.meta['err_msg'] = 'rp2_ram'
+                        job.save_meta()
+                        #return False, 'rp2_ram', b''
+                        return False, 'rp2_ram', ''
                 ### handle timeout
                 if is_timeout:
                     if not is_results_empty and partial_retro:
@@ -286,7 +301,10 @@ def pipeline(target_smiles,
                         shutil.copy2(os.path.join(tmp_rp2_folder, 'results.csv'), rp2_file)
                     else:
                         logger.error('Timeout from retropath2.0 ('+str(sub_timeout)+' minutes)')
-                        return False, 'rp2_timeout', b''
+                        job.meta['err_msg'] = 'rp2_timeout'
+                        job.save_meta()
+                        #return False, 'rp2_timeout', b''
+                        return False, 'rp2_timeout', ''
                 try:
                     count = 0
                     with open(os.path.join(tmp_rp2_folder, 'source-in-sink.csv')) as f:
@@ -295,11 +313,17 @@ def pipeline(target_smiles,
                             count += 1
                     if count>1:
                         logger.error('Execution problem of RetroPath2.0. Source has been found in the sink')
-                        return False, 'rp2_sourceinsink', b''
+                        job.meta['err_msg'] = 'rp2_sourceinsink'
+                        job.save_meta()
+                        #return False, 'rp2_sourceinsink', b''
+                        return False, 'rp2_sourceinsink', ''
                 except FileNotFoundError as e:
                     logger.error('Cannot find source-in-sink.csv file. Probably an execution error.')
                     logger.error(e)
-                    return False, 'rp2_execerror', b''
+                    job.meta['err_msg'] = 'rp2_execerror'
+                    job.save_meta()
+                    #return False, 'rp2_execerror', b''
+                    return False, 'rp2_execerror', ''
                 ############## IF ALL IS GOOD ##############
                 ### csv scope copy to the .dat location
                 try:
@@ -312,7 +336,10 @@ def pipeline(target_smiles,
                         logger.warning('Passing the results file instead')
                     else:
                         logger.error('RetroPath2.0 has not found any results')
-                        return False, 'rp2_noresults', b''
+                        job.meta['err_msg'] = 'rp2_noresults'
+                        job.save_meta()
+                        #return False, 'rp2_noresults', b''
+                        return False, 'rp2_noresults', ''
             except OSError as e:
                 if not is_results_empty and partial_retro:
                     logger.warning('Running the RetroPath2.0 Knime program produced an OSError')
@@ -322,7 +349,10 @@ def pipeline(target_smiles,
                 else:
                     logger.error('Running the RetroPath2.0 Knime program produced an OSError')
                     logger.error(e)
-                    return False, 'rp2_oserror', b''
+                    job.meta['err_msg'] = 'rp2_oserror'
+                    job.save_meta()
+                    #return False, 'rp2_oserror', b''
+                    return False, 'rp2_oserror', ''
             except ValueError as e:
                 if not is_results_empty and partial_retro:
                     logger.warning('Cannot set the RAM usage limit')
@@ -332,7 +362,10 @@ def pipeline(target_smiles,
                 else:
                     logger.error('Cannot set the RAM usage limit')
                     logger.error(e)
-                    return False, 'rp2_ram', b''
+                    job.meta['err_msg'] = 'rp2_ram'
+                    job.save_meta()
+                    #return False, 'rp2_ram', b''
+                    return False, 'rp2_ram', ''
         ###################################
         ######### rp2paths ################
         ###################################
@@ -353,10 +386,16 @@ def pipeline(target_smiles,
                 #TODO test to see what is the correct phrase
                 if 'TIMEOUT' in result:
                     logger.error('Timeout from of ('+str(timeout)+' minutes)')
-                    return False, 'rp2paths_timeout', b''
+                    job.meta['err_msg'] = 'rp2paths_timeout'
+                    job.save_meta()
+                    #return False, 'rp2paths_timeout', b''
+                    return False, 'rp2paths_timeout', ''
                 if 'failed to map segment from shared object' in error:
                     logger.error('RP2paths does not have sufficient memory to continue')
-                    return False, 'rp2paths_ram', b''
+                    job.meta['err_msg'] = 'rp2paths_ram'
+                    job.save_meta()
+                    #return False, 'rp2paths_ram', b''
+                    return False, 'rp2paths_ram', ''
                 ### convert the result to binary and return ###
                 logger.debug(glob.glob(os.path.join(tmp_rp2paths_folder, '*')))
                 try:
@@ -364,13 +403,22 @@ def pipeline(target_smiles,
                     shutil.copy2(os.path.join(tmp_rp2paths_folder, 'compounds.txt'), rp2paths_compounds_file)
                 except FileNotFoundError as e:
                     logger.error('Cannot find the output files out_paths.csv or compounds.txt')
-                    return False, 'rp2paths_outputerr', b''
+                    job.meta['err_msg'] = 'rp2paths_outputerr'
+                    job.save_meta()
+                    #return False, 'rp2paths_outputerr', b''
+                    return False, 'rp2paths_outputerr', ''
             except OSError as e:
                 logger.error('Subprocess detected an error when calling the rp2paths command')
-                return False, 'rp2paths_subprocess', b''
+                job.meta['err_msg'] = 'rp2paths_subprocess'
+                job.save_meta()
+                #return False, 'rp2paths_subprocess', b''
+                return False, 'rp2paths_subprocess', ''
             except ValueError as e:
                 logger.error('Cannot set the RAM usage limit')
-                return False, 'rp2paths_ram', b''
+                job.meta['err_msg'] = 'rp2paths_ram'
+                job.save_meta()
+                #return False, 'rp2paths_ram', b''
+                return False, 'rp2paths_ram', ''
         ##################################
         ####### Analysis #################
         ##################################
@@ -384,7 +432,10 @@ def pipeline(target_smiles,
                                                    rpcache=global_rpcache)
         if not rpreader_status:
             logger.error('Problem running rpReader')
-            return False, 'rpreader', b''
+            job.meta['err_msg'] = 'rpreader'
+            job.save_meta()
+            #return False, 'rpreader', b''
+            return False, 'rpreader', ''
         logger.debug('---------- rpFBA -----')
         job.meta['progress'] = 8
         job.save_meta()
@@ -398,7 +449,10 @@ def pipeline(target_smiles,
                                            rpcache=global_rpcache)
         if not rpfba_status:
             logger.error('Problem running rpFBA')
-            return False, 'rpfba', b''
+            job.meta['err_msg'] = 'rpfba'
+            job.save_meta()
+            #return False, 'rpfba', b''
+            return False, 'rpfba', ''
         logger.debug('---------- rpEquilibrator -----')
         job.meta['progress'] = 9
         job.save_meta()
@@ -411,7 +465,10 @@ def pipeline(target_smiles,
                                                    rpcache=global_rpcache)
         if not rpeq_status:
             logger.error('Problem running rpEquilibrator')
-            return False, 'rpeq', b''
+            job.meta['err_msg'] = 'rpeq'
+            job.save_meta()
+            #return False, 'rpeq', b''
+            return False, 'rpeq', ''
         logger.debug('---------- rpSelenzyme -----')
         job.meta['progress'] = 10
         job.save_meta()
@@ -422,7 +479,10 @@ def pipeline(target_smiles,
                                                  rpcache=global_rpcache)
         if not rpsel_status:
             logger.error('Problem running rpSelenzyme')
-            return False, 'rpsel', b''
+            job.meta['err_msg'] = 'rpsel'
+            job.save_meta()
+            #return False, 'rpsel', b''
+            return False, 'rpsel', ''
         logger.debug('---------- rpGlobalScore -----')
         job.meta['progress'] = 11
         job.save_meta()
@@ -431,9 +491,33 @@ def pipeline(target_smiles,
                                                    rpcache=global_rpcache)
         if not rpglo_status:
             logger.error('Problem running rpGlobalScore')
-            return False, 'rpglo', b''
+            job.meta['err_msg'] = 'rpglo'
+            job.save_meta()
+            #return False, 'rpglo', b''
+            return False, 'rpglo', ''
         job.meta['progress'] = 12
         job.save_meta()
-        with open(rpcollection_file, 'rb') as op:
-            binary_rpcol = op.read()
-        return True, 'success', binary_rpcol 
+        #with open(rpcollection_file, 'rb') as op:
+        #    binary_rpcol = op.read()
+        #return True, 'success', binary_rpcol 
+        ######## record the results #######
+        with tarfile.open(rpcollection_file) as f:
+            f.extractall('/home/mx-results/')
+        shutil.move('/home/mx-results/rpsbml_collection/', os.path.join('/home/mx-results/', str(job.id)))
+        shutil.copy2(rpcollection_file, os.path.join('/home/mx-results/', str(job.id)))
+        #### update the sttus json ###
+        mx_res = None
+        with open('/home/mx-results/job_results.json', 'r') as jr:
+            mx_res = json.load(jr)
+        if not 'output' in mx_res[job.id]:
+            mx_res[job.id]['output'] = {}
+        mx_res[job.id]['output']['path'] = os.path.join('/home/mx-results/', str(job.id))
+        mx_res[job.id]['output']['tar'] = os.path.join('/home/mx-results/', str(job.id), str(job.id)+'.tar.xz')
+        if not 'job' in mx_res[job.id]:
+            mx_res[job.id]['job'] = {}
+        mx_res[job.id]['job']['status'] = 'finished'
+        mx_res[job.id]['job']['meta'] = {'progress': 12, 'err_msg': ''}
+        mx_res[job.id]['job']['id'] = job.id
+        with open('/home/mx-results/job_results.json', 'w') as jr:
+            json.dump(mx_res, jr)
+        return True, 'success', rpcollection_file

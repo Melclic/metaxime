@@ -12,6 +12,7 @@ import os
 import tempfile
 import time
 import io
+import collections.abc
 
 import logging
 from datetime import datetime
@@ -50,14 +51,13 @@ dictConfig({
 })
 '''
 
-#######################################################
-############## REST ###################################
-#######################################################
-
 app = Flask(__name__)
 CORS(app)
 
-#logger.setLevel(logging.WARNING)
+#######################################################
+##################### HELPER ##########################
+#######################################################
+
 
 def stamp(data, status=1):
     """Default message to return
@@ -78,6 +78,54 @@ def stamp(data, status=1):
     out = appinfo.copy()
     out['data'] = data
     return out
+
+#taken from: https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+def update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+def modResJSON(job_id,
+               job_status=None,
+               job_meta=None,
+               input_name=None,
+               input_smiles=None,
+               input_gem=None,
+               input_steps=None,
+               output_path=None,
+               output_tar=None):
+    ####### create/append json #####
+    if not os.path.exists('/home/mx-results/job_results.json'):
+        with open('/home/mx-results/job_results.json', 'w') as jr:
+            json.dump({}, jr)
+    mx_res = None
+    with open('/home/mx-results/job_results.json', 'r') as jr:
+        mx_res = json.load(jr)
+    if job.id in mx_res:
+        logger.warning('There is already job ID: '+str(job.id))
+        logger.warning('Overwriting....')
+    tmp_dict = {'job': {'status': job_status, 'meta': job_meta, 'id': job_id},
+                'input': {'name': input_name, 'smiles': input_smiles, 'gem': input_gem, 'steps': input_steps},
+                'output': {'path': output_path, 'tar': output_tar}}
+    tmp_dict['job'] = {k: v for k, v in tmp_dict['job'].items() if v is not None}
+    tmp_dict['input'] = {k: v for k, v in tmp_dict['input'].items() if v is not None}
+    tmp_dict['output'] = {k: v for k, v in tmp_dict['output'].items() if v is not None}
+    for i in list(tmp_dict.keys()):
+        if not tmp_dict[i]:
+            tmp_dict.pop(i)
+    ### update ###
+    #mx_res.update(tmp_dict)
+    update(mx_res[job_id], tmp_dict)
+    with open('/home/mx-results/job_results.json', 'w') as jr:
+        json.dump(mx_res, jr)
+
+
+#######################################################
+############## REST ###################################
+#######################################################
 
 
 @app.route("/REST", methods=["GET", "POST"])
@@ -106,9 +154,18 @@ def submitJob():
     q = Queue('default', connection=redis_conn, default_time_out='24h')
     job = q.enqueue(pipeline.pipeline, str(params['smiles']), str(params['gem']), int(params['steps']), job_timeout='24h')
     job.meta['progress'] = 0
+    job.meta['err_msg'] = ''
     job.save_meta()
     logger.debug('job: '+str(job))
     logger.debug('job.id: '+str(job.id))
+    modResJSON(job.id,
+               job.get_status(),
+               job.meta,
+               params['name'],
+               params['smiles'],
+               params['gem'],
+               params['steps'])
+    ####### return info ########
     toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
     logger.debug(toret)
     response = make_response(jsonify(toret), 201)
@@ -126,6 +183,7 @@ def retreiveJob():
     if job.get_status()=='failed':
         logger.error('The job '+str(job.id)+' failed: '+str(job.return_value))
         toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+        modResJSON(job.id, job.get_status(), job.meta)
         logger.debug(toret)
         response = make_response(jsonify(toret), 500)
         response.headers["Content-Type"] = "application/json"
@@ -135,12 +193,14 @@ def retreiveJob():
         if not pipeline_result[0]:
             logger.error('The job '+str(job.id)+' failed: '+str(pipeline_result[1]))
             toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta, 'pipeline_status': pipeline_result[0], 'pipeline_error_msg': pipeline_result[2]}
+            modResJSON(job.id, job.get_status(), job.meta)
             logger.debug(toret)
             response = make_response(jsonify(toret), 500)
             response.headers["Content-Type"] = "application/json"
             return response
         else:
             logger.debug('Successfull run')
+            modResJSON(job.id, job.get_status(), job.meta)
             binary_rpcol = io.BytesIO()
             binary_rpcol.write(pipeline_result[2])
             ###### IMPORTANT ######
@@ -152,6 +212,7 @@ def retreiveJob():
     else:
         logger.debug('The job does not seem to be ready: '+str(job.get_status()))
         toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+        modResJSON(job.id, job.get_status(), job.meta)
         logger.debug(toret)
         response = make_response(jsonify(toret), 102)
         response.headers["Content-Type"] = "application/json"
@@ -166,11 +227,21 @@ def queryJob():
     job = Job.fetch(params['job_id'], connection=redis_conn)
     logger.debug(job)
     toret = {'job_id': job.id, 'status': job.get_status(), 'meta': job.meta}
+    modResJSON(job.id, job.get_status(), job.meta)
     logger.debug(toret)
     response = make_response(jsonify(toret), 200)
     response.headers["Content-Type"] = "application/json"
     return response
         
+@app.route("/REST/GetJobList", methods=["GET", "POST"])
+def getJobList():
+    params = request.get_json()
+    mx_res = {}
+    with open('/home/mx-results/job_results.json', 'r') as jr:
+        mx_res = json.load(jr)
+    response = make_response(jsonify(mx_res), 200)
+    response.headers["Content-Type"] = "application/json"
+    return response
 
 if __name__== "__main__":
     #handler = RotatingFileHandler('metaxime.log', maxBytes=10000, backupCount=1)

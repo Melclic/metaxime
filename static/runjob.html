@@ -1,69 +1,42 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-<meta charset='utf-8'>
 <head>
-  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-  <link rel="shortcut icon" href="#" />
-  <title>JSME test page</title>
-  <!-- 
-  <script src='https://code.jquery.com/jquery-3.5.1.min.js'></script>
-  <script src='https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js'></script>
-  <script src='https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js'></script>
-  <script type="text/javascript" src="data/name_smiles.json"></script>
-  -->
-  <script src='js/bootstrap/jquery-3.5.1.min.js'></script>
-  <script src='js/bootstrap/bootstrap.min.js'></script>
-  <script type="text/javascript" language="javascript" src="js/jsme/jsme.nocache.js"></script>
-  <script src="js/smiles-drawer_mod.js"></script>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <title>MetaXime</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Bootstrap -->
+  <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <!-- styles -->
+  <link href="css/styles.css" rel="stylesheet">
+  <!-- jQuery (necessary for Bootstrap's JavaScript plugins) 
+  <script src="https://code.jquery.com/jquery.js"></script> -->
+  <!-- Include all compiled plugins (below), or include individual files as needed -->
+  <script src="js/jquery-3.5.1.min.js"></script>
+  <script src="js/bootstrap/bootstrap.min.js"></script>
+  <script src="js/custom.js"></script>
   <script src="js/handle_strc.js"></script>
-  <link href='css/bootstrap/bootstrap.min.css' rel='stylesheet' type='text/css'/>
+  <script src="js/smiles-drawer_mod.js"></script>
+  <script type="text/javascript" language="javascript" src="js/jsme/jsme.nocache.js"></script>
   <script>
-    //this function will be called after the JavaScriptApplet code has been loaded.
     function jsmeOnLoad() {
-      //Instantiate a new JSME:
-      //arguments: HTML id, width, height (must be string not number!)
       jsmeApplet = new JSApplet.JSME("appletContainer", "600px", "440px", {
-	//optional parameters
-	"options": "query,hydrogens,fullScreenIcon"
-	//"jme": startingStructure // JME mol format
+        "options": "query,hydrogens,fullScreenIcon"
       });
-      //Opera patch: if some applet elements are not displayed, force repaint
-      //jsmeApplet.deferredRepaint(); //the applet will be repainted after the browser event loop returns
-      //it is recommended to use it if the JSME is created outside this jsmeOnLoad() function
-
-      //jsmeApplet has the same API as the original Java applet
-      //One can mimic the JME Java applet access to simplify the adaptation of HTML and JavaScript code:
       document.JME = jsmeApplet;
-
-      //suggestion
-      //all buttons that access the jsme variable were disabled in the html
-      //Now enable all buttons that can access the jsme variable since the applet is ready
-      //example:
-      //document.getElementById("button").disabled=false;
-
-      //document.getElementById("inchiKeyUrlTextArea").value = jsmeApplet.getWebSearchInchiKeyBaseUrl();
     }
-
     //Return the SMILES from the JME object
     function getSmiles() {
       var data = document.JME.smiles();
       document.getElementById("jme_output").value = data;
     }
-
     //Send the SMILES from the JME object
     function readAnyFromTextArea() {
       var mol = document.getElementById("jme_output").value;
       jsmeApplet.readGenericMolecularInput(mol);
     }
-
   </script>
 </head>
-<style id='css'>
-  .col-centered{
-    margin: 0 auto;
-    float: none;
-  }
-</style>
 <body>
   <!-- RECOMMENDED if your web app will not function without JavaScript enabled -->
   <noscript>
@@ -72,163 +45,219 @@
       in order for this application to display correctly.
     </div>
   </noscript>
-  <!-- The input field -->
-  <form>
-    <div class="form-group" id="input_group">
-      <a class="btn btn-primary" data-toggle="collapse" href="#search_coll" role="button" aria-expanded="false" aria-controls="search_coll">Search by name</a>
-      <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#txt_coll" aria-expanded="false" aria-controls="draw_coll">Enter target SMILES</button>
-      <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#draw_coll" aria-expanded="false" aria-controls="draw_coll">Draw target</button>
-      <div class="collapse" id="search_coll" data-parent="#input_group">
-	<div class="card card-body">
-	  <input type="text" placeholder="Search.." name="search" id='name_search_txt'>
-	  <button class='btn btn-default' id='name_search_btn' type="button" onclick='searchStrc();'>search</button>
-	  <input type="text" class="form-control" id='search_txt_smiles'></input>
+  <div class="header">
+    <div class="container">
+      <div class="row">
+	<div class="col-md-5">
+	  <!-- Logo -->
+	  <div class="logo">
+	    <h1><a href="index.html">MetaXime</a></h1>
+	  </div>
 	</div>
-	<canvas id="search_canvas_smiles" width="300" height="300">
-      </div>
-      <div class="collapse" id="txt_coll" data-parent="#input_group">
-	<div class="card card-body">
-	  <input type="text" class="form-control" id='txt_smiles'></input>
+	<div class="col-md-2">
+	  <div class="navbar navbar-inverse" role="banner">
+	    <nav class="collapse navbar-collapse bs-navbar-collapse navbar-right" role="navigation">
+	      <ul class="nav navbar-nav">
+	      </ul>
+	    </nav>
+	  </div>
 	</div>
-	<canvas id="txt_canvas_smiles" width="300" height="300">
+      </div> <!-- container -->
+    </div> <!-- container -->
+  </div> <!-- header -->
+  <div class="page-content">
+    <div class="row" id="mai_row">
+      <div class="col-md-2">
+	<div class="sidebar content-box" style="display: block;">
+	  <ul class="nav">
+	    <!-- Main menu -->
+	    <li><a href="index.html"><i class="glyphicon glyphicon-home"></i> Dashboard</a></li>
+	    <li class="current"><a href="runjob.html"><i class="glyphicon glyphicon-calendar"></i> Run</a></li>
+	  </ul>
+	</div>
       </div>
-      <div class="collapse" id="draw_coll" data-parent="#input_group">
-	<div class="card card-body">
-	  <table align="center">
-	    <tr>
-	      <td id="appletContainer"></td>
-	    </tr>
-	  </table>
+      <div class="col-md-10">
+	<div class="row">
+	  <div class="container-fluid">
+	    <div class="content-box-large" id="content_box">
+	      <div class="form-group" id="input_group">
+		<div class="row">
+		  <div class="col-md">
+		    <button class="btn btn-default btn-block" type="button" data-toggle="collapse" data-target="#search_coll" aria-expanded="true" aria-controls="search_coll">Search taget by name</button>
+		  </div>
+		  <div class="col-md">
+		    <button class="btn btn-default btn-block" type="button" data-toggle="collapse" data-target="#txt_coll" aria-expanded="false" aria-controls="txt_coll">Enter target SMILES</button>
+		  </div>
+		  <div class="col-md">
+		    <button class="btn btn-default btn-block" type="button" data-toggle="collapse" data-target="#draw_coll" aria-expanded="false" aria-controls="draw_coll">Draw target</button>
+		  </div>
+		</div>
+		<div class="collapse" id="search_coll" data-parent="#input_group">
+		  <div class="card card-body">
+		    <div class="input-group">
+		      <input class="form-control" id="name_search_txt" type="text">
+		      <div class="input-group-btn">
+			<button class="btn btn-default" id='name_search_btn' type="button" onclick='searchStrc();'>Search</button>
+		      </div>
+		    </div>
+		    <br></br>
+		    <input type="text" class="form-control" id='search_txt_smiles'></input>
+		  </div>
+		  <canvas id="search_canvas_smiles" width="300" height="300">
+		</div>
+		<div class="collapse" id="txt_coll" data-parent="#input_group">
+		  <div class="card card-body">
+		    <input type="text" class="form-control" id='txt_smiles'></input>
+		  </div>
+		  <canvas id="txt_canvas_smiles" width="300" height="300">
+		</div>
+		<div class="collapse" id="draw_coll" data-parent="#input_group">
+		  <div class="card card-body">
+		    <table align="center">
+		      <tr>
+			<td id="appletContainer"></td>
+		      </tr>
+		    </table>
+		  </div>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<div class="card card-body">
+		  <label for="name_target_txt">Name of target: </label>
+		  <input class="form-control" placeholder="Target Name" type="text" id="name_target_txt"Target>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<div class="card card-body">
+		  <label for="organism_list">Organism GEM model: </label>
+		  <select class="form-control input-lg" id='organism_list'>
+		    <option>e_coli_iML1515</option>
+		    <option>e_coli_iJO1366</option>
+		    <option>e_coli_iJR904</option>
+		    <option>e_coli_iAF1260</option>
+		    <option>e_coli_core_model</option>
+		    <option>s_cerevisiae_iMM904</option>
+		    <option>s_cerevisiae_iND750</option>
+		    <option>y_lipolytica_iMK735</option>
+		    <option>p_putida_iJN746</option>
+		    <option>b_subtilis_iYO844</option>
+		  </select>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<div class="card card-body">
+		  <label for="steps_list">Maximum number of steps: </label>
+		  <select class="form-control input-lg" id='steps_list'>
+		    <option>1</option>
+		    <option>2</option>
+		    <option selected>3</option>
+		    <option>4</option>
+		    <option>5</option>
+		  </select>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<button class="btn btn-default" type="button" onclick='getInfo();'>Predict Pathways</button>
+	      </div>
+	    </div>
+	  </div>
 	</div>
       </div>
     </div>
+  </div>
 
-    <script>
-      //############# draw the cmp string input #######
-      $('#txt_smiles').on('input', function() {
-	console.log($(this).val())
-	if ($(this).val()) {
-	  makeStrc($(this).val(), 'txt_canvas_smiles', 300, 300, 'light');
-	}
-      });
-
-      //############ API call to search for structure ######
-      var input = document.getElementById("name_search_txt");
-      input.addEventListener("keyup", function(event) {
-	if (event.keyCode === 13) {
-	 event.preventDefault();
-	 document.getElementById("name_search_btn").click();
-	}
-      });
-
-      //update the input text when changes as well
-      $('#search_txt_smiles').on('input', function() {
-	console.log($(this).val())
-	if ($(this).val()) {
-	  makeStrc($(this).val(), 'search_canvas_smiles', 300, 300, 'light');
-	}
-      });
-
-      function searchStrc() {
-	var in_strc = searchSMILESbyName(document.getElementById('name_search_txt').value);
-	if (in_strc) {
-	  makeStrc(in_strc, 'search_canvas_smiles', 300, 300, 'light');
-	  document.getElementById('search_txt_smiles').value = in_strc;
-	}
-      }
-    </script>
-
-    <div class="form-group">
-      <label for="name_target_txt">Name of target: </label>
-      <input type="text" placeholder="Taget Name" name="name" id='name_target_txt'>
-    </div>
-    <div class="form-group">
-      <label for="organism_list">Orgnism: </label>
-      <select class="form-control" id='organism_list'>
-	<option>e_coli_iML1515</option>
-	<option>e_coli_iJO1366</option>
-	<option>e_coli_iJR904</option>
-	<option>e_coli_iAF1260</option>
-	<option>e_coli_core_model</option>
-	<option>s_cerevisiae_iMM904</option>
-	<option>s_cerevisiae_iND750</option>
-	<option>y_lipolytica_iMK735</option>
-	<option>p_putida_iJN746</option>
-	<option>b_subtilis_iYO844</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="steps_list">Maximum number of steps: </label>
-      <select class="form-control" id='steps_list'>
-	<option>1</option>
-	<option>2</option>
-	<option selected>3</option>
-	<option>4</option>
-	<option>5</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <button class="btn btn-default" type="button" onclick='getInfo();'>Predict Pathways</button>
-    </div>
-
-    <script>
-      function getInfo() {
-	var target_name = document.getElementById('name_target_txt').value;
-	console.log(target_name)
-	if (!(target_name)) {
-	  target_name = 'target'
-	}
-	console.log(target_name)
-	var orga = document.getElementById('organism_list').value;
-	var steps = document.getElementById('steps_list').value;
-	var smiles = null;
-	//get sctructure info
-	var col_txt = document.getElementById('txt_coll');
-	var col_search = document.getElementById('search_coll');
-	var col_draw = document.getElementById('draw_coll');
-	if (col_txt.className=="collapse show") {
-	  smiles = document.getElementById('txt_smiles').value;
-	}
-	else if (col_search.className=="collapse show") {
-	  smiles = document.getElementById('search_txt_smiles').value;
-	}
-	else if (col_draw.className=="collapse show") {
-	  smiles = document.JME.smiles();
-	}
-	else {
-	  console.log('Need to select a structure')
-	}
-	//var formData = new FormData();
-	//console.log({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
-	//formData.append({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
-	//console.log(formData)
-	data = JSON.stringify({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles});
-	$.ajax({
-	  url: 'http://'+location.host+':8888/REST/SubmitJob',
-	  type: 'POST',
-	  data: data,
-	  //data: formData,
-	  processData: false,
-	  contentType: 'application/json',
-	  dataType: 'json',
-	  success: function(response) {
-	    console.log(response);
-	  },
-	  headers: {
-              'Access-Control-Allow-Origin': '*'
-          }
-	});
-      }
-    </script>
-
-  </form>
-  <!-- on load clear some values-->
   <script>
-    window.onload = function(){
-      document.getElementById('txt_smiles').value = "";
-      document.getElementById('search_txt_smiles').value = "";
-      document.getElementById('name_search_txt').value = "";
+    //############# draw the cmp string input #######
+    $('#txt_smiles').on('input', function() {
+      console.log($(this).val())
+      if ($(this).val()) {
+	makeStrc($(this).val(), 'txt_canvas_smiles', $("#content_box").width(), 300, 'light');
+      }
+    });
+
+    //############ API call to search for structure ######
+    var input = document.getElementById("name_search_txt");
+    input.addEventListener("keyup", function(event) {
+      if (event.keyCode === 13) {
+       event.preventDefault();
+       document.getElementById("name_search_btn").click();
+      }
+    });
+
+    //update the input text when changes as well
+    $('#search_txt_smiles').on('input', function() {
+      console.log($(this).val())
+      if ($(this).val()) {
+	makeStrc($(this).val(), 'search_canvas_smiles', $("#content_box").width(), 300, 'light');
+      }
+    });
+
+    function searchStrc() {
+      var in_strc = searchSMILESbyName(document.getElementById('name_search_txt').value);
+      if (in_strc) {
+	makeStrc(in_strc, 'search_canvas_smiles', $("#content_box").width(), 300, 'light');
+	document.getElementById('search_txt_smiles').value = in_strc;
+      }
     }
   </script>
+
+  <script>
+    function getInfo() {
+      var target_name = document.getElementById('name_target_txt').value;
+      console.log(target_name)
+      if (!(target_name)) {
+	target_name = 'target'
+      }
+      console.log(target_name)
+      var orga = document.getElementById('organism_list').value;
+      var steps = document.getElementById('steps_list').value;
+      var smiles = null;
+      //get sctructure info
+      var col_txt = document.getElementById('txt_coll');
+      var col_search = document.getElementById('search_coll');
+      var col_draw = document.getElementById('draw_coll');
+      if (col_txt.className=="collapse show") {
+	smiles = document.getElementById('txt_smiles').value;
+      }
+      else if (col_search.className=="collapse show") {
+	smiles = document.getElementById('search_txt_smiles').value;
+      }
+      else if (col_draw.className=="collapse show") {
+	smiles = document.JME.smiles();
+      }
+      else {
+	console.log('Need to select a structure')
+      }
+      //var formData = new FormData();
+      //console.log({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
+      //formData.append({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles})
+      //console.log(formData)
+      data = JSON.stringify({'name': target_name, 'gem': orga, 'steps': steps, 'smiles': smiles});
+      console.log(data)
+      $.ajax({
+	url: 'http://'+location.host+':8888/REST/SubmitJob',
+	type: 'POST',
+	data: data,
+	//data: formData,
+	processData: false,
+	contentType: 'application/json',
+	dataType: 'json',
+	success: function(response) {
+	  console.log(response);
+	},
+	headers: {
+	    'Access-Control-Allow-Origin': '*'
+	}
+      });
+    }
+  </script>
+
+  <footer>
+    <div class="container">
+      <div class="copy text-center">
+	Created by: <a href='http://github.com/melclic/'>Melchior du Lac</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

@@ -23,7 +23,7 @@ RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
 RUN conda update -n base -c defaults conda
 
-RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful
+RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 RUN pip install cobra==0.16
@@ -239,17 +239,17 @@ COPY service.py /home/
 ############# HTML ##########
 #############################
 
-COPY html/ /var/www/html/
+COPY static/ /var/www/html/
 
 ######## JSME ############
 
-#ENV JSME_VERSION JSME_2020-06-11
+ENV JSME_VERSION JSME_2020-06-11
 
-#RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
-#RUN unzip $JSME_VERSION.zip
-#RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
-#RUN rm -r $JSME_VERSION
-#RUN rm $JSME_VERSION.zip
+RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
+RUN unzip $JSME_VERSION.zip
+RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
+RUN rm -r $JSME_VERSION
+RUN rm $JSME_VERSION.zip
 
 CMD ["/home/start.sh"]
 # Open server port
