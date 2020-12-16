@@ -10,6 +10,7 @@ import glob
 import sys
 import resource
 import tempfile
+import json
 import sys
 import argparse
 import tarfile
@@ -94,6 +95,50 @@ logging.basicConfig(
 )
 '''
 
+def modResJSON(job_id,
+               job_status=None,
+               job_meta=None,
+               input_name=None,
+               input_smiles=None,
+               input_gem=None,
+               input_steps=None,
+               output_path=None,
+               output_tar=None):
+    ####### create/append json #####
+    if not os.path.exists('/home/mx-results/job_results.json'):
+        with open('/home/mx-results/job_results.json', 'w') as jr:
+            json.dump({}, jr)
+    mx_res = None
+    with open('/home/mx-results/job_results.json', 'r') as jr:
+        mx_res = json.load(jr)
+    id_pos = {}
+    for i in range(len(mx_res)):
+        id_pos[mx_res[i]['job']['id']] = i
+    if not job_id in id_pos:
+        logger.warning('First time creating: '+str(job_id))
+        mx_res.append({'job': {'status': job_status, 'meta': job_meta, 'id': job_id},
+                       'input': {'name': input_name, 'smiles': input_smiles, 'gem': input_gem, 'steps': input_steps},
+                       'output': {'path': output_path, 'tar': output_tar}})
+    else:
+        if job_status:
+            mx_res[id_pos[job_id]]['job']['status'] = job_status
+        if job_meta:
+            mx_res[id_pos[job_id]]['job']['meta'] = job_meta
+        if input_name:
+            mx_res[id_pos[job_id]]['input']['name'] = input_name
+        if input_smiles:
+            mx_res[id_pos[job_id]]['input']['smiles'] = input_smiles
+        if input_gem:
+            mx_res[id_pos[job_id]]['input']['gem'] = input_gem
+        if input_steps:
+            mx_res[id_pos[job_id]]['input']['steps'] = input_steps
+        if output_path:
+            mx_res[id_pos[job_id]]['output']['path'] = output_path
+        if output_tar:
+            mx_res[id_pos[job_id]]['output']['tar'] = output_tar
+    with open('/home/mx-results/job_results.json', 'w') as jr:
+        json.dump(mx_res, jr)
+
 
 
 def limit_virtual_memory():
@@ -117,12 +162,11 @@ def pipeline(target_smiles,
     job = rq.get_current_job()
     job.meta['progress'] = 1
     job.save_meta()
+    modResJSON(job.id, job_meta=job.meta, job_status='running')
     logger.debug('cache')
     global_rpcache = rpCache()
     logger.debug('populate cache')
     global_rpcache.populateCache()
-    logger.debug('Component Contribution')
-    global_cc = ComponentContribution()
     logger.info('target_smiles: '+str(target_smiles))
     logger.info('gem_name: '+str(gem_name))
     logger.info('max_steps: '+str(max_steps))
@@ -135,7 +179,8 @@ def pipeline(target_smiles,
         logger.debug('------ source file -----')
         job.meta['progress'] = 2
         job.save_meta()
-        rpcollection_file = os.path.join(tmp_output_folder, str(job.id)+'.tar.xz')
+        modResJSON(job.id, job_meta=job.meta)
+        rpcollection_file = os.path.join(tmp_output_folder, 'tmp.rpcol')
         source_file = os.path.join(tmp_output_folder, 'source.csv')
         with open(source_file, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -145,6 +190,7 @@ def pipeline(target_smiles,
         logger.debug('-------- sink file --------')
         job.meta['progress'] = 3
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         try:
             gem_file = model_list[gem_name]
             taxo_id = model_taxo_id[gem_name]
@@ -153,6 +199,7 @@ def pipeline(target_smiles,
             logger.error('Cannot find the following GEM model: '+str(gem_name))
             job.meta['err_msg'] = 'gem'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='gem')
             #return False, 'gem', b''
             return False, 'gem', ''
         '''#only when passing an SBML file to process
@@ -168,6 +215,7 @@ def pipeline(target_smiles,
         logger.debug('---------- reaction rules -----')
         job.meta['progress'] = 4
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rules_file = os.path.join(tmp_output_folder, 'reaction_rules.csv')
         rule_file = None
         if rules_type=='all':
@@ -180,6 +228,7 @@ def pipeline(target_smiles,
             logger.error('RR: Cannot detect input: '+str(rules_type))
             job.meta['err_msg'] = 'rr_inputerror'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rr_inputerror')
             #return False, 'rr_inputerror', b''
             return False, 'rr_inputerror', ''
         #check the input diameters are valid #
@@ -195,6 +244,7 @@ def pipeline(target_smiles,
             logger.error('RR: Invalid diamter entry. Must be int of either 2,4,6,8,10,12,14,16')
             job.meta['err_msg'] = 'rr_invaliddiameters'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rr_invaliddiameters')
             #return False, 'rr_invaliddiameters', b''
             return False, 'rr_invaliddiameters', ''
         ##### create temp file to write ####
@@ -213,6 +263,7 @@ def pipeline(target_smiles,
                             logger.error('RR: Cannot convert diameter to integer: '+str(row[4]))
                             job.meta['err_msg'] = 'rr_valueerror'
                             job.save_meta()
+                            modResJSON(job.id, job_meta=job.meta, job_status='rr_valueerror')
                             #return False, 'rr_valueerror', b''
                             return False, 'rr_valueerror', ''
             shutil.copy2(outfile_path, rules_file)
@@ -222,6 +273,7 @@ def pipeline(target_smiles,
         logger.debug('---------- RP2 -----')
         job.meta['progress'] = 5
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rp2_file = os.path.join(tmp_output_folder, 'rp2_pathways.csv')
         logger.debug('Rules file: '+str(rules_file))
         logger.debug('Timeout: '+str(sub_timeout*60.0)+' seconds')
@@ -292,6 +344,7 @@ def pipeline(target_smiles,
                         logger.error('RetroPath2.0 does not have sufficient memory to continue')
                         job.meta['err_msg'] = 'rp2_ram'
                         job.save_meta()
+                        modResJSON(job.id, job_meta=job.meta, job_status='rp2_ram')
                         #return False, 'rp2_ram', b''
                         return False, 'rp2_ram', ''
                 ### handle timeout
@@ -303,6 +356,7 @@ def pipeline(target_smiles,
                         logger.error('Timeout from retropath2.0 ('+str(sub_timeout)+' minutes)')
                         job.meta['err_msg'] = 'rp2_timeout'
                         job.save_meta()
+                        modResJSON(job.id, job_meta=job.meta, job_status='rp2_timeout')
                         #return False, 'rp2_timeout', b''
                         return False, 'rp2_timeout', ''
                 try:
@@ -315,6 +369,7 @@ def pipeline(target_smiles,
                         logger.error('Execution problem of RetroPath2.0. Source has been found in the sink')
                         job.meta['err_msg'] = 'rp2_sourceinsink'
                         job.save_meta()
+                        modResJSON(job.id, job_meta=job.meta, job_status='err_msg')
                         #return False, 'rp2_sourceinsink', b''
                         return False, 'rp2_sourceinsink', ''
                 except FileNotFoundError as e:
@@ -322,6 +377,7 @@ def pipeline(target_smiles,
                     logger.error(e)
                     job.meta['err_msg'] = 'rp2_execerror'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2_execerror')
                     #return False, 'rp2_execerror', b''
                     return False, 'rp2_execerror', ''
                 ############## IF ALL IS GOOD ##############
@@ -338,6 +394,7 @@ def pipeline(target_smiles,
                         logger.error('RetroPath2.0 has not found any results')
                         job.meta['err_msg'] = 'rp2_noresults'
                         job.save_meta()
+                        modResJSON(job.id, job_meta=job.meta, job_status='rp2_noresults')
                         #return False, 'rp2_noresults', b''
                         return False, 'rp2_noresults', ''
             except OSError as e:
@@ -351,6 +408,7 @@ def pipeline(target_smiles,
                     logger.error(e)
                     job.meta['err_msg'] = 'rp2_oserror'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2_oserror')
                     #return False, 'rp2_oserror', b''
                     return False, 'rp2_oserror', ''
             except ValueError as e:
@@ -364,6 +422,7 @@ def pipeline(target_smiles,
                     logger.error(e)
                     job.meta['err_msg'] = 'rp2_ram'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2_ram')
                     #return False, 'rp2_ram', b''
                     return False, 'rp2_ram', ''
         ###################################
@@ -372,6 +431,7 @@ def pipeline(target_smiles,
         logger.debug('---------- RP2paths -----')
         job.meta['progress'] = 6
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rp2paths_pathways_file = os.path.join(tmp_output_folder, 'rp2paths_pathways.csv')
         rp2paths_compounds_file = os.path.join(tmp_output_folder, 'rp2paths_compounds.tsv')
         with tempfile.TemporaryDirectory() as tmp_rp2paths_folder:
@@ -388,12 +448,14 @@ def pipeline(target_smiles,
                     logger.error('Timeout from of ('+str(timeout)+' minutes)')
                     job.meta['err_msg'] = 'rp2paths_timeout'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2paths_timeout')
                     #return False, 'rp2paths_timeout', b''
                     return False, 'rp2paths_timeout', ''
                 if 'failed to map segment from shared object' in error:
                     logger.error('RP2paths does not have sufficient memory to continue')
                     job.meta['err_msg'] = 'rp2paths_ram'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2paths_ram')
                     #return False, 'rp2paths_ram', b''
                     return False, 'rp2paths_ram', ''
                 ### convert the result to binary and return ###
@@ -405,18 +467,21 @@ def pipeline(target_smiles,
                     logger.error('Cannot find the output files out_paths.csv or compounds.txt')
                     job.meta['err_msg'] = 'rp2paths_outputerr'
                     job.save_meta()
+                    modResJSON(job.id, job_meta=job.meta, job_status='rp2paths_outputerr')
                     #return False, 'rp2paths_outputerr', b''
                     return False, 'rp2paths_outputerr', ''
             except OSError as e:
                 logger.error('Subprocess detected an error when calling the rp2paths command')
                 job.meta['err_msg'] = 'rp2paths_subprocess'
                 job.save_meta()
+                modResJSON(job.id, job_meta=job.meta, job_status='rp2paths_subprocess')
                 #return False, 'rp2paths_subprocess', b''
                 return False, 'rp2paths_subprocess', ''
             except ValueError as e:
                 logger.error('Cannot set the RAM usage limit')
                 job.meta['err_msg'] = 'rp2paths_ram'
                 job.save_meta()
+                modResJSON(job.id, job_meta=job.meta, job_status='rp2paths_ram')
                 #return False, 'rp2paths_ram', b''
                 return False, 'rp2paths_ram', ''
         ##################################
@@ -425,6 +490,7 @@ def pipeline(target_smiles,
         logger.debug('---------- rpReader -----')
         job.meta['progress'] = 7
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rpreader_status = rpReader.rp2ToCollection(rp2_file,
                                                    rp2paths_compounds_file,
                                                    rp2paths_pathways_file,
@@ -434,11 +500,32 @@ def pipeline(target_smiles,
             logger.error('Problem running rpReader')
             job.meta['err_msg'] = 'rpreader'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rpreader')
             #return False, 'rpreader', b''
             return False, 'rpreader', ''
-        logger.debug('---------- rpFBA -----')
+        logger.debug('---------- rpEquilibrator -----')
         job.meta['progress'] = 8
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
+        logger.debug('running Eq')
+        rpeq_status = rpEquilibrator.runCollection(rpcollection_file,
+                                                   rpcollection_file,
+                                                   ph=ph,
+                                                   ionic_strength=ionic_strength,
+                                                   temp_k=temp_k,
+                                                   rpcache=global_rpcache)
+        if not rpeq_status:
+            logger.error('Problem running rpEquilibrator')
+            job.meta['err_msg'] = 'rpeq'
+            job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rpeq')
+            #return False, 'rpeq', b''
+            return False, 'rpeq', ''
+        logger.debug('---------- rpFBA -----')
+        job.meta['progress'] = 9
+        job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
+        logger.debug('running FBA')
         rpfba_status = rpFBA.runCollection(rpcollection_file,
                                            gem_file,
                                            rpcollection_file,
@@ -451,27 +538,13 @@ def pipeline(target_smiles,
             logger.error('Problem running rpFBA')
             job.meta['err_msg'] = 'rpfba'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rpfba')
             #return False, 'rpfba', b''
             return False, 'rpfba', ''
-        logger.debug('---------- rpEquilibrator -----')
-        job.meta['progress'] = 9
-        job.save_meta()
-        rpeq_status = rpEquilibrator.runCollection(rpcollection_file,
-                                                   rpcollection_file,
-                                                   cc=global_cc,
-                                                   ph=ph,
-                                                   ionic_strength=ionic_strength,
-                                                   temp_k=temp_k,
-                                                   rpcache=global_rpcache)
-        if not rpeq_status:
-            logger.error('Problem running rpEquilibrator')
-            job.meta['err_msg'] = 'rpeq'
-            job.save_meta()
-            #return False, 'rpeq', b''
-            return False, 'rpeq', ''
         logger.debug('---------- rpSelenzyme -----')
         job.meta['progress'] = 10
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rpsel_status = rpSelenzyme.runCollection(rpcollection_file,
                                                  taxo_id,
                                                  rpcollection_file,
@@ -481,11 +554,13 @@ def pipeline(target_smiles,
             logger.error('Problem running rpSelenzyme')
             job.meta['err_msg'] = 'rpsel'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rpsel')
             #return False, 'rpsel', b''
             return False, 'rpsel', ''
         logger.debug('---------- rpGlobalScore -----')
         job.meta['progress'] = 11
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         rpglo_status = rpGlobalScore.runCollection(rpcollection_file,
                                                    rpcollection_file,
                                                    rpcache=global_rpcache)
@@ -493,10 +568,12 @@ def pipeline(target_smiles,
             logger.error('Problem running rpGlobalScore')
             job.meta['err_msg'] = 'rpglo'
             job.save_meta()
+            modResJSON(job.id, job_meta=job.meta, job_status='rpglo')
             #return False, 'rpglo', b''
             return False, 'rpglo', ''
         job.meta['progress'] = 12
         job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         #with open(rpcollection_file, 'rb') as op:
         #    binary_rpcol = op.read()
         #return True, 'success', binary_rpcol 
@@ -504,20 +581,13 @@ def pipeline(target_smiles,
         with tarfile.open(rpcollection_file) as f:
             f.extractall('/home/mx-results/')
         shutil.move('/home/mx-results/rpsbml_collection/', os.path.join('/home/mx-results/', str(job.id)))
-        shutil.copy2(rpcollection_file, os.path.join('/home/mx-results/', str(job.id)))
+        shutil.copy2(rpcollection_file, os.path.join('/home/mx-results/', str(job.id)+'.tar.xz'))
+        subprocess.call(['chmod', '-R', '664', os.path.join('/home/mx-results/', str(job.id))])
         #### update the sttus json ###
         mx_res = None
-        with open('/home/mx-results/job_results.json', 'r') as jr:
-            mx_res = json.load(jr)
-        if not 'output' in mx_res[job.id]:
-            mx_res[job.id]['output'] = {}
-        mx_res[job.id]['output']['path'] = os.path.join('/home/mx-results/', str(job.id))
-        mx_res[job.id]['output']['tar'] = os.path.join('/home/mx-results/', str(job.id), str(job.id)+'.tar.xz')
-        if not 'job' in mx_res[job.id]:
-            mx_res[job.id]['job'] = {}
-        mx_res[job.id]['job']['status'] = 'finished'
-        mx_res[job.id]['job']['meta'] = {'progress': 12, 'err_msg': ''}
-        mx_res[job.id]['job']['id'] = job.id
-        with open('/home/mx-results/job_results.json', 'w') as jr:
-            json.dump(mx_res, jr)
+        modResJSON(job.id,
+                   job_status='finished',
+                   job_meta=job.meta,
+                   output_path=os.path.join('/home/mx-results/', str(job.id)),
+                   output_tar=os.path.join('/home/mx-results/', str(job.id), str(job.id)+'.tar.xz'))
         return True, 'success', rpcollection_file

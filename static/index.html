@@ -100,8 +100,6 @@
 	    console.log(i);
 	    console.log(val);
 	    //clear the page
-	    parent_div = document.getElementById('to_add_boxes');
-	    parent_div.innerHTML = '';
 	    //prepare the data
 	    var rightList = [val["input"]["gem"], val["input"]["steps"], val["job"]["status"], val["job"]["meta"]["progress"]*100.0/12.0.toString()+'%', val["job"]["meta"]["err_msg"]]
 	    var leftList = ["Organism", "Max Steps", "Job Status", "Job Progress", "Error Message"];
@@ -148,6 +146,7 @@
 	    div.className = "col-md-12";
 	    div.append(div_box_header);
 	    div.append(div_box_content);
+	    parent_div = document.getElementById('to_add_boxes');
 	    parent_div.append(div);
 	    makeStrc(val['input']['smiles'], val['input']['name']+'_strc', 200, 200);
 	  });
@@ -161,6 +160,8 @@
     //every 60s reload to see if the jobs have been updated
     //TODO: only if on or more are queued or running
     setInterval(function() {
+      parent_div = document.getElementById('to_add_boxes');
+      parent_div.innerHTML = '';
       makeDashBoard();
     }, 60000);
   </script>

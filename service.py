@@ -79,14 +79,6 @@ def stamp(data, status=1):
     out['data'] = data
     return out
 
-#taken from: https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-def update(d, u):
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = update(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
 
 def modResJSON(job_id,
                job_status=None,
@@ -104,21 +96,31 @@ def modResJSON(job_id,
     mx_res = None
     with open('/home/mx-results/job_results.json', 'r') as jr:
         mx_res = json.load(jr)
-    if job.id in mx_res:
-        logger.warning('There is already job ID: '+str(job.id))
-        logger.warning('Overwriting....')
-    tmp_dict = {'job': {'status': job_status, 'meta': job_meta, 'id': job_id},
-                'input': {'name': input_name, 'smiles': input_smiles, 'gem': input_gem, 'steps': input_steps},
-                'output': {'path': output_path, 'tar': output_tar}}
-    tmp_dict['job'] = {k: v for k, v in tmp_dict['job'].items() if v is not None}
-    tmp_dict['input'] = {k: v for k, v in tmp_dict['input'].items() if v is not None}
-    tmp_dict['output'] = {k: v for k, v in tmp_dict['output'].items() if v is not None}
-    for i in list(tmp_dict.keys()):
-        if not tmp_dict[i]:
-            tmp_dict.pop(i)
-    ### update ###
-    #mx_res.update(tmp_dict)
-    update(mx_res[job_id], tmp_dict)
+    id_pos = {}
+    for i in range(len(mx_res)):
+        id_pos[mx_res[i]['job']['id']] = i
+    if not job_id in id_pos:
+        logger.warning('First time creating: '+str(job_id))
+        mx_res.append({'job': {'status': job_status, 'meta': job_meta, 'id': job_id},
+                       'input': {'name': input_name, 'smiles': input_smiles, 'gem': input_gem, 'steps': input_steps},
+                       'output': {'path': output_path, 'tar': output_tar}})
+    else:
+        if job_status:
+            mx_res[id_pos[job_id]]['job']['status'] = job_status
+        if job_meta:
+            mx_res[id_pos[job_id]]['job']['meta'] = job_meta
+        if input_name:
+            mx_res[id_pos[job_id]]['input']['name'] = input_name
+        if input_smiles:
+            mx_res[id_pos[job_id]]['input']['smiles'] = input_smiles
+        if input_gem:
+            mx_res[id_pos[job_id]]['input']['gem'] = input_gem
+        if input_steps:
+            mx_res[id_pos[job_id]]['input']['steps'] = input_steps
+        if output_path:
+            mx_res[id_pos[job_id]]['output']['path'] = output_path
+        if output_tar:
+            mx_res[id_pos[job_id]]['output']['tar'] = output_tar
     with open('/home/mx-results/job_results.json', 'w') as jr:
         json.dump(mx_res, jr)
 
@@ -149,6 +151,10 @@ def submitJob():
     logger.debug('SMILES: '+str(params['smiles']))
     logger.debug('GEM: '+str(params['gem']))
     logger.debug('Steps: '+str(params['steps']))
+    if not params['smiles'] or not params['gem'] or not params['steps']:
+        response = make_response(jsonify({}), 500)
+        response.headers["Content-Type"] = "application/json"
+        return response
     ##### REDIS ##############
     redis_conn = Redis()
     q = Queue('default', connection=redis_conn, default_time_out='24h')

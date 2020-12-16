@@ -211,6 +211,16 @@ RUN python /home/extra_packages/init_equilibrator.py
 ############# REST #########################
 ############################################
 
+######## JSME ############
+
+ENV JSME_VERSION JSME_2020-06-11
+
+RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
+RUN unzip $JSME_VERSION.zip
+RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
+RUN rm -r $JSME_VERSION
+RUN rm $JSME_VERSION.zip
+
 ##### projects #####
 COPY metaxime/ /home/metaxime/
 COPY selenzy/ /home/selenzy/
@@ -240,16 +250,6 @@ COPY service.py /home/
 #############################
 
 COPY static/ /var/www/html/
-
-######## JSME ############
-
-ENV JSME_VERSION JSME_2020-06-11
-
-RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
-RUN unzip $JSME_VERSION.zip
-RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
-RUN rm -r $JSME_VERSION
-RUN rm $JSME_VERSION.zip
 
 CMD ["/home/start.sh"]
 # Open server port
