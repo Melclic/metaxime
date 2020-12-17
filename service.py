@@ -13,6 +13,7 @@ import glob
 import tempfile
 import time
 import io
+import shutil
 import collections.abc
 
 import logging
@@ -32,25 +33,6 @@ from flask_cors import CORS
 from logsetup import LOGGING_CONFIG
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
-
-'''
-from logging.config import dictConfig
-dictConfig({
-    'version': 1,
-    'formatters': {'default': {
-        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-    }},
-    'handlers': {'wsgi': {
-        'class': 'logging.StreamHandler',
-        'stream': 'ext://flask.logging.wsgi_errors_stream',
-        'formatter': 'default'
-    }},
-    'root': {
-        'level': 'DEBUG',
-        'handlers': ['wsgi']
-    }
-})
-'''
 
 app = Flask(__name__)
 CORS(app)
@@ -147,6 +129,7 @@ def submitJob():
     """
     #params = json.load(request.files['data'])
     params = request.get_json()
+    logger.info('-------- submitJob --------')
     logger.debug(params)
     logger.debug('name: '+str(params['name']))
     logger.debug('SMILES: '+str(params['smiles']))
@@ -179,7 +162,8 @@ def submitJob():
     response.headers["Content-Type"] = "application/json"
     return response
 
-
+#both functions here are better but need to restructre to be used
+'''DEPRECATED
 @app.route("/REST/RetreiveJob", methods=["GET", "POST"])
 def retreiveJob():
     params = json.load(request.files['data'])
@@ -224,8 +208,9 @@ def retreiveJob():
         response = make_response(jsonify(toret), 102)
         response.headers["Content-Type"] = "application/json"
         return response
+'''
 
-
+'''DEPRECATED
 @app.route("/REST/QueryJob", methods=["GET", "POST"])
 def queryJob():
     params = json.load(request.files['data'])
@@ -239,28 +224,121 @@ def queryJob():
     response = make_response(jsonify(toret), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+'''
         
 
 @app.route("/REST/GetJobList", methods=["GET", "POST"])
 def getJobList():
     params = request.get_json()
     mx_res = {}
-    with open('/mx-results/job_results.json', 'r') as jr:
-        mx_res = json.load(jr)
+    if os.path.exists('/mx-results/job_results.json'):
+        with open('/mx-results/job_results.json', 'r') as jr:
+            mx_res = json.load(jr)
+    else:
+        if not os.path.exists('/mx-results/'):
+            os.mkdir('/mx-results/')
+        with open('/mx-results/job_results.json', 'w') as empty_fi:
+            empty_fi.write('[]')
     response = make_response(jsonify(mx_res), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+@app.route("/REST/GetJobInfo", methods=["GET", "POST"])
+def getJobInfo():
+    params = request.get_json()
+    logger.debug('params: '+str(params))
+    mx_res = {}
+    with open('/mx-results/job_results.json', 'r') as jr:
+        mx_res = json.load(jr)
+    logger.debug('mx_res: '+str(mx_res))
+    loc_id = None
+    count = 0
+    for i in mx_res:
+        if i['job']['id']==params['job_id']:
+            loc_id = count
+        count += 1
+    logger.debug('loc_id: '+str(loc_id))
+    if loc_id==None:
+        response = make_response(jsonify({}), 404)
+        response.headers["Content-Type"] = "application/json"
+        return response
+    else:
+        response = make_response(jsonify(mx_res[loc_id]), 200)
+        response.headers["Content-Type"] = "application/json"
+        return response
+
+#TODO: totest
+@app.route("/REST/GetJob", methods=["GET", "POST"])
+def getJob():
+    params = request.get_json()
+    mx_res = {}
+    inpath = os.path.join('/mx-results/', params['job_id'])
+    if os.path.exists(inpath):
+        job_tarxz = io.BytesIO()
+        with tempfile.TemporaryDirectory() as tmp_output_folder:
+            outpath = os.path.join(tmp_output_folder, params['job_id']+'.tar.xz')
+            subprocess.call(['tar -cf - '+str(inpath)+' | xz -9 -c - > '+str(outpath)])
+            with open(outpath, 'rb') as op:
+                job_tarxz.write(op.read())
+        job_tarxz.seek(0)
+        response = make_response(send_file(job_tarxz, as_attachment=True, attachment_filename=params['job_id']+'.tar.xz', mimetype='application/x-tar'), 200)
+        response.headers["Content-Type"] = "application/x-tar"
+        return response
+    else:
+        response = make_response(jsonify({}), 404)
+        response.headers["Content-Type"] = "application/json"
+        return response
+
 
 @app.route("/REST/GetResults", methods=["GET", "POST"])
 def getResults():
     params = request.get_json()
     mx_res = []
-    for i in glob.glob(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json', '*')):
-        with open(i, 'r') as j:
-            mx_res.append(j.read())
+    if os.path.exists(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json')):
+        for i in glob.glob(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json', '*')):
+            with open(i, 'r') as j:
+                mx_res.append(j.read())
+    else:
+        response = make_response(jsonify({}), 404)
+        response.headers["Content-Type"] = "application/json"
+        return response
     response = make_response(jsonify(mx_res), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+@app.route("/REST/DeleteResult", methods=["GET", "POST"])
+def deleteResult():
+    params = request.get_json()
+    logger.debug('params: '+str(params))
+    mx_res = {}
+    with open('/mx-results/job_results.json', 'r') as jr:
+        mx_res = json.load(jr)
+    logger.debug('mx_res: '+str(mx_res))
+    loc_id = None
+    count = 0
+    for i in mx_res:
+        if i['job']['id']==params['job_id']:
+            loc_id = count
+        count += 1
+    logger.debug('loc_id: '+str(loc_id))
+    if loc_id==None:
+        response = make_response(jsonify({}), 404)
+        response.headers["Content-Type"] = "application/json"
+        return response
+    else:
+        mx_res.pop(loc_id)
+        try:
+            shutil.rmtree(os.path.join('/mx-results', params['job_id']))
+        except FileNotFoundError:
+            pass
+    with open('/mx-results/job_results.json', 'w') as jr:
+        json.dump(mx_res, jr)
+    response = make_response(jsonify({'job_id': params['job_id']}), 200)
+    response.headers["Content-Type"] = "application/json"
+    return response
+
 
 @app.route("/REST/GetNetwork", methods=["GET", "POST"])
 def getNetwork():

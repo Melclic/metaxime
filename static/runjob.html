@@ -12,12 +12,13 @@
   <!-- jQuery (necessary for Bootstrap's JavaScript plugins) 
   <script src="https://code.jquery.com/jquery.js"></script> -->
   <!-- Include all compiled plugins (below), or include individual files as needed -->
+  <link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
   <script src="js/jquery-3.5.1.min.js"></script>
   <script src="js/bootstrap/bootstrap.min.js"></script>
   <script src="js/custom.js"></script>
   <script src="js/handle_strc.js"></script>
   <script src="js/smiles-drawer_mod.js"></script>
-  <script type="text/javascript" language="javascript" src="js/jsme/jsme.nocache.js"></script>
+  <script type="text/javascript" language="javascript" src="js/jsme.nocache.js"></script>
   <script>
     function jsmeOnLoad() {
       jsmeApplet = new JSApplet.JSME("appletContainer", "600px", "440px", {
@@ -37,6 +38,31 @@
     }
   </script>
 </head>
+<style>
+  #overlay {
+    position: fixed;
+    display: none;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 2;
+    cursor: pointer;
+  }
+
+  #text{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 50px;
+    color: white;
+    transform: translate(-50%,-50%);
+    -ms-transform: translate(-50%,-50%);
+  }
+</style>
 <body>
   <!-- RECOMMENDED if your web app will not function without JavaScript enabled -->
   <noscript>
@@ -45,38 +71,30 @@
       in order for this application to display correctly.
     </div>
   </noscript>
+  <div id="overlay">
+    <div id="text">Submitting job...</div>
+  </div>
   <div class="header">
     <div class="container">
       <div class="row">
-	<div class="col-md-5">
-	  <!-- Logo -->
-	  <div class="logo">
-	    <h1><a href="index.html">MetaXime</a></h1>
-	  </div>
-	</div>
-	<div class="col-md-2">
-	  <div class="navbar navbar-inverse" role="banner">
-	    <nav class="collapse navbar-collapse bs-navbar-collapse navbar-right" role="navigation">
-	      <ul class="nav navbar-nav">
-	      </ul>
-	    </nav>
-	  </div>
-	</div>
+        <div class="col-md-2">
+          <h1><a href="index.html">MetaXime</a></h1>
+        </div>
+        <div class="col-md-10">
+          <div class="navbar">
+            <ul>
+              <li class="fa fa-columns" style="color:#DDDDDD;"><a href="index.html">   Dashboard</a></li>
+              <li class="fa fa-play-circle" style="color:#DDDDDD;"><a href="runjob.html">   Run Job</a></li>
+	      <li class="fa fa-question-circle-o" style="color:#DDDDDD;"><a href="help.html">   Help</a></li>
+            </ul>
+          </div>
+        </div>
       </div> <!-- container -->
     </div> <!-- container -->
   </div> <!-- header -->
   <div class="page-content">
     <div class="row" id="mai_row">
-      <div class="col-md-2">
-	<div class="sidebar content-box" style="display: block;">
-	  <ul class="nav">
-	    <!-- Main menu -->
-	    <li><a href="index.html"><i class="glyphicon glyphicon-home"></i> Dashboard</a></li>
-	    <li class="current"><a href="runjob.html"><i class="glyphicon glyphicon-calendar"></i> Run</a></li>
-	  </ul>
-	</div>
-      </div>
-      <div class="col-md-10">
+      <div class="col-md-12">
 	<div class="row">
 	  <div class="container-fluid">
 	    <div class="content-box-large" id="content_box">
@@ -197,12 +215,14 @@
       if (in_strc) {
 	makeStrc(in_strc, 'search_canvas_smiles', $("#content_box").width(), 300, 'light');
 	document.getElementById('search_txt_smiles').value = in_strc;
+	document.getElementById('name_target_txt').value = document.getElementById('name_search_txt').value;
       }
     }
   </script>
 
   <script>
     function submitJob() {
+      document.getElementById("overlay").style.display = "block";
       var target_name = document.getElementById('name_target_txt').value;
       console.log(target_name)
       if (!(target_name)) {
@@ -250,7 +270,10 @@
 	    'Access-Control-Allow-Origin': '*'
 	}
       });
-      window.location.href = "index.html";
+      //########## wait three seconds before moving to the next ########
+      setTimeout(function() {
+	window.location.href = "index.html";
+      }, 3000);
     }
   </script>
 

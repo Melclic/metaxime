@@ -1127,7 +1127,7 @@ class rpMerge(rpGraph):
                     continue
                     #self.logger.warning('Source species '+str(member.getIdRef())+' has been created in the target model')
                 elif len(list_species)>1:
-                    self.logger.warning('There are multiple matches to the species '+str(member.getIdRef())+'... taking the first one: '+str(list_species))
+                    self.logger.warning('There are multiple matches to the species '+str(source_species)+'... taking the first one: '+str(list_species))
                 #TODO: loop throught the annotations and replace the non-overlapping information
                 target_member = self.model.getSpecies(list_species[0])
                 source_member = source_model.getSpecies(source_species)

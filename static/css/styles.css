@@ -56,60 +56,71 @@ footer .copy{
    background-color: #2c3742;
 }
 
-.header .logo h1{
+.header > * h1 {
    font-size:30px;
    margin:0px;
    padding:10px 0px;
 }
 
-.header .logo h1 a{
+.header > * h1 a {
    color:#fff;
    font-family: 'Open Sans Condensed', sans-serif;
 }
 
-.header .logo h1 a:hover{
+.header > * h1 a:hover {
    color:#fff;
    text-decoration:none;
    border:0px;
 }
+
+.navbar > * {
+   border:0px !important;
+   font-size:22px;
+   height:50px;
+   font-family: 'Open Sans Condensed', sans-serif;
+}
+
+.navbar > * ul {
+	list-style-type: none;
+	margin: 0;
+	overflow: hidden;
+	background-color: #333333;
+   	padding:10px 0px;
+}
+
+.navbar > * li {
+	float: left;
+	display: block;
+	text-align: center;
+	padding: 5px;
+	margin: 0 20px;
+}
+
+.navbar > * li a {
+	color: white;
+	text-decoration: none;
+   font-family: 'Open Sans Condensed', sans-serif;
+}
+
+.navbar > * li:hover {
+   background-color: #111111;
+}
+
+
+
+
+
+
+.header .navbar-nav>.open>a,.header  .navbar-nav>.open>a:hover,.header  .navbar-nav>.open>a:focus {
+   background:none !important;
+}
+
 
 .header .form{
    margin-top:10px;
    width:100%;
    max-width:300px;
    margin:10px auto;
-}
-
-.header .navbar *{
-   box-shadow:none !important;
-}
-
-.header .navbar .label{
-   font-size:12px;
-   padding:4px 8px;
-   margin:0px 2px;
-   border-radius:15px !important;
-}
-
-.header .navbar{
-   background:none !important;
-   border:0px !important;
-}
-
-.header .navbar i{
-   margin-right:3px;
-}
-
-.header .navbar .nav > li > a{
-   color:#fff !important;
-   font-size:13px !important;
-   border-bottom:0px !important;
-   margin-top:0px !important;
-   font-weight:bold;
-}
-
-.header .navbar-nav>.open>a,.header  .navbar-nav>.open>a:hover,.header  .navbar-nav>.open>a:focus {
-   background:none !important;
 }
 
 .header .navbar-collapse{
