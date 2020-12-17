@@ -58,10 +58,10 @@
 	</div>
       </div>
       <div class="col-md-10">
-	<div class="row">
+	<div class="row" id="to_add_boxes">
+	  <!-- Here we loop through the different job results
 	  <div class="col-md-6">
 	    <div class="row" id="to_add_boxes">
-	      <!-- Here we loop through the different job results
 	      <div class="col-md-12">
 		<div class="content-box-header">
 		  <div class="panel-title">New vs Returning Visitors</div>
@@ -77,9 +77,9 @@
 		  <br /><br />
 		</div>
 	      </div>
-	      -->
 	    </div>
 	  </div>
+	  -->
 	</div>
       </div>
     </div>
@@ -101,7 +101,9 @@
 	    console.log(val);
 	    //clear the page
 	    //prepare the data
-	    var rightList = [val["input"]["gem"], val["input"]["steps"], val["job"]["status"], val["job"]["meta"]["progress"]*100.0/12.0.toString()+'%', val["job"]["meta"]["err_msg"]]
+	    var perc_done = val["job"]["meta"]["progress"]*100.0/13.0
+	    perc_done = perc_done.toFixed(1)
+	    var rightList = [val["input"]["gem"], val["input"]["steps"], val["job"]["status"], perc_done.toString()+'%', val["job"]["meta"]["err_msg"]]
 	    var leftList = ["Organism", "Max Steps", "Job Status", "Job Progress", "Error Message"];
 	    //box header
 	    let div_box_header = document.createElement('div');
@@ -138,16 +140,33 @@
 		  canvas.id = val['input']['name']+'_strc';
 		  //canvas.onclick=;
 		div_box_desc_2.append(canvas);
-	      div_box_desc.append(div_box_desc_2);
+	      div_box_desc.append(div_box_desc_2); 
+	      btn = document.createElement('button');
+	      btn.className = "btn btn-default btn-block";
+	      btn.innerHTML = "Examine";
+	      btn.id = val["job"]["id"];
+	      //btn.onclick = open("results.html?jobid="+val["job"]["id"]);
+	      btn.addEventListener("click", function(){
+		  window.open("result2.html?jobid="+val["job"]["id"]);	
+		},
+		false);
+	      div_box_desc.append(btn);
 	    div_box_content.append(div_box_desc);
 	    //div_box_content.append(document.createElement('br'));
 	    //highest level
-	    div = document.createElement('div');
-	    div.className = "col-md-12";
-	    div.append(div_box_header);
-	    div.append(div_box_content);
+	    div12 = document.createElement('div');
+	    div12.className = "col-md-12";
+	    div12.append(div_box_header);
+	    div12.append(div_box_content);
+	    row6 = document.createElement('div');
+	    row6.className = "row";
+	    row6.append(div12);
+	    div6 = document.createElement('div');
+	    div6.className = "col-md-6";
+	    div6.append(row6);
 	    parent_div = document.getElementById('to_add_boxes');
-	    parent_div.append(div);
+	    parent_div.append(div6);
+	    //<button class="btn btn-default btn-block" type="button" data-toggle="collapse" data-target="#search_coll" aria-expanded="true" aria-controls="search_coll">Search taget by name</button>
 	    makeStrc(val['input']['smiles'], val['input']['name']+'_strc', 200, 200);
 	  });
 	},

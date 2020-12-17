@@ -1,4 +1,4 @@
-function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, chem_height=100) { 
+function drawNetwork(svg, graph, show_only_central=true, chem_width=100, chem_height=100) { 
   // Create the input graph
   var g = new dagreD3.graphlib.Graph()
     .setGraph({nodesep: 30,
@@ -7,7 +7,7 @@ function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, 
 	       marginx: 10,
 	       marginy: 10})
     .setDefaultEdgeLabel(function() { return {}; });
-  d3.json(network_file).then(function(graph) {
+  //d3.json(network_file).then(function(graph) {
     console.log(graph)
     var ignore_species = [];
     //################### nodes ##################
@@ -85,7 +85,7 @@ function drawNetwork(svg, network_file, show_only_central=true, chem_width=100, 
 		    explicitH) 
       }
     }
-  });
+  //});
   
   d3.selectAll('node')
     .attr('test', function(d) { console.log(d) })

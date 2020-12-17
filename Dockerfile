@@ -251,6 +251,9 @@ COPY service.py /home/
 
 COPY static/ /var/www/html/
 
+RUN mkdir /mx-results/
+RUN chmod -R 777 /mx-results/
+
 CMD ["/home/start.sh"]
 # Open server port
 #EXPOSE 8888

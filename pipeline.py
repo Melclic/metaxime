@@ -21,8 +21,10 @@ from equilibrator_api import ComponentContribution
 
 
 from metaxime import rpCache
+from metaxime import rpGraph
 from metaxime import rpReader
 from metaxime import rpFBA
+from metaxime import rpSBML
 from metaxime import rpEquilibrator
 from metaxime import rpSelenzyme
 from metaxime import rpGlobalScore
@@ -105,11 +107,11 @@ def modResJSON(job_id,
                output_path=None,
                output_tar=None):
     ####### create/append json #####
-    if not os.path.exists('/home/mx-results/job_results.json'):
-        with open('/home/mx-results/job_results.json', 'w') as jr:
+    if not os.path.exists('/mx-results/job_results.json'):
+        with open('/mx-results/job_results.json', 'w') as jr:
             json.dump({}, jr)
     mx_res = None
-    with open('/home/mx-results/job_results.json', 'r') as jr:
+    with open('/mx-results/job_results.json', 'r') as jr:
         mx_res = json.load(jr)
     id_pos = {}
     for i in range(len(mx_res)):
@@ -136,7 +138,7 @@ def modResJSON(job_id,
             mx_res[id_pos[job_id]]['output']['path'] = output_path
         if output_tar:
             mx_res[id_pos[job_id]]['output']['tar'] = output_tar
-    with open('/home/mx-results/job_results.json', 'w') as jr:
+    with open('/mx-results/job_results.json', 'w') as jr:
         json.dump(mx_res, jr)
 
 
@@ -176,12 +178,14 @@ def pipeline(target_smiles,
     logger.info('target_inchi: '+str(target_inchi))
     with tempfile.TemporaryDirectory() as tmp_output_folder:
         ############# source file #############
-        logger.debug('------ source file -----')
+        logger.info('------ source file -----')
         job.meta['progress'] = 2
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
-        rpcollection_file = os.path.join(tmp_output_folder, 'tmp.rpcol')
-        source_file = os.path.join(tmp_output_folder, 'source.csv')
+        rpcollection_file = os.path.join(tmp_output_folder, 'rpcollection.tar.xz')
+        rp_results_folder = os.path.join(tmp_output_folder, 'rp_results')
+        os.mkdir(rp_results_folder)
+        source_file = os.path.join(rp_results_folder, 'source.csv')
         with open(source_file, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['Name', 'InChI'])
@@ -209,14 +213,16 @@ def pipeline(target_smiles,
             logger.error('Problem generating sink')
             return False, 'gensink'
         '''
+        shutil.copy2(gem_file, os.path.join(rp_results_folder, 'gem_sbml.xml'))
+        shutil.copy2(sink_file, os.path.join(rp_results_folder, 'sink.csv'))
         ####################################
         ########## Reaction Rules ##########
         ####################################
-        logger.debug('---------- reaction rules -----')
+        logger.info('---------- reaction rules -----')
         job.meta['progress'] = 4
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
-        rules_file = os.path.join(tmp_output_folder, 'reaction_rules.csv')
+        rules_file = os.path.join(rp_results_folder, 'reaction_rules.csv')
         rule_file = None
         if rules_type=='all':
             rule_file = '/home/retrorules/rules_rall_rp2.csv'
@@ -270,11 +276,11 @@ def pipeline(target_smiles,
         ####################################
         ########## Retropath2 ##############
         ####################################
-        logger.debug('---------- RP2 -----')
+        logger.info('---------- RP2 -----')
         job.meta['progress'] = 5
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
-        rp2_file = os.path.join(tmp_output_folder, 'rp2_pathways.csv')
+        rp2_file = os.path.join(rp_results_folder, 'rp2_pathways.csv')
         logger.debug('Rules file: '+str(rules_file))
         logger.debug('Timeout: '+str(sub_timeout*60.0)+' seconds')
         dmin = 0
@@ -428,12 +434,12 @@ def pipeline(target_smiles,
         ###################################
         ######### rp2paths ################
         ###################################
-        logger.debug('---------- RP2paths -----')
+        logger.info('---------- RP2paths -----')
         job.meta['progress'] = 6
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
-        rp2paths_pathways_file = os.path.join(tmp_output_folder, 'rp2paths_pathways.csv')
-        rp2paths_compounds_file = os.path.join(tmp_output_folder, 'rp2paths_compounds.tsv')
+        rp2paths_pathways_file = os.path.join(rp_results_folder, 'rp2paths_pathways.csv')
+        rp2paths_compounds_file = os.path.join(rp_results_folder, 'rp2paths_compounds.tsv')
         with tempfile.TemporaryDirectory() as tmp_rp2paths_folder:
             rp2paths_command = 'python /home/rp2paths/RP2paths.py all '+str(rp2_file)+' --outdir '+str(tmp_rp2paths_folder)+' --timeout '+str(int(sub_timeout*60.0))
             try:
@@ -487,7 +493,7 @@ def pipeline(target_smiles,
         ##################################
         ####### Analysis #################
         ##################################
-        logger.debug('---------- rpReader -----')
+        logger.info('---------- rpReader -----')
         job.meta['progress'] = 7
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
@@ -503,7 +509,7 @@ def pipeline(target_smiles,
             modResJSON(job.id, job_meta=job.meta, job_status='rpreader')
             #return False, 'rpreader', b''
             return False, 'rpreader', ''
-        logger.debug('---------- rpEquilibrator -----')
+        logger.info('---------- rpEquilibrator -----')
         job.meta['progress'] = 8
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
@@ -521,7 +527,7 @@ def pipeline(target_smiles,
             modResJSON(job.id, job_meta=job.meta, job_status='rpeq')
             #return False, 'rpeq', b''
             return False, 'rpeq', ''
-        logger.debug('---------- rpFBA -----')
+        logger.info('---------- rpFBA -----')
         job.meta['progress'] = 9
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
@@ -541,7 +547,7 @@ def pipeline(target_smiles,
             modResJSON(job.id, job_meta=job.meta, job_status='rpfba')
             #return False, 'rpfba', b''
             return False, 'rpfba', ''
-        logger.debug('---------- rpSelenzyme -----')
+        logger.info('---------- rpSelenzyme -----')
         job.meta['progress'] = 10
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
@@ -557,7 +563,7 @@ def pipeline(target_smiles,
             modResJSON(job.id, job_meta=job.meta, job_status='rpsel')
             #return False, 'rpsel', b''
             return False, 'rpsel', ''
-        logger.debug('---------- rpGlobalScore -----')
+        logger.info('---------- rpGlobalScore -----')
         job.meta['progress'] = 11
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
@@ -574,20 +580,25 @@ def pipeline(target_smiles,
         job.meta['progress'] = 12
         job.save_meta()
         modResJSON(job.id, job_meta=job.meta)
-        #with open(rpcollection_file, 'rb') as op:
-        #    binary_rpcol = op.read()
-        #return True, 'success', binary_rpcol 
-        ######## record the results #######
-        with tarfile.open(rpcollection_file) as f:
-            f.extractall('/home/mx-results/')
-        shutil.move('/home/mx-results/rpsbml_collection/', os.path.join('/home/mx-results/', str(job.id)))
-        shutil.copy2(rpcollection_file, os.path.join('/home/mx-results/', str(job.id)+'.tar.xz'))
-        subprocess.call(['chmod', '-R', '664', os.path.join('/home/mx-results/', str(job.id))])
+        ################ generate the various netowrk JSON and SBML JSON #####
+        logger.info('------------ JSON ----------')
+        rpSBML.batchAsDict(rpcollection_file)
+        rpGraph.batchNetworkDict(rpcollection_file, is_gem_sbml=False)
+        ################ make json with the rank and the filenames #########
+        logger.info('----------- save results -------')
+        #copy the results to the shared folder
+        result_output_path = os.path.join('/mx-results/', str(job.id))
+        shutil.move(tmp_output_folder, result_output_path)
+        subprocess.call(['tar', '-xf', os.path.join(result_output_path, 'rpcollection.tar.xz'), '-C', result_output_path])
+        subprocess.call(['chmod', '-R', '777', result_output_path])
+        job.meta['progress'] = 13
+        job.save_meta()
+        modResJSON(job.id, job_meta=job.meta)
         #### update the sttus json ###
-        mx_res = None
         modResJSON(job.id,
                    job_status='finished',
                    job_meta=job.meta,
-                   output_path=os.path.join('/home/mx-results/', str(job.id)),
-                   output_tar=os.path.join('/home/mx-results/', str(job.id), str(job.id)+'.tar.xz'))
+                   output_path=result_output_path,
+                   output_tar=os.path.join(result_output_path, 'rpcollection.tar.xz'))
+        logger.info('-------- done --------')
         return True, 'success', rpcollection_file

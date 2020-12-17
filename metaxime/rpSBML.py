@@ -6,10 +6,14 @@
 import libsbml
 from hashlib import md5
 import os
+import tarfile
+import tempfile
+import glob
 import logging
 import copy
-import pandas as pd
-import numpy as np
+import json
+#import pandas as pd
+#import numpy as np
 
 from .rpCache import rpCache
 
@@ -127,6 +131,39 @@ class rpSBML(rpCache):
     def __gt__(self, rpsbml):
         return self.mean_rules_score>rpsbml.mean_rules_score
 
+
+    #######################################################################
+    ############################# Static Methods ########################## 
+    #######################################################################
+
+    @staticmethod
+    def batchAsDict(rpcollection, rpcollection_output=None, pathway_id='rp_pathway', rpcache=None):
+        """Parse a collection of models to their json output
+        """
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcollection, mode='r')
+            root_name = os.path.commonprefix(tar.getnames())
+            logging.debug('root_name: '+str(root_name))
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()
+            json_folder = os.path.join(tmp_folder, root_name, 'model_json')
+            if os.path.exists(json_folder):
+                logging.warning('There is already a model_json folder')
+            else:
+                os.mkdir(json_folder)
+            for model_file in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                rpsbml = rpSBML(path=model_file, rpcache=rpcache)
+                rpsbml_dict = rpsbml.asDict(pathway_id)
+                rpsbml_dict['name'] = model_file.split('/')[-1].replace('.xml', '')
+                json.dump(rpsbml_dict, open(os.path.join(json_folder, model_file.split('/')[-1].replace('.xml', '')+'.json'), 'w'))
+            if rpcollection_output:
+                with tarfile.open(rpcollection_output, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            else:
+                logging.warning('overwriting: '+str(rpcollection))
+                with tarfile.open(rpcollection, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        return True
 
     '''
     #######################################################################

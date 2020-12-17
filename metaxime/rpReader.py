@@ -137,8 +137,6 @@ class rpReader(rpCache):
             if len(glob.glob(os.path.join(tmp_output_folder, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False
-            if not rpcollection_output.endswith('.rpcol'):
-                rpcollection_output += '.rpcol'
             if os.path.exists(rpcollection_output):
                 logging.warning('The path '+str(rpcollection_output)+' already exists... overwriting it')
             #save the whole thing

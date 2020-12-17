@@ -95,19 +95,19 @@
 		<div class="collapse" id="search_coll" data-parent="#input_group">
 		  <div class="card card-body">
 		    <div class="input-group">
-		      <input class="form-control" id="name_search_txt" type="text">
+		      <input class="form-control" id="name_search_txt" placeholder='Target Name' type="text">
 		      <div class="input-group-btn">
 			<button class="btn btn-default" id='name_search_btn' type="button" onclick='searchStrc();'>Search</button>
 		      </div>
 		    </div>
 		    <br></br>
-		    <input type="text" class="form-control" id='search_txt_smiles'></input>
+		    <input type="text" class="form-control" placeholder="SMILES Structure" id='search_txt_smiles'></input>
 		  </div>
 		  <canvas id="search_canvas_smiles" width="300" height="300">
 		</div>
 		<div class="collapse" id="txt_coll" data-parent="#input_group">
 		  <div class="card card-body">
-		    <input type="text" class="form-control" id='txt_smiles'></input>
+		    <input type="text" class="form-control" placeholder="SMILES Structure" id='txt_smiles'></input>
 		  </div>
 		  <canvas id="txt_canvas_smiles" width="300" height="300">
 		</div>
@@ -157,7 +157,7 @@
 		</div>
 	      </div>
 	      <div class="form-group">
-		<button class="btn btn-default" type="button" onclick='getInfo();'>Predict Pathways</button>
+		<button class="btn btn-default" type="button" onclick='submitJob();'>Predict Pathways</button>
 	      </div>
 	    </div>
 	  </div>
@@ -202,7 +202,7 @@
   </script>
 
   <script>
-    function getInfo() {
+    function submitJob() {
       var target_name = document.getElementById('name_target_txt').value;
       console.log(target_name)
       if (!(target_name)) {
@@ -250,6 +250,7 @@
 	    'Access-Control-Allow-Origin': '*'
 	}
       });
+      window.location.href = "index.html";
     }
   </script>
 

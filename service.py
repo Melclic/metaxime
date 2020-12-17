@@ -9,6 +9,7 @@ Created on December 7 2020
 """
 import json
 import os
+import glob
 import tempfile
 import time
 import io
@@ -90,11 +91,11 @@ def modResJSON(job_id,
                output_path=None,
                output_tar=None):
     ####### create/append json #####
-    if not os.path.exists('/home/mx-results/job_results.json'):
-        with open('/home/mx-results/job_results.json', 'w') as jr:
+    if not os.path.exists('/mx-results/job_results.json'):
+        with open('/mx-results/job_results.json', 'w') as jr:
             json.dump({}, jr)
     mx_res = None
-    with open('/home/mx-results/job_results.json', 'r') as jr:
+    with open('/mx-results/job_results.json', 'r') as jr:
         mx_res = json.load(jr)
     id_pos = {}
     for i in range(len(mx_res)):
@@ -121,7 +122,7 @@ def modResJSON(job_id,
             mx_res[id_pos[job_id]]['output']['path'] = output_path
         if output_tar:
             mx_res[id_pos[job_id]]['output']['tar'] = output_tar
-    with open('/home/mx-results/job_results.json', 'w') as jr:
+    with open('/mx-results/job_results.json', 'w') as jr:
         json.dump(mx_res, jr)
 
 
@@ -239,15 +240,38 @@ def queryJob():
     response.headers["Content-Type"] = "application/json"
     return response
         
+
 @app.route("/REST/GetJobList", methods=["GET", "POST"])
 def getJobList():
     params = request.get_json()
     mx_res = {}
-    with open('/home/mx-results/job_results.json', 'r') as jr:
+    with open('/mx-results/job_results.json', 'r') as jr:
         mx_res = json.load(jr)
     response = make_response(jsonify(mx_res), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
+@app.route("/REST/GetResults", methods=["GET", "POST"])
+def getResults():
+    params = request.get_json()
+    mx_res = []
+    for i in glob.glob(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json', '*')):
+        with open(i, 'r') as j:
+            mx_res.append(j.read())
+    response = make_response(jsonify(mx_res), 200)
+    response.headers["Content-Type"] = "application/json"
+    return response
+
+@app.route("/REST/GetNetwork", methods=["GET", "POST"])
+def getNetwork():
+    params = request.get_json()
+    mx_res = {}
+    with open(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'networks', params['rpsbml_id']+'.json'), 'r') as jr:
+        mx_res = json.load(jr)
+    response = make_response(jsonify(mx_res), 200)
+    response.headers["Content-Type"] = "application/json"
+    return response
+
 
 if __name__== "__main__":
     #handler = RotatingFileHandler('metaxime.log', maxBytes=10000, backupCount=1)

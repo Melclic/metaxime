@@ -2,6 +2,10 @@ import logging
 import pandas as pd
 import os
 import itertools
+import json
+import glob
+import tempfile
+import tarfile
 import numpy as np
 import random
 import networkx as nx
@@ -72,6 +76,137 @@ class rpGraph(rpSBML):
         if self.model:
             self._makeGraph(is_gem_sbml, pathway_id, central_species_group_id, sink_species_group_id)
 
+
+    ######################################################################################################
+    ######################################### Static Methods #############################################
+    ######################################################################################################
+
+    @staticmethod
+    def batchNetworkDict(rpcollection,
+                         rpcollection_output=None,
+                         is_gem_sbml=False,
+                         pathway_id='rp_pathway',
+                         central_species_group_id='central_species',
+                         sink_species_group_id='rp_sink_species',
+                         rpcache=None):
+        """Generate a collection of network json files
+        """
+        #construct a dict with 
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcollection, mode='r')
+            root_name = os.path.commonprefix(tar.getnames())
+            logging.debug('root_name: '+str(root_name))
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()
+            network_folder = os.path.join(tmp_folder, root_name, 'networks')
+            if os.path.exists(network_folder):
+                logging.warning('Already contains a network folder')
+            else:
+                os.mkdir(network_folder)
+            for model_file in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                rpgraph = rpGraph(path=model_file,
+                                  rpcache=rpcache,
+                                  is_gem_sbml=is_gem_sbml,
+                                  pathway_id=pathway_id,
+                                  central_species_group_id=central_species_group_id,
+                                  sink_species_group_id=sink_species_group_id)
+                json.dump(rpgraph.networkDict(), open(os.path.join(network_folder, model_file.split('/')[-1].replace('.xml', '')+'.json'), 'w'))
+            if rpcollection_output:
+                with tarfile.open(rpcollection_output, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+            else:
+                logging.warning('overwriting: '+str(rpcollection))
+                with tarfile.open(rpcollection, "w:xz") as tar:
+                    tar.add(os.path.join(tmp_folder, root_name), arcname='rpsbml_collection')
+        return True
+
+    @staticmethod
+    def compareAll(rpcollection, 
+                   is_gem_sbml=False,
+                   pathway_id='rp_pathway',
+                   central_species_group_id='central_species',
+                   sink_species_group_id='rp_sink_species',
+                   inchikey_layers=2,
+                   ec_layers=3,
+                   rpcache=None):
+        """Compare all the networks together and return a similarity matrix
+        """
+        model_df = None
+        with tempfile.TemporaryDirectory() as tmp_folder:
+            tar = tarfile.open(rpcollection, mode='r')
+            root_name = os.path.commonprefix(tar.getnames())
+            logging.debug('root_name: '+str(root_name))
+            tar.extractall(path=tmp_folder, members=tar.members)
+            tar.close()
+            model_files = glob.glob(os.path.join(tmp_folder, root_name, 'models', '*'))
+            model_files_names = [i.split('/')[-1].replace('.xml', '') for i in model_files]
+            model_df = pd.DataFrame(np.zeros((len(model_files), len(model_files))), columns=model_files_names, index=model_files_names)
+            #when comparing the same is 1.0
+            for mf in model_files:
+                model_df[mf][mf] = 1.0
+            logger.debug(model_df)
+            combs = {}
+            for comb in intertools.combinations(model_files, 2):
+                fi_name_1 = model_files[comb[0]].split('/')[-1].replace('.xml', '')
+                fi_name_2 = model_files[comb[1]].split('/')[-1].replace('.xml', '')
+                combs[fi_name_1] = {}
+                combs[fi_name_1][fi_name_2] = 0.0
+                combs[fi_name_2] = {}
+                combs[fi_name_2][fi_name_1] = 0.0
+                rpgraph_1 = rpGraph(path=model_files[comb[0]],
+                                    rpcache=rpcache,
+                                    is_gem_sbml=is_gem_sbml,
+                                    pathway_id=pathway_id,
+                                    central_species_group_id=central_species_group_id,
+                                    sink_species_group_id=sink_species_group_id)
+                rpgraph_2 = rpGraph(path=model_files[comb[1]],
+                                    rpcache=rpcache,
+                                    is_gem_sbml=is_gem_sbml,
+                                    pathway_id=pathway_id,
+                                    central_species_group_id=central_species_group_id,
+                                    sink_species_group_id=sink_species_group_id)
+                score = rpGraph.compare(rpgraph_1, rpgraph_2, inchikey_layers, ec_layers, pathway_id)
+                model_df[fi_name_1][fi_name_2] = score
+                model_df[fi_name_2][fi_name_1] = score
+            logger.debug(model_df)
+        return model_df
+
+    ## Compare two rpgraph hypergraphs and return a score using a simple walk
+    #
+    # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
+    @staticmethod
+    def compare(target_rpgraph, source_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
+        """Compare two rpgraph hypergraphs and return a score using a simple walk
+
+        This function uses the gmatch4py package that implements a number of graph comparison 
+
+        """
+        import gmatch4py as gm
+        #source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
+        ged = gm.GreedyEditDistance(1,1,1,1)
+        all_scores = []
+        for t_s_comb in list(itertools.product(target_compare_graphs, source_compare_graphs)):
+            result = ged.compare([t_s_comb[0][0], t_s_comb[1][0]], None)    
+            similarity = ged.similarity(result)
+            logging.debug(t_s_comb[0])
+            logging.debug(t_s_comb[1])
+            logging.debug(similarity)
+            logging.debug('----------')
+            logging.debug(similarity[0][1])
+            logging.debug(t_s_comb[0][1])
+            logging.debug(similarity[1][0])
+            logging.debug(t_s_comb[1][1])
+            #7.0 is an arbiratry number
+            scores = [similarity[0][1]*(sum(t_s_comb[0][1])/7.0), similarity[1][0]*(sum(t_s_comb[1][1])/7.0)]
+            if scores[0]>scores[1]:
+                score = scores[0]
+            else:
+                score = scores[1]
+            all_scores.append(score)
+        logging.debug(all_scores)
+        return max(all_scores)
 
     ######################################################################################################
     ######################################### Private Function ###########################################
@@ -511,43 +646,6 @@ class rpGraph(rpSBML):
                         only_produced_species.append(node_name)
         return only_produced_species
 
-
-    ## Compare two rpgraph hypergraphs and return a score using a simple walk
-    #
-    # NOTE: source and target are used purely for clarity, you can inverse the two and the results are the same
-    @staticmethod
-    def compare(target_rpgraph, source_rpgraph, inchikey_layers=2, ec_layers=3, pathway_id='rp_pathway'):
-        """Compare two rpgraph hypergraphs and return a score using a simple walk
-
-        This function uses the gmatch4py package that implements a number of graph comparison 
-
-        """
-        import gmatch4py as gm
-        #source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        source_compare_graphs = source_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        target_compare_graphs = target_rpgraph._makeCompareGraphs(inchikey_layers, ec_layers, pathway_id)
-        ged = gm.GreedyEditDistance(1,1,1,1)
-        all_scores = []
-        for t_s_comb in list(itertools.product(target_compare_graphs, source_compare_graphs)):
-            result = ged.compare([t_s_comb[0][0], t_s_comb[1][0]], None)    
-            similarity = ged.similarity(result)
-            logging.debug(t_s_comb[0])
-            logging.debug(t_s_comb[1])
-            logging.debug(similarity)
-            logging.debug('----------')
-            logging.debug(similarity[0][1])
-            logging.debug(t_s_comb[0][1])
-            logging.debug(similarity[1][0])
-            logging.debug(t_s_comb[1][1])
-            #7.0 is an arbiratry number
-            scores = [similarity[0][1]*(sum(t_s_comb[0][1])/7.0), similarity[1][0]*(sum(t_s_comb[1][1])/7.0)]
-            if scores[0]>scores[1]:
-                score = scores[0]
-            else:
-                score = scores[1]
-            all_scores.append(score)
-        logging.debug(all_scores)
-        return max(all_scores)
 
     def orderedRetroReactions(self):
         """Public function to return the linear list of reactions
