@@ -467,14 +467,18 @@ class rpMerge(rpGraph):
         for reac in source_target:
             reaction_match[reac] = {}
             if reac in unique:
-                if len(unique[meas])>1:
+                self.logger.debug('unique: '+str(unique))
+                self.logger.debug('reac: '+str(reac))
+                self.logger.debug('reaction_match: '+str(reaction_match))
+                self.logger.debug('source_taget: '+str(source_target))
+                if len(unique[reac])>1:
                     self.logger.debug('Multiple values may match, choosing the first arbitrarily: '+str(unique))
                 for unique_spe in unique[reac]:
-                    reaction_match[reac][unique_spe] = round(source_target[reac][unique[meas][0]]['score'], 5)
+                    reaction_match[reac][unique_spe] = round(source_target[reac][unique[reac][0]]['score'], 5)
             else:
                 self.logger.warning('Cannot find a reaction match for the measured reaction: '+str(reac))
         self.logger.debug('reaction_match: '+str(reaction_match))
-        return reaction_match 
+        return reaction_match
 
 
     # TODO: need to remove from the list reactions simulated reactions that have matched
