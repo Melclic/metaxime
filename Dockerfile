@@ -5,12 +5,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/
 
 ### install all the requirements ###
-COPY docker_files/apt_requirements.txt /home/
+COPY requirements.txt /home/
 RUN sh -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
 #fix because of debian update-alternatives limitations of not considering anything outside of /usr/share/man
 RUN mkdir -p /usr/share/man/man1
 RUN apt-get update
-RUN sed 's/#.*//' /home/apt_requirements.txt | xargs apt-get install -y
+RUN sed 's/#.*//' /home/requirements.txt | xargs apt-get install -y
 RUN apt-get clean
 RUN apt-get autoremove -y
 #RUN rm -rf /var/lib/apt/lists/*
@@ -21,7 +21,6 @@ RUN conda install -y -c conda-forge python-libsbml rdkit networkx==2.3 numpy pan
 RUN conda install -y -c anaconda biopython==1.77
 RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
-RUN conda update -n base -c defaults conda
 
 RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
 
@@ -31,8 +30,8 @@ RUN pip install cobra==0.16
 ###### MARVIN ####
 
 RUN mkdir /home/extra_packages/
-COPY docker_files/rp2/marvin_linux_20.9.deb /home/
-COPY docker_files/rp2/license.cxl /home/extra_packages/
+COPY marvin_linux_20.9.deb /home/
+COPY license.cxl /home/extra_packages/
 ENV CHEMAXON_LICENSE_URL /home/extra_packages/license.cxl
 RUN dpkg -i /home/marvin_linux_20.9.deb
 RUN rm /home/marvin_linux_20.9.deb
@@ -53,7 +52,7 @@ RUN cd /home/
 ########## Equilibrator #####################
 #############################################
 
-COPY docker_files/init_equilibrator.py /home/extra_packages/
+COPY init_equilibrator.py /home/extra_packages/
 RUN chmod +x /home/extra_packages/init_equilibrator.py
 RUN python /home/extra_packages/init_equilibrator.py
 

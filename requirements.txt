@@ -1,0 +1,10 @@
+git
+openjdk-8-jdk
+software-properties-common
+curl
+openjdk-8-jdk
+build-essential
+cmake
+wget
+xz-utils
+pip
