@@ -1,11 +1,18 @@
 from debian:latest
 
 ### install all the APT requirements ###
-COPY apt_requirements.txt /
 RUN apt-get update
-RUN sed 's/#.*//' apt_requirements.txt | xargs apt-get install -y
-RUN apt-get clean
-RUN apt-get autoremove -y
+RUN apt-get install -y build-essential \
+	zlib1g-dev \
+	libncurses5-dev \
+	libgdbm-dev \
+	libnss3-dev \
+	libssl-dev \
+	libsqlite3-dev \
+	libreadline-dev \
+	libffi-dev \
+	curl \
+	libbz2-dev
 
 ### install python 3.8 ###
 RUN curl -O https://www.python.org/ftp/python/3.8.7/Python-3.8.7.tgz
@@ -16,47 +23,87 @@ RUN make -j $(nproc)
 RUN make install
 RUN echo "alias python='python3.8'" >> ~/.bashrc
 RUN echo "alias python3='python3.8'" >> ~/.bashrc
-RUN source ~/.bashrc
+RUN /bin/bash -c 'source ~/.bashrc'
 RUN cd /
 
-### install pip ###
+#### cairo #####
 RUN cd /
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python3.8 get-pip.py
-RUN echo "alias pip='pip3'" >> ~/.bashrc
-RUN source ~/.bashrc
-RUN /usr/local/bin/python3.8 -m pip install --upgrade pip
+RUN curl -O https://www.cairographics.org/releases/cairo-1.16.0.tar.xz
+RUN tar -xf cairo-1.16.0.tar.xz
+RUN cd cairo-1.16.0
+RUN ./configure --enable-png=no --enable-svg=no
+RUN make
+RUN make install
+
+#### install boost #####
+RUN cd /
+#RUN wget https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.bz2
+#RUN tar --bzip2 -xf boost_1_75_0.tar.bz2
+#RUN cd /boost_1_75_0
+RUN wget https://dl.bintray.com/boostorg/release/1.71.0.rc1/source/boost_1_71_0_rc1.tar.gz
+RUN tar --bzip2 -xf boost_1_71_0_rc1.tar.gz
+RUN cd boost_1_71_0_rc1
+RUN echo "using python : 3.8 : /usr/local/bin/python3.8 : /usr/local/lib/python3.8 : /usr/local/lib ;" >> tools/build/src/user-config.jam
+RUN ./bootstrap.sh --prefix=/usr/local
+#RUN ./bootstrap.sh --with-libraries=python,serialization 
+RUN ./b2
+RUN ./b2 install
+#RUN ./bootstrap.sh --with-python=/usr/bin/python3 --with-python-root=/usr
+#RUN ./b2 --with-python --buildid=3noclean
+#RUN ./b2 --with-python --clean
+#RUN ./b2 --with-python --buildid=3
+
+RUN apt-get install cmake pkg-config libfreetype6 libfreetype6-dev
 
 #### install RDKIT #####
+RUN cd /
 ARG RDKIT_VERSION=Release_2020_09_3
 RUN wget --quiet https://github.com/rdkit/rdkit/archive/${RDKIT_VERSION}.tar.gz \
- && tar -xzf ${RDKIT_VERSION}.tar.gz \
- && mv rdkit-${RDKIT_VERSION} rdkit \
- && rm ${RDKIT_VERSION}.tar.gz
-RUN mkdir /rdkit/build
-WORKDIR /rdkit/build
+	&& tar -xzf ${RDKIT_VERSION}.tar.gz \
+	&& mv rdkit-${RDKIT_VERSION} /rdkit \
+	&& rm ${RDKIT_VERSION}.tar.gz
+WORKDIR /rdkit/build/
 
 RUN cmake -Wno-dev \
-    -D CMAKE_BUILD_TYPE=Release \
-    -D CMAKE_INSTALL_PREFIX=/usr \
-    -D Boost_NO_BOOST_CMAKE=ON \
-    -D PYTHON_EXECUTABLE=/usr/bin/python3.8 \
-    -D RDK_BUILD_AVALON_SUPPORT=ON \
-    -D RDK_BUILD_CAIRO_SUPPORT=ON \
-    -D RDK_BUILD_CPP_TESTS=OFF \
-    -D RDK_BUILD_INCHI_SUPPORT=ON \
-    -D RDK_BUILD_FREESASA_SUPPORT=ON \
-    -D RDK_INSTALL_INTREE=OFF \
-    -D RDK_INSTALL_STATIC_LIBS=OFF \
-    ..
+	-D CMAKE_BUILD_TYPE=Release \
+	-D CMAKE_INSTALL_PREFIX=/usr \
+	-D Boost_NO_BOOST_CMAKE=ON \
+	-D PYTHON_EXECUTABLE=/usr/bin/python3.8 \
+	-D RDK_BUILD_AVALON_SUPPORT=ON \
+	-D RDK_BUILD_CAIRO_SUPPORT=ON \
+	-D RDK_BUILD_CPP_TESTS=OFF \
+	-D RDK_BUILD_INCHI_SUPPORT=ON \
+	-D RDK_BUILD_FREESASA_SUPPORT=ON \
+	-D RDK_INSTALL_INTREE=OFF \
+	-D RDK_INSTALL_STATIC_LIBS=OFF \
+	..
 
 RUN make -j $(nproc) \
- && make install
+	&& make install
 
 ###### install the pip packages ####
 
-COPY pip_requirements.txt /
-RUN pip install -r pip_requirements.txt
+RUN apt-get install git \
+	software-properties-common \
+	cmake \
+	wget \
+	xz-utils
+
+RUN pip install numpy \
+	python-libsbml \
+	networkx==2.3 \
+	pandas \
+	openbabel \
+	timeout-decorator \
+	cython \
+	biopython==1.77 \
+	equilibrator-api \
+	equilibrator-pathway \
+	objsize \
+	shared_memory_dict \
+	graphviz \
+	pydotplus \
+	lxml
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 RUN pip install cobra==0.16
@@ -73,7 +120,11 @@ RUN rm /home/marvin_linux_20.9.deb
 
 WORKDIR /home/extra_packages/
 
+RUN apt-get clean
+RUN apt-get autoremove -y
+
 #### extra packages #####
+RUN apt-get install t-coffee emboss
 RUN mkdir equilibrator-assets
 COPY extra_packages/equilibrator-assets /home/extra_packages/equilibrator-assets/
 RUN cd equilibrator-assets && pip install -e . && cd /home/extra_packages/
