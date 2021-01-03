@@ -1,0 +1,91 @@
+from debian:latest
+
+### install all the APT requirements ###
+COPY apt_requirements.txt /
+RUN apt-get update
+RUN sed 's/#.*//' apt_requirements.txt | xargs apt-get install -y
+RUN apt-get clean
+RUN apt-get autoremove -y
+
+### install python 3.8 ###
+RUN curl -O https://www.python.org/ftp/python/3.8.7/Python-3.8.7.tgz
+RUN tar -xf Python-3.8.7.tgz 
+WORKDIR /Python-3.8.7/
+RUN ./configure --enable-optimizations
+RUN make -j $(nproc)
+RUN make install
+RUN echo "alias python='python3.8'" >> ~/.bashrc
+RUN echo "alias python3='python3.8'" >> ~/.bashrc
+RUN source ~/.bashrc
+RUN cd /
+
+### install pip ###
+RUN cd /
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3.8 get-pip.py
+RUN echo "alias pip='pip3'" >> ~/.bashrc
+RUN source ~/.bashrc
+RUN /usr/local/bin/python3.8 -m pip install --upgrade pip
+
+#### install RDKIT #####
+ARG RDKIT_VERSION=Release_2020_09_3
+RUN wget --quiet https://github.com/rdkit/rdkit/archive/${RDKIT_VERSION}.tar.gz \
+ && tar -xzf ${RDKIT_VERSION}.tar.gz \
+ && mv rdkit-${RDKIT_VERSION} rdkit \
+ && rm ${RDKIT_VERSION}.tar.gz
+RUN mkdir /rdkit/build
+WORKDIR /rdkit/build
+
+RUN cmake -Wno-dev \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_INSTALL_PREFIX=/usr \
+    -D Boost_NO_BOOST_CMAKE=ON \
+    -D PYTHON_EXECUTABLE=/usr/bin/python3.8 \
+    -D RDK_BUILD_AVALON_SUPPORT=ON \
+    -D RDK_BUILD_CAIRO_SUPPORT=ON \
+    -D RDK_BUILD_CPP_TESTS=OFF \
+    -D RDK_BUILD_INCHI_SUPPORT=ON \
+    -D RDK_BUILD_FREESASA_SUPPORT=ON \
+    -D RDK_INSTALL_INTREE=OFF \
+    -D RDK_INSTALL_STATIC_LIBS=OFF \
+    ..
+
+RUN make -j $(nproc) \
+ && make install
+
+###### install the pip packages ####
+
+COPY pip_requirements.txt /
+RUN pip install -r pip_requirements.txt
+
+RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
+RUN pip install cobra==0.16
+
+WORKDIR /home/
+
+###### MARVIN ####
+RUN mkdir /home/extra_packages/
+COPY marvin_linux_20.9.deb /home/
+COPY license.cxl /home/extra_packages/
+ENV CHEMAXON_LICENSE_URL /home/extra_packages/license.cxl
+RUN dpkg -i /home/marvin_linux_20.9.deb
+RUN rm /home/marvin_linux_20.9.deb
+
+WORKDIR /home/extra_packages/
+
+#### extra packages #####
+RUN mkdir equilibrator-assets
+COPY extra_packages/equilibrator-assets /home/extra_packages/equilibrator-assets/
+RUN cd equilibrator-assets && pip install -e . && cd /home/extra_packages/
+
+RUN git clone https://gitlab.irstea.fr/jacques.fize/GMatch4py.git
+RUN cd GMatch4py && pip install -e . && cd /home/extra_packages/
+
+WORKDIR /home/
+
+#### generate the cache
+RUN python -c "from equilibrator_api import ComponentContribution; cc = ComponentContribution()"
+COPY init_cache.py /home/
+RUN python init_cache.py
+
+

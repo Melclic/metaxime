@@ -321,6 +321,13 @@ class rpCache:
         :return: Dictionnary of results
         """
         # Import (if needed)
+        self.logger.debug('input: '+str(idepic))
+        self.logger.debug('itype: '+str(itype))
+        self.logger.debug('otype: '+str(otype))
+        ignore_smiles = ['CC(C)(COP([O-])(=O)OP([O-])(=O)OC[C@H]1O[C@H]([C@H](O)[C@@H]1OP([O-])([O-])=O)n1cnc2c(N)ncnc12)[C@@H](O)C(=O)NCCC(=O)NCCSC([*])=O']
+        if idepic in ignore_smiles:
+            self.logger.warning('Ignoring: '+str(idepic))
+            return {}
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)
         elif itype == 'inchi':
@@ -329,6 +336,7 @@ class rpCache:
             raise NotImplementedError('"{}" is not a valid input type'.format(itype))
         if rdmol is None:  # Check imprt
             raise self.DepictionError('Import error from depiction "{}" of type "{}"'.format(idepic, itype))
+        self.logger.debug('Sanitised the input')
         # Export
         odepic = dict()
         for item in otype:
@@ -340,6 +348,7 @@ class rpCache:
                 odepic[item] = MolToInchiKey(rdmol)
             else:
                 raise NotImplementedError('"{}" is not a valid output type'.format(otype))
+        self.logger.debug('Exported the output')
         return odepic
 
 
@@ -945,6 +954,7 @@ class rpCache:
             c = csv.reader(f, delimiter='\t')
             for row in c:
                 if not row[0][0]=='#':
+                    self.logger.debug('--- Parsing '+str(row[0])+' ----') 
                     mnxm = self._checkCIDdeprecated(row[0])
                     tmp = {'formula':  row[2],
                            'name': row[1],
@@ -981,6 +991,7 @@ class rpCache:
                             continue
                         if otype:
                             try:
+                                self.logger.debug('Converting using '+str(tmp[itype]))
                                 resConv = self._convert_depiction(idepic=tmp[itype], itype=itype, otype=otype)
                                 for i in resConv:
                                     tmp[i] = resConv[i]
