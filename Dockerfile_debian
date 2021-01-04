@@ -12,7 +12,9 @@ RUN apt-get install -y build-essential \
 	libreadline-dev \
 	libffi-dev \
 	curl \
-	libbz2-dev
+	libbz2-dev \
+	libpixman-1-0 \
+	libpixman-1-dev
 
 ### install python 3.8 ###
 RUN curl -O https://www.python.org/ftp/python/3.8.7/Python-3.8.7.tgz
@@ -42,10 +44,11 @@ WORKDIR /
 #RUN wget https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.bz2
 #RUN tar --bzip2 -xf boost_1_75_0.tar.bz2
 #RUN cd /boost_1_75_0
-RUN wget https://dl.bintray.com/boostorg/release/1.65.0/source/boost_1_65_0.tar.gz
-RUN tar -xf boost_1_65_0.tar.gz
-WORKDIR /boost_1_65_0
 #RUN echo "using python : 3.8 : /usr/local/bin/python3.8 : /usr/local/lib/python3.8 : /usr/local/lib ;" >> tools/build/src/user-config.jam
+RUN curl -O https://dl.bintray.com/boostorg/release/1.71.0.rc1/source/boost_1_71_0_rc1.tar.gz
+RUN tar --bzip2 -xf boost_1_71_0_rc1.tar.gz
+RUN cd boost_1_71_0_rc1
+RUN echo "using python : 3.8 : /usr/local/bin/python3.8 : /usr/local/lib/python3.8 : /usr/local/lib ;" >> tools/build/src/user-config.jam
 RUN ./bootstrap.sh --prefix=/usr/local
 #RUN ./bootstrap.sh --with-libraries=python,serialization 
 RUN ./b2
