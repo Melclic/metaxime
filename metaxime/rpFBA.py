@@ -12,7 +12,7 @@ import time
 from cobra.flux_analysis import pfba
 from multiprocessing import Pool
 
-from shared_memory_dict import SharedMemoryDict
+#from shared_memory_dict import SharedMemoryDict
 
 from .rpMerge import rpMerge
 from .rpCache import rpCache
@@ -75,7 +75,7 @@ class rpFBA(rpMerge):
     ################## Static Functions ######################
     ##########################################################
 
-
+    #WAENING: Deprecated
     @staticmethod
     def multiFBA(gem_sbml_path,
                  rpsbml_path,
@@ -270,6 +270,8 @@ class rpFBA(rpMerge):
                     else:
                         rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
             else:
+                logging.error('Depreacted: switch')
+                """
                 logging.debug('Setting up the shared memory')
                 rpcache_shared_dict = SharedMemoryDict(name='rpcache', size=rpcache.getSizeCache())
                 rpcache_shared_dict['cid_strc'] = rpcache.cid_strc
@@ -312,6 +314,7 @@ class rpFBA(rpMerge):
                     logging.debug('results: '+str(results))
                 #clean up the 
                 rpcache_shared_dict.cleanup()
+                """
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False
