@@ -324,10 +324,6 @@ class rpCache:
         self.logger.debug('input: '+str(idepic))
         self.logger.debug('itype: '+str(itype))
         self.logger.debug('otype: '+str(otype))
-        ignore_smiles = ['CC(C)(COP([O-])(=O)OP([O-])(=O)OC[C@H]1O[C@H]([C@H](O)[C@@H]1OP([O-])([O-])=O)n1cnc2c(N)ncnc12)[C@@H](O)C(=O)NCCC(=O)NCCSC([*])=O']
-        if idepic in ignore_smiles:
-            self.logger.warning('Ignoring: '+str(idepic))
-            return {}
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)
         elif itype == 'inchi':

@@ -121,5 +121,3 @@ COPY init_cache.py /home/
 ADD metaxime /home/metaxime/
 ADD selenzy /home/selenzy/
 RUN python3 init_cache.py
-
-
