@@ -35,3 +35,4 @@ software-properties-common
 cmake
 wget
 xz-utils
+default-jre
