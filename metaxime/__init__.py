@@ -13,7 +13,8 @@ from .rpGlobalScore import rpGlobalScore
 from .rpExtractSink import rpExtractSink
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    #level=logging.DEBUG,
+    level=logging.INFO,
     #level=logging.WARNING,
     #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',

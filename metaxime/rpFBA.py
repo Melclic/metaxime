@@ -12,8 +12,6 @@ import time
 from cobra.flux_analysis import pfba
 from multiprocessing import Pool
 
-#from shared_memory_dict import SharedMemoryDict
-
 from .rpMerge import rpMerge
 from .rpCache import rpCache
 
@@ -25,6 +23,188 @@ __license__ = "GPLv3"
 __version__ = "0.0.1"
 __maintainer__ = "Melchior du Lac"
 __status__ = "Development"
+
+
+###########################################################
+################# Processify stuff ########################
+###########################################################
+
+import inspect
+import traceback
+import signal
+from functools import wraps
+from multiprocessing import Process, Queue
+
+def handler(signum, frame):
+    """This is to deal with an error caused by Cobrapy segmentation fault
+    """
+    raise OSError('CobraPy is throwing a segmentation fault')
+
+
+class Sentinel:
+    pass
+
+def processify(func):
+    """Decorator to run a function as a process.
+    Be sure that every argument and the return value
+    is *pickable*.
+    The created process is joined, so the code does not
+    run in parallel.
+    """
+
+    def process_generator_func(q, *args, **kwargs):
+        result = None
+        error = None
+        it = iter(func())
+        while error is None and result != Sentinel:
+            try:
+                result = next(it)
+                error = None
+            except StopIteration:
+                result = Sentinel
+                error = None
+            except Exception:
+                ex_type, ex_value, tb = sys.exc_info()
+                error = ex_type, ex_value, ''.join(traceback.format_tb(tb))
+                result = None
+            q.put((result, error))
+
+    def process_func(q, *args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except Exception:
+            ex_type, ex_value, tb = sys.exc_info()
+            error = ex_type, ex_value, ''.join(traceback.format_tb(tb))
+            result = None
+        else:
+            error = None
+
+        q.put((result, error))
+
+    def wrap_func(*args, **kwargs):
+        # register original function with different name
+        # in sys.modules so it is pickable
+        process_func.__name__ = func.__name__ + 'processify_func'
+        setattr(sys.modules[__name__], process_func.__name__, process_func)
+
+        signal.signal(signal.SIGCHLD, handler) #This is to catch the segmentation error
+
+        q = Queue()
+        p = Process(target=process_func, args=[q] + list(args), kwargs=kwargs)
+        p.start()
+        result, error = q.get()
+        p.join()
+
+        if error:
+            ex_type, ex_value, tb_str = error
+            message = '%s (in subprocess)\n%s' % (str(ex_value), tb_str)
+            raise ex_type(message)
+
+        return result
+
+    def wrap_generator_func(*args, **kwargs):
+        # register original function with different name
+        # in sys.modules so it is pickable
+        process_generator_func.__name__ = func.__name__ + 'processify_generator_func'
+        setattr(sys.modules[__name__], process_generator_func.__name__, process_generator_func)
+
+        signal.signal(signal.SIGCHLD, handler) #This is to catch the segmentation error
+
+        q = Queue()
+        p = Process(target=process_generator_func, args=[q] + list(args), kwargs=kwargs)
+        p.start()
+
+        result = None
+        error = None
+        while error is None:
+            result, error = q.get()
+            if result == Sentinel:
+                break
+            yield result
+        p.join()
+
+        if error:
+            ex_type, ex_value, tb_str = error
+            message = '%s (in subprocess)\n%s' % (str(ex_value), tb_str)
+            raise ex_type(message)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if inspect.isgeneratorfunction(func):
+            return wrap_generator_func(*args, **kwargs)
+        else:
+            return wrap_func(*args, **kwargs)
+    return wrapper
+
+################## multiprocesses run #####################
+
+#This is a non-deamonic multiprocessing method that can be used in combination with processify
+
+import multiprocessing
+import multiprocessing.pool
+import time
+
+
+class NoDaemonProcess(multiprocessing.Process):
+    """Daemon process class
+    """
+    # make 'daemon' attribute always return False
+    def _get_daemon(self):
+        return False
+    def _set_daemon(self, value):
+        pass
+    daemon = property(_get_daemon, _set_daemon)
+
+
+class nonDeamonicPool(multiprocessing.pool.Pool):
+    """We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool because the latter is only a wrapper function, not a proper class.
+    """
+    Process = NoDaemonProcess
+
+
+##### not a fan but declaring the sub-function here ####
+@processify
+def singleProcessifyFBA(file_name,
+                        rpsbml_path,
+                        gem_sbml_path,
+                        del_sp_pro,
+                        del_sp_react,
+                        upper_flux_bound,
+                        lower_flux_bound,
+                        compartment_id,
+                        pathway_id,
+                        created_reaction_pathway_id):
+    logging.info('################ '+str(file_name)+' ###############')
+    rpfba = rpFBA(sbml_path=gem_sbml_path,
+                  is_gem_sbml=True,
+                  model_name=file_name)
+                  #rpcache=rpcache) #need to find a way of passing rpcache
+    status = rpfba.mergeModels(input_model=rpsbml_path,
+                               del_sp_pro=del_sp_pro,
+                               del_sp_react=del_sp_react,
+                               upper_flux_bound=upper_flux_bound,
+                               lower_flux_bound=lower_flux_bound,
+                               compartment_id=compartment_id,
+                               pathway_id=pathway_id,
+                               created_reaction_pathway_id=created_reaction_pathway_id)
+    #debug
+    #logging.debug('write sbml: {0}'.format(rpfba.writeSBML(path='/home/mdulac/Downloads/test.sbml')))
+    if not status:
+        logging.error('Problem merging the models: '+str(file_name))
+    ####### fraction of reaction ######
+    if sim_type=='fraction':
+        rpfba.runFractionReaction(source_reaction, source_coefficient, target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
+    ####### FBA ########
+    elif sim_type=='fba':
+        rpfba.runFBA(target_reaction, target_coefficient, is_max, pathway_id, objective_id, True)
+    ####### pFBA #######
+    elif sim_type=='pfba':
+        rpfba.runParsimoniousFBA(target_reaction, target_coefficient, fraction_of, is_max, pathway_id, objective_id, True)
+    #overwrite the rpSBML model
+    if keep_merged:
+        rpfba.writeSBML(path=rpsbml_path)
+    else:
+        rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
 
 
 ###########################################################
@@ -151,6 +331,8 @@ class rpFBA(rpMerge):
             return rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
 
 
+
+
     @staticmethod
     def runCollection(rpcollection,
                       gem_sbml_path,
@@ -269,9 +451,26 @@ class rpFBA(rpMerge):
                         rpfba.writeSBML(path=rpsbml_path)
                     else:
                         rpfba.writeSBML(path=rpsbml_path, skinny_rpsbml_path=rpsbml_path)
-            else:
-                logging.error('Depreacted: switch')
-                """
+            elif num_workers>1:
+                # this function works with python <3.8
+                pool = nonDeamonicPool(processes=num_workers)
+                results = []
+                for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
+                    file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+                    results.append(pool.apply_async(singleProcessifyFBA, args=(file_name,
+                                                                               rpsbml_path,
+                                                                               gem_sbml_path,
+                                                                               del_sp_pro,
+                                                                               del_sp_react,
+                                                                               upper_flux_bound,
+                                                                               lower_flux_bound,
+                                                                               compartment_id,
+                                                                               pathway_id,
+                                                                               created_reaction_pathway_id)))
+                output = [p.get() for p in results]
+                pool.close()
+                pool.join()
+                """# only >=3.8 python has shared memory
                 logging.debug('Setting up the shared memory')
                 rpcache_shared_dict = SharedMemoryDict(name='rpcache', size=rpcache.getSizeCache())
                 rpcache_shared_dict['cid_strc'] = rpcache.cid_strc
@@ -315,6 +514,8 @@ class rpFBA(rpMerge):
                 #clean up the 
                 rpcache_shared_dict.cleanup()
                 """
+            else:
+                self.logger.error('The number of workers is invalid: '+str(num_workers))
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False
