@@ -77,9 +77,15 @@ def RestApp():
 @app.route("/api/rpReader", methods=["GET", "POST"])
 def rpReader():
 	with tempfile.TemporaryDirectory() as tmpdir:
-		rp2_file = request.files['rp2_file']
-		rp2paths_compounds_file = request.files['rp2paths_compounds_file']
-		rp2paths_pathways_file = request.files['rp2paths_pathways_file']
+		rp2_file = os.path.join(tmpdir, 'rp2.csv')
+		with open(rp2_file, 'wb') as fo:
+			fo.write(request.files['rp2_file'].read())
+		rp2paths_compounds_file = os.path.join(tmpdir, 'rp2paths_compounds.csv')
+		with open(rp2paths_compounds_file, 'wb') as fo:
+			fo.write(request.files['rp2paths_compounds_file'].read())
+		rp2paths_pathways_file = os.path.join(tmpdir, 'rp2paths_pathways.csv')
+		with open(rp2paths_pathways_file, 'wb') as fo:
+			fo.write(request.files['rp2paths_pathways_file'].read())
 		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
 		status = rpReader.rp2ToCollection(rp2_file,
 										  rp2paths_compounds_file,
@@ -95,71 +101,82 @@ def rpReader():
 
 @app.route("/api/rpEquilibrator", methods=["GET", "POST"])
 def rpEquilibrator():
-	#with tempfile.TemporaryDirectory() as tmpdir:
-	params = json.load(request.files['params'])
-	rpcollection_file = request.files['rpcollection_file']
-	status = rpEquilibrator.runCollection(rpcollection_file,
-										  rpcollection_file,
-										  ph=params['ph'],
-										  ionic_strength=params['ionic_strength'],
-										  temp_k=params['temp_k'],
-										  rpcache=GLOBAL_RPCACHE)
-	rpcollection_file.seek(0)
-	return send_file(rpcollection_file,
-					 as_attachment=True,
-					 attachment_filename='rpcollection.tar.xz',
-					 mimetype='application/x-tar')
+	with tempfile.TemporaryDirectory() as tmpdir:
+		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
+		with open(rpcollection_file, 'wb') as fo:
+			fo.write(request.files['rpcollection_file'].read())
+        status = rpEquilibrator.runCollection(rpcollection_file,
+                                              rpcollection_file,
+                                              ph=params['ph'],
+                                              ionic_strength=params['ionic_strength'],
+                                              temp_k=params['temp_k'],
+                                              rpcache=GLOBAL_RPCACHE)
+        rpcollection_file.seek(0)
+        return send_file(rpcollection_file,
+                         as_attachment=True,
+                         attachment_filename='rpcollection.tar.xz',
+                         mimetype='application/x-tar')
 
 
 @app.route("/api/rpFBA", methods=["GET", "POST"])
 def rpFBA():
-	params = json.load(request.files['params'])
-	rpcollection_file = request.files['rpcollection_file']
-	gem_file = request.files['gem_file']
-	status = rpFBA.runCollection(rpcollection_file,
-							     gem_file,
-							     rpcollection_file,
-							     num_workers=params['num_workers'],
-							     keep_merged=params['keep_merged'],
-							     del_sp_pro=params['del_sp_pro'],
-							     del_sp_react=params['del_sp_react'],
-							     rpcache=GLOBAL_RPCACHE)
-	rpcollection_file.seek(0)
-	return send_file(rpcollection_file,
-					 as_attachment=True,
-					 attachment_filename='rpcollection.tar.xz',
-					 mimetype='application/x-tar')
+	with tempfile.TemporaryDirectory() as tmpdir:
+	    params = json.load(request.files['params'])
+		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
+		with open(rpcollection_file, 'wb') as fo:
+			fo.write(request.files['rpcollection_file'].read())
+		gem_file = os.path.join(tmpdir, 'gem_file.sbml')
+		with open(gem_file, 'wb') as fo:
+			fo.write(request.files['gem_file'].read())
+        status = rpFBA.runCollection(rpcollection_file,
+                                     gem_file,
+                                     rpcollection_file,
+                                     num_workers=params['num_workers'],
+                                     keep_merged=params['keep_merged'],
+                                     del_sp_pro=params['del_sp_pro'],
+                                     del_sp_react=params['del_sp_react'],
+                                     rpcache=GLOBAL_RPCACHE)
+        rpcollection_file.seek(0)
+        return send_file(rpcollection_file,
+                         as_attachment=True,
+                         attachment_filename='rpcollection.tar.xz',
+                         mimetype='application/x-tar')
 
 
 @app.route("/api/rpSelenzyme", methods=["GET", "POST"])
 def rpSelenzyme():
-	params = json.load(request.files['params'])
-	rpcollection_file = request.files['rpcollection_file']
-	status = rpSelenzyme.runCollection(rpcollection_file,
-									   params['taxo_id'],
-									   rpcollection_file,
-									   uniprot_aa_length=SELENZYME_UNIPROT_AA_LENGTH,
-									   data_dir=SELENZYNE_DATA_DIR,
-									   pc=SELENZYME_PC,
-									   rpcache=GLOBAL_RPCACHE)
-	rpcollection_file.seek(0)
-	return send_file(rpcollection_file,
-					 as_attachment=True,
-					 attachment_filename='rpcollection.tar.xz',
-					 mimetype='application/x-tar')
+	with tempfile.TemporaryDirectory() as tmpdir:
+		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
+		with open(rpcollection_file, 'wb') as fo:
+			fo.write(request.files['rpcollection_file'].read())
+        status = rpSelenzyme.runCollection(rpcollection_file,
+                                           params['taxo_id'],
+                                           rpcollection_file,
+                                           uniprot_aa_length=SELENZYME_UNIPROT_AA_LENGTH,
+                                           data_dir=SELENZYNE_DATA_DIR,
+                                           pc=SELENZYME_PC,
+                                           rpcache=GLOBAL_RPCACHE)
+        rpcollection_file.seek(0)
+        return send_file(rpcollection_file,
+                         as_attachment=True,
+                         attachment_filename='rpcollection.tar.xz',
+                         mimetype='application/x-tar')
 
 
 @app.route("/api/rpGlobalScore", methods=["GET", "POST"])
 def rpGlobalScore():
-	rpcollection_file = request.files['rpcollection_file']
-	status = rpGlobalScore.runCollection(rpcollection_file,
-									     rpcollection_file,
-									     rpcache=GLOBAL_RPCACHE)
-	rpcollection_file.seek(0)
-	return send_file(rpcollection_file,
-					 as_attachment=True,
-					 attachment_filename='rpcollection.tar.xz',
-					 mimetype='application/x-tar')
+	with tempfile.TemporaryDirectory() as tmpdir:
+		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
+		with open(rpcollection_file, 'wb') as fo:
+			fo.write(request.files['rpcollection_file'].read())
+        status = rpGlobalScore.runCollection(rpcollection_file,
+                                             rpcollection_file,
+                                             rpcache=GLOBAL_RPCACHE)
+        rpcollection_file.seek(0)
+        return send_file(rpcollection_file,
+                         as_attachment=True,
+                         attachment_filename='rpcollection.tar.xz',
+                         mimetype='application/x-tar')
 
 
 @app.route("/api/rpPipeline", methods=["GET", "POST"])
@@ -168,16 +185,16 @@ def rpPipeline():
 		params = json.load(request.files['params'])
 		rp2_file = os.path.join(tmpdir, 'rp2_file.csv')
 		with open(rp2_file, 'wb') as fo:
-			fo.write(request.files['rp2_file'])
+			fo.write(request.files['rp2_file'].read())
 		rp2paths_compounds_file = os.path.join(tmpdir, 'rp2paths_compounds_file.csv')
 		with open(rp2paths_compounds_file, 'wb') as fo:
-			fo.write(request.files['rp2paths_compounds_file'])
+			fo.write(request.files['rp2paths_compounds_file'].read())
 		rp2paths_pathways_file = os.path.join(tmpdir, 'rp2paths_pathways_file')
 		with open(rp2paths_pathways_file, 'wb') as fo:
-			fo.write(request.files['rp2paths_pathways_file'])
+			fo.write(request.files['rp2paths_pathways_file'].read())
 		gem_file = os.path.join(tmpdir, 'gem_file.sbml')
 		with open(gem_file, 'wb') as fo:
-			fo.write(request.files['gem_file'])
+			fo.write(request.files['gem_file'].read())
 		rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
 		rpre_status = rpReader.rp2ToCollection(rp2_file,
 											   rp2paths_compounds_file,
