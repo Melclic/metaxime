@@ -101,10 +101,6 @@ ENV CHEMAXON_LICENSE_URL /home/extra_packages/license.cxl
 RUN dpkg -i /home/marvin_linux_20.9.deb
 RUN rm /home/marvin_linux_20.9.deb
 
-
-RUN apt-get clean
-RUN apt-get autoremove -y
-
 #### extra packages #####
 RUN apt-get install -y t-coffee emboss
 WORKDIR /home/extra_packages 
@@ -113,6 +109,9 @@ RUN cd equilibrator-assets && pip3 install -e . && cd /home/extra_packages/
 
 RUN git clone https://gitlab.irstea.fr/jacques.fize/GMatch4py.git
 RUN cd GMatch4py && pip3 install -e . && cd /home/extra_packages/
+
+RUN apt-get clean
+RUN apt-get autoremove -y
 
 WORKDIR /home/
 
