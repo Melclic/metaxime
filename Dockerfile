@@ -121,4 +121,8 @@ ADD metaxime /home/metaxime/
 ADD selenzy /home/selenzy/
 RUN mkdir /home/metaxime/input_cache/
 COPY metaxime/input_cache/rpselenzyme_data.tar.xz /home/metaxime/input_cache/
+COPY services.py /home/services.py
+RUN chmod +x /home/services.py
 RUN python3 init_cache.py
+
+ENTRYPOINT []
