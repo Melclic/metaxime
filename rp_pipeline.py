@@ -12,6 +12,7 @@ from metaxime import rpEquilibrator
 from metaxime import rpSelenzyme
 from metaxime import rpGlobalScore
 
+#TODO: delete this file.... temporary
 
 logging.basicConfig(
     level=logging.DEBUG,
