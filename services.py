@@ -66,6 +66,7 @@ def stamp(data, status=1):
 
 
 @app.route("/api", methods=["GET", "POST"])
+@app.route("/", methods=["GET", "POST"])
 def RestApp():
     """The Flask methods that we support, post and get
     """
