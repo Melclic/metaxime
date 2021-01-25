@@ -86,7 +86,9 @@ RUN pip3 install python-libsbml \
 	#shared_memory_dict \
 	graphviz \
 	pydotplus \
-	lxml
+	lxml \
+	flask-restful \ 
+	flask
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.7/site-packages/ruamel*
 RUN pip3 install cobra==0.16
