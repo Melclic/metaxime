@@ -86,7 +86,9 @@ RUN pip3 install python-libsbml \
 	#shared_memory_dict \
 	graphviz \
 	pydotplus \
-	lxml
+	lxml \
+	flask \
+	flask-restful
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.7/site-packages/ruamel*
 RUN pip3 install cobra==0.16
@@ -116,13 +118,14 @@ RUN apt-get autoremove -y
 WORKDIR /home/
 
 #### generate the cache
-COPY init_cache.py /home/
 ADD metaxime /home/metaxime/
 ADD selenzy /home/selenzy/
+COPY init_cache.py /home/
+RUN python3 /home/init_cache.py
 #RUN mkdir /home/metaxime/input_cache/
 #COPY metaxime/input_cache/rpselenzyme_data.tar.xz /home/metaxime/input_cache/
 COPY services.py /home/services.py
 RUN chmod +x /home/services.py
-RUN python3 init_cache.py
 
-ENTRYPOINT []
+EXPOSE 7777
+ENTRYPOINT python3 /home/services.py
