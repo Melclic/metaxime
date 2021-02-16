@@ -165,6 +165,15 @@ class nonDeamonicPool(multiprocessing.pool.Pool):
 ##### not a fan but declaring the sub-function here ####
 @processify
 def singleProcessifyFBA(file_name,
+                        target_reaction,
+                        target_coefficient,
+                        source_reaction,
+                        source_coefficient,
+                        fraction_of,
+                        is_max,
+                        objective_id,
+                        sim_type,
+                        keep_merged,
                         rpsbml_path,
                         gem_sbml_path,
                         del_sp_pro,
@@ -458,6 +467,15 @@ class rpFBA(rpMerge):
                 for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                     file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                     results.append(pool.apply_async(singleProcessifyFBA, args=(file_name,
+                                                                               target_reaction,
+                                                                               target_coefficient,
+                                                                               source_reaction,
+                                                                               source_coefficient,
+                                                                               fraction_of,
+                                                                               is_max,
+                                                                               objective_id,
+                                                                               sim_type,
+                                                                               keep_merged,
                                                                                rpsbml_path,
                                                                                gem_sbml_path,
                                                                                del_sp_pro,
