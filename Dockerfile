@@ -1,11 +1,16 @@
 FROM debian:latest
 
+RUN apt update
+RUN apt install -y -V ca-certificates lsb-release wget
+
+RUN wget https://apache.bintray.com/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
+RUN apt install -y -V ./apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
+
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
-    ca-certificates \
     build-essential \
     cmake \
-    wget \
+    git \
     libboost-dev \
     libboost-iostreams-dev \
     libboost-python-dev \
@@ -18,10 +23,13 @@ RUN apt-get update \
     python3-dev \
     python3-pip \
     default-jdk \
+    libarrow-python-dev \
+    t-coffee \
+    emboss \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install numpy
+RUN pip3 install numpy pyarrow
 
 #### install RDKIT #####
 RUN cd /
@@ -53,15 +61,14 @@ ENV PYTHONPATH $PYTHONPATH:$RDBASE
 RUN rm -vf /var/lib/apt/lists/*
 RUN apt-get update
 
-RUN apt-get install -y git \
-	software-properties-common \
+RUN apt-get install -y software-properties-common \
 	xz-utils \
-	python3-dev \
 	python3-setuptools \
 	libxml2-dev \
 	swig	
 
 RUN pip3 install wheel
+
 ###### openbabel #####
 WORKDIR /
 RUN wget https://github.com/openbabel/openbabel/archive/openbabel-3-1-1.tar.gz
@@ -104,7 +111,23 @@ RUN dpkg -i /home/marvin_linux_20.9.deb
 RUN rm /home/marvin_linux_20.9.deb
 
 #### extra packages #####
-RUN apt-get install -y t-coffee emboss
+
+#RUN apt update
+#RUN apt install -y -V ca-certificates lsb-release wget
+#RUN apt install -y -V libarrow-dev # For C++
+#RUN apt install -y -V libarrow-glib-dev # For GLib (C)
+#RUN apt install -y -V libarrow-dataset-dev # For Arrow Dataset C++
+#RUN apt install -y -V libarrow-flight-dev # For Flight C++
+#RUN apt-get install libjemalloc-dev libboost-dev \
+#                       libboost-filesystem-dev \
+#                       libboost-system-dev \
+#                       libboost-regex-dev \
+#                       python3-dev \
+#                       autoconf \
+#                       flex \
+#                       bison
+#RUN apt-get install -y python-arrow
+#RUN apt-get install -y python3-arrow
 WORKDIR /home/extra_packages 
 RUN git clone -b mel --single-branch https://gitlab.com/Melclic/equilibrator-assets.git
 RUN cd equilibrator-assets && pip3 install -e . && cd /home/extra_packages/

@@ -36,7 +36,8 @@ class rpSelenzyme(rpSBML):
                  model_name=None,
                  document=None,
                  path=None,
-                 rpcache=None):
+                 rpcache=None,
+                 is_cleanup=True):
         """Class constructor
 
         :param pc: The cache of Selenzyme preLoad object
@@ -46,6 +47,7 @@ class rpSelenzyme(rpSBML):
         """
         super().__init__(model_name, document, path, rpcache)
         #self.logger = logging.getLogger(__name__)
+        self.is_cleanup = is_cleanup
         self.logger = logging.getLogger(os.path.basename(__file__))
         self.dirname = os.path.dirname(os.path.abspath( __file__ ))
         if not cache_tar_path:
@@ -72,9 +74,11 @@ class rpSelenzyme(rpSBML):
     #overwrite the del class to remove the self.data_dir if it has been initiated
     def __del__(self):
         self.logger.debug('Destructor called')
-        if isinstance(self.data_dir, tempfile.TemporaryDirectory):
+        if self.is_cleanup and isinstance(self.data_dir, tempfile.TemporaryDirectory):
             self.logger.debug('Cleaning up: '+str(self.data_dir.name))
             self.data_dir.cleanup()
+        else:
+            self.logger.debug('Ignoring the cleanup of tmp directory: '+str(self.cache_tar_path))
 
 
     #############################################################
@@ -93,6 +97,7 @@ class rpSelenzyme(rpSBML):
                       rxntype='smarts',
                       min_aa_length=100,
                       pathway_id='rp_pathway',
+                      is_cleanup=True,
                       pc=None,
                       uniprot_aa_length=None,
                       data_dir=None,
@@ -135,11 +140,11 @@ class rpSelenzyme(rpSBML):
                 #rpcache.populateCache()
             if not pc or not uniprot_aa_length:
                 if not cache_path:
-                    cache_selenzyme = rpSelenzyme(cache_tar_path=os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'input_cache', 'rpselenzyme_data.tar.xz'))
+                    cache_selenzyme = rpSelenzyme(cache_tar_path=os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'input_cache', 'rpselenzyme_data.tar.xz'), is_cleanup=True)
                 else:
-                    cache_selenzyme = rpSelenzyme(cache_tar_path=cache_path)
+                    cache_selenzyme = rpSelenzyme(cache_tar_path=cache_path, is_cleanup=is_cleanup)
             else:
-                cache_selenzyme = rpSelenzyme(pc=pc, uniprot_aa_length=uniprot_aa_length, data_dir=data_dir)
+                cache_selenzyme = rpSelenzyme(pc=pc, uniprot_aa_length=uniprot_aa_length, data_dir=data_dir, is_cleanup=is_cleanup)
             for rpsbml_path in glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')):
                 file_name = rpsbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
                 logging.debug('################### '+str(file_name)+' ##################')
@@ -159,7 +164,7 @@ class rpSelenzyme(rpSBML):
             if len(glob.glob(os.path.join(tmp_folder, root_name, 'models', '*')))==0:
                 logging.error('Output has not produced any models')
                 return False
-            if isinstance(cache_path, tempfile.TemporaryDirectory):
+            if is_cleanup and isinstance(cache_path, tempfile.TemporaryDirectory):
                 cache_path.cleanup()
             #WARNING: we are overwriting the input file
             if rpcollection_output:
