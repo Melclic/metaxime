@@ -88,6 +88,7 @@ def rpReaderService():
             with open(rp2paths_pathways_file, 'wb') as fo:
                 fo.write(request.files['rp2paths_pathways_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         rpcollection_file = os.path.join(tmpdir, 'rpcollection.tar.xz')
         status = rpReader.rp2ToCollection(rp2_file,
@@ -96,6 +97,7 @@ def rpReaderService():
                                           rpcollection_file,
                                           rpcache=GLOBAL_RPCACHE)
         if not status:
+            app.logger.error('rpReader has encountered a problem.... please investigate futher')
             return Response('rpReader has encountered a problem.... please investigate futher', status=400)
         #rpcollection_file.seek(0)
         return send_file(rpcollection_file,
@@ -113,13 +115,16 @@ def rpEquilibratorService():
             with open(rpcollection_file, 'wb') as fo:
                 fo.write(request.files['rpcollection_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         ############### parameters #############
         try:
             params = json.load(request.files['data'])
         except ValueError as e:
+            app.logger.error('One or more parameters are malformed: '+str(e))
             return Response('One or more parameters are malformed: '+str(e), status=400)
         except KeyError as e:
+            app.logger.error('One or more of the parameters are missing: '+str(e))
             return Response('One or more of the parameters are missing: '+str(e), status=400)
         try:
             ph = float(params['ph'])
@@ -152,6 +157,7 @@ def rpEquilibratorService():
                                               temp_k=temp_k,
                                               rpcache=GLOBAL_RPCACHE)
         if not status:
+            app.logger.error('rpEquilibrator has encountered a problem.... please investigate futher')
             return Response('rpEquilibrator has encountered a problem.... please investigate futher', status=400)
         #rpcollection_file.seek(0)
         return send_file(rpcollection_file,
@@ -172,13 +178,16 @@ def rpFBAService():
             with open(gem_file, 'wb') as fo:
                 fo.write(request.files['gem_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         ########## parameters ############
         try:
             params = json.load(request.files['data'])
         except ValueError as e:
+            app.logger.error('One or more parameters are malformed: '+str(e))
             return Response('One or more parameters are malformed: '+str(e), status=400)
         except KeyError as e:
+            app.logger.error('One or more of the parameters are missing: '+str(e))
             return Response('One or more of the parameters are missing: '+str(e), status=400)
         try:
             num_workers = int(params['num_workers'])
@@ -221,6 +230,7 @@ def rpFBAService():
                                      del_sp_react=del_sp_react,
                                      rpcache=GLOBAL_RPCACHE)
         if not status:
+            app.logger.error('rpFBA has encountered a problem.... please investigate futher')
             return Response('rpFBA has encountered a problem.... please investigate futher', status=400)
         #rpcollection_file.seek(0)
         return send_file(rpcollection_file,
@@ -238,13 +248,16 @@ def rpSelenzymeService():
             with open(rpcollection_file, 'wb') as fo:
                 fo.write(request.files['rpcollection_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         ########## Parameters ###################
         try:
             params = json.load(request.files['data'])
         except ValueError as e:
+            app.logger.error('One or more parameters are malformed: '+str(e))
             return Response('One or more parameters are malformed: '+str(e), status=400)
         except KeyError as e:
+            app.logger.error('One or more of the parameters are missing: '+str(e))
             return Response('One or more of the parameters are missing: '+str(e), status=400)
         try:
             taxo_id = int(params['taxo_id'])
@@ -264,6 +277,7 @@ def rpSelenzymeService():
                                            rpcache=GLOBAL_RPCACHE)
         #rpcollection_file.seek(0)
         if not status:
+            app.logger.error('rpSelenzyme has encountered a problem.... please investigate futher')
             return Response('rpSelenzyme has encountered a problem.... please investigate futher', status=400)
         return send_file(rpcollection_file,
                          as_attachment=True,
@@ -279,11 +293,13 @@ def rpGlobalScoreService():
             with open(rpcollection_file, 'wb') as fo:
                 fo.write(request.files['rpcollection_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         status = rpGlobalScore.runCollection(rpcollection_file,
                                              rpcollection_file,
                                              rpcache=GLOBAL_RPCACHE)
         if not status:
+            app.logger.error('rpGlobalScore has encountered a problem.... please investigate futher')
             return Response('rpGlobalScore has encountered a problem.... please investigate futher', status=400)
         #rpcollection_file.seek(0)
         return send_file(rpcollection_file,
@@ -310,13 +326,16 @@ def rpPipelineService():
             with open(gem_file, 'wb') as fo:
                 fo.write(request.files['gem_file'].read())
         except KeyError as e:
+            app.logger.error('A required file is missing: '+str(e))
             return Response('A required file is missing: '+str(e), status=400)
         ############ parameters ##########
         try:
             params = json.load(request.files['data'])
         except ValueError as e:
+            app.logger.error('One or more parameters are malformed: '+str(e))
             return Response('One or more parameters are malformed: '+str(e), status=400)
         except KeyError as e:
+            app.logger.error('One or more of the parameters are missing: '+str(e))
             return Response('One or more of the parameters are missing: '+str(e), status=400)
         try:
             ph = float(params['ph'])
@@ -389,6 +408,7 @@ def rpPipelineService():
                                                rpcollection_file,
                                                rpcache=GLOBAL_RPCACHE)
         if not rpre_status:
+            app.logger.error('rpReader has encountered a problem.... please investigate futher')
             return Response('rpReader has encountered a problem.... please investigate futher', status=400)
         rpeq_status = rpEquilibrator.runCollection(rpcollection_file,
                                                    rpcollection_file,
@@ -397,6 +417,7 @@ def rpPipelineService():
                                                    temp_k=temp_k,
                                                    rpcache=GLOBAL_RPCACHE)
         if not rpeq_status:
+            app.logger.error('rpEquilibrator has encountered a problem.... please investigate futher')
             return Response('rpEquilibrator has encountered a problem.... please investigate futher', status=400)
         rpfba_status = rpFBA.runCollection(rpcollection_file,
                                            gem_file,
@@ -407,12 +428,18 @@ def rpPipelineService():
                                            del_sp_react=del_sp_react,
                                            rpcache=GLOBAL_RPCACHE)
         if not rpfba_status:
+            app.logger.error('rpFBA has encountered a problem.... please investigate futher')
             return Response('rpFBA has encountered a problem.... please investigate futher', status=400)
         if taxo_id==None:
             #if you cannot find the annotation then try to recover it from the GEM file
             rpsbml_gem = rpSBML(model_name='tmp', path=gem_file)
-            taxo_id = rpsbml_gem.readTaxonomy() #TODO fix, seems to be a list
+            taxo_id = rpsbml_gem.readTaxonomy()
             logging.info('The taxonomy_id is '+str(taxo_id))
+            try:
+                taxo_id = taxo_id[0]
+            except IndexError:
+                app.logger.error('Could not retreive the taxonomy id and none was passed')
+                return Response('Could not retreive the taxonomy id and none was passed', status=400)
         rpsel_status = rpSelenzyme.runCollection(rpcollection_file,
                                                  taxo_id,
                                                  rpcollection_file,
@@ -422,11 +449,13 @@ def rpPipelineService():
                                                  pc=SELENZYME_PC,
                                                  rpcache=GLOBAL_RPCACHE)
         if not rpsel_status:
+            app.logger.error('rpSelenzyme has encountered a problem.... please investigate futher')
             return Response('rpSelenzyme has encountered a problem.... please investigate futher', status=400)
         rpglo_status = rpGlobalScore.runCollection(rpcollection_file,
                                                    rpcollection_file,
                                                    rpcache=GLOBAL_RPCACHE)
         if not rpglo_status:
+            app.logger.error('rpGlobalScore has encountered a problem.... please investigate futher')
             return Response('rpGlobalScore has encountered a problem.... please investigate futher', status=400)
         #rpcollection_file.seek(0)
         return send_file(rpcollection_file,

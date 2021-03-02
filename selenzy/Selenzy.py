@@ -874,7 +874,12 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     write_fasta(fastaInfoNameFile, targets, pc, info=True)
     
 
-    (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(fastaShortNameFile)
+    try:
+        (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(fastaShortNameFile)
+    except FileNotFoundError as e:
+        print(e)
+        return False, pc
+
     if not NoMSA:
         cons = conservation_properties(fastaInfoNameFile)
     else:
