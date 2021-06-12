@@ -12,12 +12,12 @@ The following SBML models are supported:
 * [E.Coli iJO1366](http://bigg.ucsd.edu/models/iJO1366)
 * [P.Putida iJN746](http://bigg.ucsd.edu/models/iJN746)
 * [E.Coli core model](http://bigg.ucsd.edu/models/e_coli_core)
-* E.Coli iJR904
-* S.Serevisiae iMM904
-* E.Coli iAF1260
-* Y.Lipolytica iMK735
-* S.Cerevisiae iND750
-* E.Coli iML1515
+* [E.Coli iJR904](http://bigg.ucsd.edu/models/iJR904)
+* [S.Serevisiae iMM904](http://bigg.ucsd.edu/models/iMM904)
+* [E.Coli iAF1260](http://bigg.ucsd.edu/models/iAF1260)
+* [Y.Lipolytica iMK735](https://www.ebi.ac.uk/biomodels/MODEL1510060001)
+* [S.Cerevisiae iND750](http://bigg.ucsd.edu/models/iND750)
+* [E.Coli iML1515](http://bigg.ucsd.edu/models/iML1515)
 
 This project is a concatenation of different projects that may be found at the following [here](https://github.com/galaxy-synbiocad):
 
