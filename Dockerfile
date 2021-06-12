@@ -9,6 +9,8 @@ COPY docker_files/apt_requirements.txt /home/
 RUN sh -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
 #fix because of debian update-alternatives limitations of not considering anything outside of /usr/share/man
 RUN mkdir -p /usr/share/man/man1
+#RUN apt-get install -y software-properties-common
+#RUN add-apt-repository ppa:openjdk-r/ppa
 RUN apt-get update
 RUN sed 's/#.*//' /home/apt_requirements.txt | xargs apt-get install -y
 RUN apt-get clean
@@ -26,7 +28,8 @@ RUN conda update -n base -c defaults conda
 RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
-RUN pip install cobra==0.16
+#RUN pip install cobra==0.16
+RUN pip install cobra
 
 ###### MARVIN ####
 
@@ -115,9 +118,11 @@ ONBUILD RUN "$KNIME_DIR/knime" -application org.eclipse.equinox.p2.director \
 
 ############################### Workflow ##############################
 
-ENV RETROPATH_VERSION 9
+#ENV RETROPATH_VERSION 9
+ENV RETROPATH_VERSION 10
 ENV RETROPATH_URL https://myexperiment.org/workflows/4987/download/RetroPath2.0_-_a_retrosynthesis_workflow_with_tutorial_and_example_data-v${RETROPATH_VERSION}.zip
-ENV RETROPATH_SHA256 79069d042df728a4c159828c8f4630efe1b6bb1d0f254962e5f40298be56a7c4
+#ENV RETROPATH_SHA256 79069d042df728a4c159828c8f4630efe1b6bb1d0f254962e5f40298be56a7c4
+ENV RETROPATH_SHA256 e2ac2c94e9ebe4ede454195bb26f788d3ad7e219bb0e16605cf9a5c72aae9b57
 
 # Download RetroPath2.0
 #WORKDIR /home/
@@ -154,8 +159,8 @@ RUN mkdir /home/logs/
 ENV RP2_RESULTS_SHA256 7428ebc0c25d464fbfdd6eb789440ddc88011fb6fc14f4ce7beb57a6d1fbaec2
 RUN tar xf /home/rp2/rp2_sanity_test.tar.xz -C /home/rp2/
 RUN chmod +x /home/callRP2.py
-RUN /home/callRP2.py -sinkfile /home/rp2/test/sink.csv -sourcefile /home/rp2/test/source.csv -rulesfile /home/rp2/test/rules.tar -rulesfile_format tar -max_steps 3 -output_csv /home/rp2/test_scope.csv
-RUN echo "$RP2_RESULTS_SHA256 /home/rp2/test_scope.csv" | sha256sum --check
+RUN /home/callRP2.py -sinkfile /home/rp2/test/sink.csv -sourcefile /home/rp2/test/source.csv -rulesfile /home/rp2/test/rules.tar -rulesfile_format tar -max_steps 3 -output_csv /home/rp2/test/test_scope.csv
+RUN echo "$RP2_RESULTS_SHA256 /home/rp2/test/test_scope.csv" | sha256sum --check
 
 ############################################
 ############ RP2paths ######################
@@ -213,22 +218,26 @@ RUN python /home/extra_packages/init_equilibrator.py
 
 ######## JSME ############
 
-ENV JSME_VERSION JSME_2020-06-11
+#ENV JSME_VERSION JSME_2020-06-11
+ENV JSME_VERSION JSME_2020-12-26
 
-RUN wget https://peter-ertl.com/jsme/download/$JSME_VERSION.zip
+RUN wget https://jsme-editor.github.io/downloads/$JSME_VERSION.zip
 RUN unzip $JSME_VERSION.zip
 RUN mv $JSME_VERSION/jsme /var/www/html/js/ 
 RUN rm -r $JSME_VERSION
 RUN rm $JSME_VERSION.zip
-
 ##### projects #####
 COPY metaxime/ /home/metaxime/
 COPY selenzy/ /home/selenzy/
 COPY docker_files/callRR.py /home/
 #### init cache #####
+COPY docker_files/input_cache.tar.xz /home/metaxime/
+RUN tar xf /home/metaxime/input_cache.tar.xz -C /home/metaxime/
 COPY docker_files/init_cache.py /home/
 RUN chmod +x /home/init_cache.py
-RUN python /home/init_cache.py
+#RUN python /home/init_cache.py &> cache_build.log
+COPY docker_files/cache.tar.xz /home/metaxime/
+RUN tar xf /home/metaxime/cache.tar.xz -C /home/metaxime/
 ###### extra files #####
 COPY docker_files/models.tar.xz /home/
 COPY docker_files/sinks.tar.xz /home/
@@ -244,6 +253,8 @@ RUN chmod +x /home/start.sh
 COPY docker_files/supervisor.conf /home/
 COPY pipeline.py /home/
 COPY service.py /home/
+
+RUN pip install Flask==1.1.2
 
 #############################
 ############# HTML ##########

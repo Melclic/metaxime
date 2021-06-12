@@ -295,11 +295,16 @@ def getJob():
 def getResults():
     params = request.get_json()
     mx_res = []
-    if os.path.exists(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json')):
-        for i in glob.glob(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json', '*')):
-            with open(i, 'r') as j:
-                mx_res.append(j.read())
-    else:
+    try:
+        if os.path.exists(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json')):
+            for i in glob.glob(os.path.join('/mx-results/', params['job_id'], 'rpsbml_collection', 'model_json', '*')):
+                with open(i, 'r') as j:
+                    mx_res.append(j.read())
+        else:
+            response = make_response(jsonify({}), 404)
+            response.headers["Content-Type"] = "application/json"
+            return response
+    except TypeError:
         response = make_response(jsonify({}), 404)
         response.headers["Content-Type"] = "application/json"
         return response
