@@ -25,7 +25,7 @@ RUN conda install -y -c biobuilds t-coffee
 RUN conda install -y -c bioconda emboss
 RUN conda update -n base -c defaults conda
 
-RUN pip install equilibrator-pathway==0.3.1 timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
+RUN pip install timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
 
 RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 #RUN pip install cobra==0.16
@@ -45,11 +45,6 @@ WORKDIR /home/extra_packages/
 RUN git clone https://gitlab.irstea.fr/jacques.fize/GMatch4py.git
 RUN cd GMatch4py && pip install . && cd /home/extra_packages/
 
-RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
-RUN cd equilibrator-api && pip install -e . && cd /home/extra_packages/
-
-RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
-RUN cd equilibrator-assets && pip install -e . && cd /home/extra_packages/
 RUN cd /home/
 
 ###############################
@@ -207,6 +202,20 @@ RUN cd /home/
 #############################################
 ########## Equilibrator #####################
 #############################################
+
+#install the develop version of equilibrator
+#RUN pip install equilibrator-api equilibrator-cache equilibrator-pathway
+RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
+RUN cd equilibrator-api && pip install -e . && cd ..
+
+#equilibrator-assets
+RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
+RUN cd equilibrator-assets && pip install -e . && cd ..
+
+#equilibrator-pathway
+RUN pip install equilibrator-pathway==0.3.1
+#RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-pathway.git
+#RUN cd equilibrator-pathway && pip install -e . && cd ..
 
 COPY docker_files/init_equilibrator.py /home/extra_packages/
 RUN chmod +x /home/extra_packages/init_equilibrator.py

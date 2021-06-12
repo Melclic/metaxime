@@ -16,7 +16,7 @@ import tarfile
 import shutil
 import os
 import rq
-from equilibrator_api import ComponentContribution
+#from equilibrator_api import ComponentContribution
 
 
 from metaxime import rpCache
