@@ -1,11 +1,13 @@
-FROM continuumio/conda-ci-linux-64-python3.8:latest
+#FROM continuumio/conda-ci-linux-64-python3.8:latest
+FROM hassanmohsin/rdkit-openbabel
 
-USER root
-ENV DEBIAN_FRONTEND=noninteractive
+#USER root
+#ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home/
 
 ### install all the requirements ###
 COPY docker_files/apt_requirements.txt /home/
+COPY docker_files/requirements.txt /home/
 RUN sh -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
 #fix because of debian update-alternatives limitations of not considering anything outside of /usr/share/man
 RUN mkdir -p /usr/share/man/man1
@@ -15,21 +17,23 @@ RUN apt-get update
 RUN sed 's/#.*//' /home/apt_requirements.txt | xargs apt-get install -y
 RUN apt-get clean
 RUN apt-get autoremove -y
+RUN pip install -r requirements.txt
 #RUN rm -rf /var/lib/apt/lists/*
 
 ##### conda install ###
-RUN conda update -n base -c defaults conda
-RUN conda install -y -c conda-forge python-libsbml rdkit networkx==2.3 numpy pandas openbabel timeout-decorator cython
-RUN conda install -y -c anaconda biopython==1.77
-RUN conda install -y -c biobuilds t-coffee
-RUN conda install -y -c bioconda emboss
-RUN conda update -n base -c defaults conda
+#RUN conda update -n base -c defaults conda
+#RUN conda install -y -c conda-forge python-libsbml rdkit networkx==2.3 numpy pandas openbabel timeout-decorator cython
 
-RUN pip install timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
+#RUN conda install -y -c anaconda biopython==1.77
+#RUN conda install -y -c biobuilds t-coffee
+#RUN conda install -y -c bioconda emboss
+#RUN conda update -n base -c defaults conda
 
-RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
+#RUN pip install timeout-decorator objsize shared_memory_dict graphviz pydotplus lxml redis rq flask-restful flask-cors
+
+#RUN rm -rf $(dirname  $(which python))/../lib/python3.8/site-packages/ruamel*
 #RUN pip install cobra==0.16
-RUN pip install cobra
+#RUN pip install cobra
 
 ###### MARVIN ####
 
@@ -205,21 +209,21 @@ RUN cd /home/
 
 #install the develop version of equilibrator
 #RUN pip install equilibrator-api equilibrator-cache equilibrator-pathway
-RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
-RUN cd equilibrator-api && pip install -e . && cd ..
+#RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
+#RUN cd equilibrator-api && pip install -e . && cd ..
 
 #equilibrator-assets
-RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
-RUN cd equilibrator-assets && pip install -e . && cd ..
+#RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
+#RUN cd equilibrator-assets && pip install -e . && cd ..
 
 #equilibrator-pathway
-RUN pip install equilibrator-pathway==0.3.1
+#RUN pip install equilibrator-pathway==0.3.1
 #RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-pathway.git
 #RUN cd equilibrator-pathway && pip install -e . && cd ..
 
-COPY docker_files/init_equilibrator.py /home/extra_packages/
-RUN chmod +x /home/extra_packages/init_equilibrator.py
-RUN python /home/extra_packages/init_equilibrator.py
+#COPY docker_files/init_equilibrator.py /home/extra_packages/
+#RUN chmod +x /home/extra_packages/init_equilibrator.py
+#RUN python /home/extra_packages/init_equilibrator.py
 
 ############################################
 ############# REST #########################
@@ -263,7 +267,7 @@ COPY docker_files/supervisor.conf /home/
 COPY pipeline.py /home/
 COPY service.py /home/
 
-RUN pip install Flask==1.1.2
+#RUN pip install Flask==1.1.2
 
 #############################
 ############# HTML ##########

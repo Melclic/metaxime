@@ -88,7 +88,7 @@ The architecture of the project as follows:
 
 ![Structure](img/strct.jpg)
 
-The output of the project is a compressed file named `rpcollection.tar.xz`. 
+The output of a run is a compressed file named `rpcollection.tar.xz`. This contains the enriched SBML models, the model JSON's and the model networks used to graphically render them on the front end. 
 
 ```
 ├── log.json
