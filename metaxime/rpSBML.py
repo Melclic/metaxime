@@ -79,6 +79,9 @@ class rpSBML(rpCache):
         self.logger = logging.getLogger(os.path.basename(__file__))
         #WARNING: change this to reflect the different debugging levels
         self.logger.debug('Started instance of rpSBML')
+        self.logger.debug('model_name: '+str(model_name))
+        self.logger.debug('path: '+str(path))
+        self.logger.debug('document: '+str(document))
         if model_name:
             self.model_name = model_name
         else:
@@ -236,8 +239,12 @@ class rpSBML(rpCache):
         num_rules = 0
         for member in self.getGroupsMembers(pathway_id):
             reaction = self.model.getReaction(member)
-            score += float(reaction.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('rule_score').getAttrValue('value'))
-            num_rules += 1
+            try:
+                score += float(reaction.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('rule_score').getAttrValue('value'))
+                num_rules += 1
+            except ValueError:
+                self.logger.warning('Cannot convert the following to float: '+str(reaction.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('rule_score').getAttrValue('value')))
+                self.logger.debug('member: '+str(member))
         if num_rules==0:
             return score
         else:

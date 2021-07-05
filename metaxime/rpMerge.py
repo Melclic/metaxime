@@ -455,26 +455,37 @@ class rpMerge(rpGraph):
             for target_reaction in target_model.getListOfReactions():
                 source_target[source_reaction.getId()] = {}
                 match, score = self._compareReaction(species_source_target, source_reaction, target_reaction, exact_match=exact_match, ec_match=ec_match)
+                if match:
+                    self.logger.debug('Target reaction '+str(target_reaction)+' matched with source reaction: '+str(source_reaction))
                 source_target[source_reaction.getId()][target_reaction.getId()] = {'score': score, 'found': match}
         #build the matrix to send
+        self.logger.debug('source_target: '+str(source_target))
         source_target_mat = {}
         for i in source_target:
             source_target_mat[i] = {}
             for y in source_target[i]:
-                source_target_mat[i][y] = source_target[i][y]['score']
+                if source_target[i][y]['found']:
+                    source_target_mat[i][y] = source_target[i][y]['score']
+                else:
+                    source_target_mat[i][y] = 0.0
+        self.logger.debug('source_target_mat: '+str(source_target_mat))
         unique = self._findUniqueRowColumn(pd.DataFrame(source_target_mat))
         reaction_match = {}
         for reac in source_target:
             reaction_match[reac] = {}
             if reac in unique:
-                if len(unique[meas])>1:
+                self.logger.debug('unique: '+str(unique))
+                self.logger.debug('reac: '+str(reac))
+                self.logger.debug('reaction_match: '+str(reaction_match))
+                self.logger.debug('source_taget: '+str(source_target))
+                if len(unique[reac])>1:
                     self.logger.debug('Multiple values may match, choosing the first arbitrarily: '+str(unique))
                 for unique_spe in unique[reac]:
-                    reaction_match[reac][unique_spe] = round(source_target[reac][unique[meas][0]]['score'], 5)
+                    reaction_match[reac][unique_spe] = round(source_target[reac][unique[reac][0]]['score'], 5)
             else:
                 self.logger.warning('Cannot find a reaction match for the measured reaction: '+str(reac))
         self.logger.debug('reaction_match: '+str(reaction_match))
-        return reaction_match 
+        return reaction_match
 
 
     # TODO: need to remove from the list reactions simulated reactions that have matched
@@ -734,7 +745,10 @@ class rpMerge(rpGraph):
         for i in source_target:
             source_target_mat[i] = {}
             for y in source_target[i]:
-                source_target_mat[i][y] = source_target[i][y]['score']
+                if source_target[i][y]['found']:
+                    source_target_mat[i][y] = source_target[i][y]['score']
+                else:
+                    source_target_mat[i][y] = 0.0
         unique = self._findUniqueRowColumn(pd.DataFrame(source_target_mat))
         species_match = {}
         for meas in source_target:

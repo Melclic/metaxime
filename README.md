@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MetaXime
 
 WARNING: Non-functional. Requires separating all the individual modules into individual dockers is the way to go (perhaps CWL)
@@ -56,11 +57,8 @@ The results may be inspected once the job is completed. The following error
 To build the project, navigate to the project folder and run the following commands:
 
 ```
-docker build -t metaxime -f Dockerfile .
-docker run -it -v $(pwd)/mx-results:/mx-results -p 80:80 -p 8888:8888 metaxime
+docker build -t metaxime:skinny -f Dockerfile .
 ```
-
-The results should be accessible at: `http://localhost:80`
 
 ## Structure
 
@@ -102,4 +100,4 @@ The output of a run is a compressed file named `rpcollection.tar.xz`. This conta
 
 The web interface (in the static/ folder) contains all the JS and HTML. The `draw_network.js` renders the network JSON of the parsed SBML by [networkX](https://networkx.org/) and renders it on the page using the [dagre-d3](https://github.com/dagrejs/dagre-d3) project. 
 
-Rendering the molecules in javascript is done by a branched project called [smiledDrawer](https://github.com/Melclic/smilesDrawer).
+Rendering the molecules in javascript is done by a branched project called [smilesDrawer](https://github.com/Melclic/smilesDrawer).

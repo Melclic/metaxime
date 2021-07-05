@@ -13,7 +13,9 @@ import tarfile
 import shutil
 import argparse
 from ast import literal_eval
-from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
+#from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
+from rdkit.Chem import MolFromSmiles, MolToSmiles, AddHs
+from rdkit.Chem.inchi import MolFromInchi, MolToInchi, MolToInchiKey
 import json
 
 import objsize
@@ -321,6 +323,9 @@ class rpCache:
         :return: Dictionnary of results
         """
         # Import (if needed)
+        self.logger.debug('input: '+str(idepic))
+        self.logger.debug('itype: '+str(itype))
+        self.logger.debug('otype: '+str(otype))
         if itype == 'smiles':
             rdmol = MolFromSmiles(idepic, sanitize=True)
         elif itype == 'inchi':
@@ -329,6 +334,7 @@ class rpCache:
             raise NotImplementedError('"{}" is not a valid input type'.format(itype))
         if rdmol is None:  # Check imprt
             raise self.DepictionError('Import error from depiction "{}" of type "{}"'.format(idepic, itype))
+        self.logger.debug('Sanitised the input')
         # Export
         odepic = dict()
         for item in otype:
@@ -340,6 +346,7 @@ class rpCache:
                 odepic[item] = MolToInchiKey(rdmol)
             else:
                 raise NotImplementedError('"{}" is not a valid output type'.format(otype))
+        self.logger.debug('Exported the output')
         return odepic
 
 
@@ -400,37 +407,6 @@ class rpCache:
             return comp_id
 
 
-    def _chebiXref(self):
-        """Generate the chebi cross reference
-
-        :rtype: None
-        :return: None
-        """
-        if not self.cid_xref:
-            self.getCIDxref()
-        for cid in self.cid_xref:
-            if 'chebi' in self.cid_xref[cid]:
-                for c in self.cid_xref[cid]['chebi']:
-                    self.chebi_cid[c] = cid
-
-
-    def _inchikeyCID(self):
-        """Generate the inchikey to cid dictionnary
-
-        :rtype: None
-        :return: None
-        """
-        if not self.cid_strc:
-            self.getCIDstrc()
-        if not self.inchikey_cid:
-            self.getInchiKeyCID()
-        for cid in self.cid_strc:
-            if not self.cid_strc[cid]['inchikey'] in self.inchikey_cid:
-                self.inchikey_cid[self.cid_strc[cid]['inchikey']] = []
-            if not cid in self.inchikey_cid[self.cid_strc[cid]['inchikey']]:
-                self.inchikey_cid[self.cid_strc[cid]['inchikey']].append(cid)
-
-
     #################################################################
     ################## Public functions #############################
     #################################################################
@@ -445,15 +421,16 @@ class rpCache:
         :rtype: None
         :return: None
         """
+        self._fetch_input_files()
+        a = self.getInchiKeyCID()
+        a = self.getCIDxref()
+        a = self.getCompXref()
         a = self.getCIDstrc()
         a = self.getDeprecatedCID()
         a = self.getDeprecatedRID()
-        a = self.getCIDxref()
-        a = self.getCompXref()
         a = self.getFullReactions()
         a = self.getRRreactions()
         a = self.getChebiCID()
-        a = self.getInchiKeyCID()
         a = self.getCIDname()
 
 
@@ -472,7 +449,7 @@ class rpCache:
         to_ret['inchikey_cid'] = self.inchikey_cid
         to_ret['cid_name'] = self.cid_name
         return to_ret
-    
+
 
     def setFromDict(self, cache_dict):
         """Set the current cache from a dict input
@@ -515,7 +492,7 @@ class rpCache:
             self.logger.warning('There does not seem to be an entry for cid_name')
         return True
 
-    
+
     def getSizeCache(self):
         size_cache = 0
         size_cache += objsize.get_deep_size(self.cid_strc)
@@ -662,7 +639,10 @@ class rpCache:
         if not os.path.isfile(os.path.join(self.dirname, 'cache', picklename)):
             if not self.cid_xref:
                 self.getCIDxref()
-            self._chebiXref()
+            for cid in self.cid_xref:
+                if 'chebi' in self.cid_xref[cid]:
+                    for c in self.cid_xref[cid]['chebi']:
+                        self.chebi_cid[c] = cid
             pickle.dump(self.chebi_cid,
                         gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.chebi_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
@@ -680,7 +660,11 @@ class rpCache:
             if not self.cid_strc:
                 self.getCIDstrc()
             # open the already calculated (normally) mnxm_strc.pickle.gz
-            self._inchikeyCID()
+            for cid in self.cid_strc:
+                if not self.cid_strc[cid]['inchikey'] in self.inchikey_cid:
+                    self.inchikey_cid[self.cid_strc[cid]['inchikey']] = []
+                if not cid in self.inchikey_cid[self.cid_strc[cid]['inchikey']]:
+                    self.inchikey_cid[self.cid_strc[cid]['inchikey']].append(cid)
             pickle.dump(self.inchikey_cid, gzip.open(os.path.join(self.dirname, 'cache', picklename), 'wb'))
         self.inchikey_cid = pickle.load(gzip.open(os.path.join(self.dirname, 'cache', picklename), 'rb'))
         return self.inchikey_cid
@@ -968,6 +952,7 @@ class rpCache:
             c = csv.reader(f, delimiter='\t')
             for row in c:
                 if not row[0][0]=='#':
+                    self.logger.debug('--- Parsing '+str(row[0])+' ----') 
                     mnxm = self._checkCIDdeprecated(row[0])
                     tmp = {'formula':  row[2],
                            'name': row[1],
@@ -1004,6 +989,7 @@ class rpCache:
                             continue
                         if otype:
                             try:
+                                self.logger.debug('Converting using '+str(tmp[itype]))
                                 resConv = self._convert_depiction(idepic=tmp[itype], itype=itype, otype=otype)
                                 for i in resConv:
                                     tmp[i] = resConv[i]

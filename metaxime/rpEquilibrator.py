@@ -345,10 +345,11 @@ class rpEquilibrator(rpSBML):
                         return None, None
         if spe_cmp.id==4: #this is H+ and can be ignored
             return 'h', 'h'
-        self.logger.debug('spe_cmp: '+str(spe_cmp))
+        #self.logger.debug('spe_cmp: '+str(spe_cmp))
         #mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(eq_cmp[0])
-        mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(spe_cmp)
-        return mu, sigma
+		#self.logger.error(self.cc.predictor.preprocess.get_compound_prediction(spe_cmp))
+        mu, sigma_fin, sigma_inf = self.cc.predictor.preprocess.get_compound_prediction(spe_cmp)
+        return mu, sigma_fin
 
 
     def _reactionCmpQuery(self, libsbml_reaction, write_results=False, physio_param=1e-3):
