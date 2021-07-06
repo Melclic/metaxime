@@ -344,7 +344,7 @@ def main():
     parser.add_argument("-r", "--num_results", type=int, default=50, help="Maximum number of enzymes to return per reaction")
     parser.add_argument("-d", "--direction", type=int, default=0, help="Direction of the reaction rule (0: reverse, 1: forward)")
     parser.add_argument("-m", "--noMSA", type=bool, default=True, help="Do not compute MSA/conservation scores")
-    parser.add_argument("-fp", "--fingerptint", type=str, default='RDK', help="Fingerprint type")
+    parser.add_argument("-fp", "--fingerprint", type=str, default='RDK', help="Fingerprint type")
     parser.add_argument("-rx", "--rxntype", type=str, default='smarts', help="Reaction rule types")
     parser.add_argument("-a", "--min_aa_length", type=int, default=100, help="Alignement amino acid length")
     parser.add_argument("-ua", "--uniprot_aa_length", type=int, default=None, help="Uniprot amino acid length")
@@ -354,21 +354,35 @@ def main():
     parser.add_argument("-cp", "--cache_path", type=str, default=None, help="Path to the cache files")
     parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
     args = parser.parse_args()
-    rpFBA.runCollection(args.rpcollection,
-                        args.host_taxonomy_id,
-                        args.rpcollection_output,
-                        args.num_results,
-                        args.direction,
-                        args.noMSA,
-                        args.fingerptint,
-                        args.rxntype,
-                        args.min_aa_length,
-                        args.pathway_id,
-                        args.cache_obj,
-                        args.uniprot_aa_length,
-                        args.data_dir,
-                        args.cache_path,
-                        args.rpcache)
+    if args.rpcollection_output=='None' or args.rpcollection_output=='':
+        rpcollection_output = None
+    else:
+        rpcollection_output = args.rpcollection_output
+    if args.rpcache=='None' or args.rpcache=='':
+        rpcache = None
+    else:
+        rpcache = args.rpcache
+    if args.noMSA=='True' or args.noMSA=='true':
+        noMSA = True
+    elif args.noMSA=='False' or args.noMSA=='false':
+        noMSA = False
+    else:
+        noMSA = args.noMSA
+    rpFBA.runCollection(rpcollection=args.rpcollection,
+                        host_taxonomy_id=args.host_taxonomy_id,
+                        rpcollection_output=rpcollection_output,
+                        num_results=args.num_results,
+                        direction=args.direction,
+                        noMSA=noMSA,
+                        fp=args.fingerprint,
+                        rxntype=args.rxntype,
+                        min_aa_length=args.min_aa_length,
+                        pathway_id=args.pathway_id,
+                        pc=args.cache_obj,
+                        uniprot_aa_length=args.uniprot_aa_length,
+                        data_dir=args.data_dir,
+                        cache_path=args.cache_path,
+                        rpcache=args.rpcache)
 
 
 if __name__ == "__main__":

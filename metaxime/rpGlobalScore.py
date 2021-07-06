@@ -366,20 +366,29 @@ def main():
     parser.add_argument("-b", "--objective_id", type=str, default='obj_fraction', help="Name of the heterologous objective function")
     parser.add_argument("-ti", "--dfG_prime_m", type=str, default='dfG_prime_m', help="Name of the thermodynamic value to use")
     args = parser.parse_args()
-    rpFBA.runCollection(args.rpcollection,
-                        args.rpcollection_output,
-                        args.weight_rp_steps,
-                        args.weight_rule_score,
-                        args.weight_fba,
-                        args.weight_thermo,
-                        args.max_rp_steps,
-                        args.thermo_ceil,
-                        args.thermo_floor,
-                        args.fba_ceil,
-                        args.fba_floor,
-                        args.pathway_id,
-                        args.objective_id,
-                        args.thermo_id)
+    if args.rpcollection_output=='None' or args.rpcollection_output=='':
+        rpcollection_output = None
+    else:
+        rpcollection_output = args.rpcollection_output
+    if args.rpcache=='None' or args.rpcache=='':
+        rpcache = None
+    else:
+        rpcache = args.rpcache
+    rpFBA.runCollection(rpcollection=args.rpcollection,
+                        rpcollection_output=rpcollection_output,
+                        rpcache=rpcache,
+                        weight_rp_steps=args.weight_rp_steps,
+                        weight_rule_score=args.weight_rule_score,
+                        weight_fba=args.weight_fba,
+                        weight_thermo=args.weight_thermo,
+                        max_rp_steps=args.max_rp_steps,
+                        thermo_ceil=args.thermo_ceil,
+                        thermo_floor=args.thermo_floor,
+                        fba_ceil=args.fba_ceil,
+                        fba_floor=args.fba_floor,
+                        pathway_id=args.pathway_id,
+                        objective_id=args.objective_id,
+                        thermo_id=args.thermo_id)
 
 if __name__ == "__main__":
     main()

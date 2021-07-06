@@ -825,15 +825,27 @@ def main():
     parser.add_argument("-pmg", "--pmg", type=float, default=10.0, help="Disolved magnesium of the compartment")
     parser.add_argument("-k", "--temp_k", type=float, default=298.15, help="Temperature in Kelvin")
     args = parser.parse_args()
-    rpFBA.runCollection(args.rpcollection,
-                        args.rpcollection_output, 
-                        args.rpcache, 
-                        args.cc_cache, 
-                        args.ph, 
-                        args.ionic_strength, 
-                        args.pmg, 
-                        args.temp_k, 
-                        args.rp_pathway)
+    if args.rpcache=='None' or args.rpcache=='':
+        rpcache = None
+    else:
+        rpcache = args.rpcache
+    if args.cc_cache=='None' or args.cc_cache=='':
+        cc_cache = None
+    else:
+        cc_cache = args.cc_cache
+    if args.rpcollection_output=='None' or args.rpcollection_output=='':
+        rpcollection_output = None
+    else:
+        rpcollection_output = args.rpcollection_output
+    rpFBA.runCollection(rpcollection=args.rpcollection,
+                        rpcollection_output=rpcollection_output, 
+                        rpcache=rpcache, 
+                        cc_cache=args.cc_cache,
+                        ph=args.ph, 
+                        ionic_strength=args.ionic_strength, 
+                        pMg=args.pmg, 
+                        temp_k=args.temp_k, 
+                        rp_pathway=args.rp_pathway)
 
 if __name__ == "__main__":
     main()

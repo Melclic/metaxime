@@ -986,27 +986,59 @@ def main():
     parser.add_argument("-np", "--created_reaction_pathway_id", type=str, default='merge_created_reactions', help="Name of the added reactions")
     parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
     args = parser.parse_args()
-    rpFBA.runCollection(args.rpcollection,
-                        args.gem,
-                        args.rpcollection_output,
-                        args.target_reaction,
-                        args.sim_type,
-                        args.source_reaction,
-                        args.source_coefficient,
-                        args.target_coefficient,
-                        args.num_workers,
-                        args.keep_merged,
-                        args.fraction_of,
-                        args.objective_id,
-                        args.is_max,
-                        args.del_sp_pro,
-                        args.del_sp_react,
-                        args.upper_flux_bound,
-                        args.lower_flux_bound,
-                        args.compartment_id,
-                        args.pathway_id,
-                        args.created_reaction_pathway_id,
-                        args.rpcache)
+    if args.rpcache=='None' or args.rpcache=='':
+        rpcache = None
+    else:
+        rpcache = args.rpcache
+    if args.rpcollection_output=='None' or args.rpcollection_output=='':
+        rpcollection_output = None
+    else:
+        rpcollection_output = args.rpcollection_output
+    if args.keep_merged=='True' or args.keep_merged=='true':
+        keep_merged = True
+    elif args.keep_merged=='False' or args.keep_merged=='false':
+        keep_merged = False
+    else:
+        keep_merged = args.keep_merged
+    if args.is_max=='True' or args.is_max=='true':
+        is_max = True
+    elif args.is_max=='False' or args.is_max=='false':
+        is_max = False
+    else:
+        is_max = args.is_max
+    if args.del_sp_pro=='True' or args.del_sp_pro=='true':
+        del_sp_pro = True
+    elif args.del_sp_pro=='False' or args.del_sp_pro=='false':
+        del_sp_pro = False
+    else:
+        del_sp_pro = args.del_sp_pro
+    if args.del_sp_react=='True' or args.del_sp_react=='true':
+        del_sp_react = True
+    elif args.del_sp_react=='False' or args.del_sp_react=='false':
+        del_sp_react = False
+    else:
+        del_sp_react = args.del_sp_react
+    rpFBA.runCollection(rpcollection=args.rpcollection,
+                        gem_sbml_path=args.gem,
+                        rpcollection_output=rpcollection_output,
+                        target_reaction=args.target_reaction,
+                        sim_type=args.sim_type,
+                        source_reaction=args.source_reaction,
+                        source_coefficient=args.source_coefficient,
+                        target_coefficient=args.target_coefficient,
+                        num_workers=args.num_workers,
+                        keep_merged=keep_merged,
+                        fraction_of=args.fraction_of,
+                        objective_id=args.objective_id,
+                        is_max=is_max,
+                        del_sp_pro=del_sp_pro,
+                        del_sp_react=del_sp_react,
+                        upper_flux_bound=args.upper_flux_bound,
+                        lower_flux_bound=args.lower_flux_bound,
+                        compartment_id=args.compartment_id,
+                        pathway_id=args.pathway_id,
+                        created_reaction_pathway_id=args.created_reaction_pathway_id,
+                        rpcache=rpcache)
 
 if __name__ == "__main__":
     main()
