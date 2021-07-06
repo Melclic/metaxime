@@ -5,8 +5,8 @@ import libsbml
 import pandas as pd
 import numpy as np
 
-from .rpGraph import rpGraph
-from .rpSBML import rpSBML
+from rpGraph import rpGraph
+from rpSBML import rpSBML
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"

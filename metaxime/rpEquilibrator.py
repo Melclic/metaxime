@@ -2,17 +2,13 @@ import logging
 import glob
 import time
 import numpy as np
+import argparse
 import json
 import tempfile
 import tarfile
 import os
-from equilibrator_api import ComponentContribution, Q_
-from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
-from equilibrator_assets.group_decompose import GroupDecompositionError
-import equilibrator_cache
-from equilibrator_pathway import Pathway
 
-from .rpSBML import rpSBML
+from rpSBML import rpSBML
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"
@@ -25,6 +21,10 @@ __status__ = "Development"
 
 #TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
 class rpEquilibrator(rpSBML):
+    from equilibrator_api import ComponentContribution, Q_
+    from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
+    from equilibrator_assets.group_decompose import GroupDecompositionError
+    import equilibrator_cache
     """Class containing collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
     """
     def __init__(self,
@@ -759,6 +759,7 @@ class rpEquilibrator(rpSBML):
 
 
     def MDF(self, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', stdev_factor=1.96, write_results=True):
+        from equilibrator_pathway import Pathway
         """Perform MDF analysis on the rpSBML file
 
         :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
@@ -811,3 +812,28 @@ class rpEquilibrator(rpSBML):
                 self.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
                 return 0.0
         return to_ret_mdf
+
+def main():
+    parser = argparse.ArgumentParser(description='Run Thermodynamics on a collection of files')
+    parser.add_argument("-i", "--rpcollection", type=str, help="rpcollection file input", required=True)
+    parser.add_argument("-o", "--rpcollection_output", type=str, default=None, help="Path to the output rpcollection file (Default is overwrite)")
+    parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
+    parser.add_argument("-p", "--pathway_id", type=str, default='rp_pathway', help="Name of the heterologous pathway")
+    parser.add_argument("-cc", "--cc_cache", type=str, default=None, help="Component contribution cache")
+    parser.add_argument("-ph", "--ph", type=float, default=7.5, help="pH of the compartment of the heterologous pathway")
+    parser.add_argument("-io", "--ionic_strength", type=float, default=200.0, help="Ionic strength of the compartment")
+    parser.add_argument("-pmg", "--pmg", type=float, default=10.0, help="Disolved magnesium of the compartment")
+    parser.add_argument("-k", "--temp_k", type=float, default=298.15, help="Temperature in Kelvin")
+    args = parser.parse_args()
+    rpFBA.runCollection(args.rpcollection,
+                        args.rpcollection_output, 
+                        args.rpcache, 
+                        args.cc_cache, 
+                        args.ph, 
+                        args.ionic_strength, 
+                        args.pmg, 
+                        args.temp_k, 
+                        args.rp_pathway)
+
+if __name__ == "__main__":
+    main()

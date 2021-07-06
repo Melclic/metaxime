@@ -2,6 +2,7 @@ import csv
 import os
 import pickle
 import gzip
+import argparse
 from rdkit.Chem import MolFromSmiles, MolFromInchi, MolToSmiles, MolToInchi, MolToInchiKey, AddHs
 import sys
 import logging
@@ -16,7 +17,7 @@ import time
 import timeout_decorator
 TIMEOUT = 5
 
-from metaxime import rpSBML
+from rpSBML import rpSBML
 
 class rpExtractSink(rpSBML):
     """Class to extract all the sink
@@ -157,3 +158,17 @@ class rpExtractSink(rpSBML):
             rpextractsink.logger.error('Cannot extract a single inchi from the SBML at the given compartment')
             return False
         return True
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate a RP2 friendly input sink file from SBML file')
+    parser.add_argument("-i", "--input_sbml", type=str, help="Input SBML file", required=True)
+    parser.add_argument("-o", "--output_sink", type=str, help="Output csv sink file", required=True)
+    parser.add_argument("-r", "--remove_dead_end", type=bool, default=False, help="Run FVA and exclude the dead end metabolites")
+    parser.add_argument("-c", "--compartment_id", type=str, default='MNXC3', help="SBML compartment ID to extract the metabolites")
+    parser.add_argument("-m", "--model_name", type=str, default=None, help="The name of the model (if None, uses the input file)")
+    parser.add_argument("-rc", "--rpcache", type=str, default=None, help="Path to the cache")
+    args = parser.parse_args()
+    rpExtractSink.genSink(args.input_sbml, args.output_sink, args.remove_dead_end, args.compartment_id, args.model_name, args.rpcache)
+
+if __name__ == "__main__":
+    main()

@@ -13,8 +13,8 @@ import copy
 import logging
 import time
 
-from .rpSBML import rpSBML
-from .rpCache import rpCache
+from rpSBML import rpSBML
+from rpCache import rpCache
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"

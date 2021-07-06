@@ -11,7 +11,7 @@ import random
 import networkx as nx
 from networkx.readwrite import json_graph
 
-from .rpSBML import rpSBML
+from rpSBML import rpSBML
 
 
 __author__ = "Melchior du Lac"

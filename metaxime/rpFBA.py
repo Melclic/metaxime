@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import tempfile
+import argparse
 import glob
 import os
 import tarfile
@@ -12,8 +13,8 @@ import time
 from cobra.flux_analysis import pfba
 from multiprocessing import Pool
 
-from .rpMerge import rpMerge
-from .rpCache import rpCache
+from rpMerge import rpMerge
+from rpCache import rpCache
 
 
 __author__ = "Melchior du Lac"
@@ -960,3 +961,52 @@ class rpFBA(rpMerge):
     #10) Reduced model
 
     #11) ECM
+
+def main():
+    parser = argparse.ArgumentParser(description='Run FBA on a collection of files')
+    parser.add_argument("-i", "--rpcollection", type=str, help="rpcollection file input", required=True)
+    parser.add_argument("-g", "--gem", type=str, help="GEM SBML file", required=True)
+    parser.add_argument("-o", "--rpcollection_output", type=str, default=None, help="Path to the output rpcollection file (Default is overwrite)")
+    parser.add_argument("-t", "--target_reaction", type=str, default='RP1_sink', help="Name of the target reaction")
+    parser.add_argument("-s", "--sim_type", type=str, default='sim_type', help="The type of FBA simulation", choices=['fraction', 'fba', 'pfba'])
+    parser.add_argument("-sr", "--source_reaction", type=str, default='biomass', help="The source reaction of the GEM SBML file")
+    parser.add_argument("-sc", "--source_coefficient", type=float, default=1.0, help="Source coefficient")
+    parser.add_argument("-tc", "--target_coefficient", type=float, default=1.0, help="Target coefficient")
+    parser.add_argument("-w", "--num_workers", type=int, default=1, help="Number of subprocesses workers")
+    parser.add_argument("-km", "--keep_merged", type=bool, default=False, help="Keep the merged GEM and pathway SBML files")
+    parser.add_argument("-f", "--fraction_of", type=float, default=0.75, help="If sim_type is fraction, what portion of the source_reaction to force flux to")
+    parser.add_argument("-oi", "--objective_id", type=str, default='obj_fraction', help="Name of the newly created objective ID")
+    parser.add_argument("-m", "--is_max", type=bool, default=True, help="Minimize or Maximize the objective function")
+    parser.add_argument("-dsp", "--del_sp_pro", type=bool, default=False, help="Delete intermediate reaction orphan products")
+    parser.add_argument("-dsr", "--del_sp_react", type=bool, default=True, help="Delete intermediate reaction orphan reactants")
+    parser.add_argument("-uf", "--upper_flux_bound", type=float, default=999999.0, help="Upper flux bound for newly created reactions")
+    parser.add_argument("-lf", "--lower_flux_bound", type=float, default=0.0, help="Lower flux bound for newly created reactions")
+    parser.add_argument("-c", "--compartment_id", type=str, default='MNXC3', help="Compartment ID of the GEM SBML file to add the heterologous pathway")
+    parser.add_argument("-p", "--pathway_id", type=str, default='rp_pathway', help="Name of the heterologous pathway")
+    parser.add_argument("-np", "--created_reaction_pathway_id", type=str, default='merge_created_reactions', help="Name of the added reactions")
+    parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
+    args = parser.parse_args()
+    rpFBA.runCollection(args.rpcollection,
+                        args.gem,
+                        args.rpcollection_output,
+                        args.target_reaction,
+                        args.sim_type,
+                        args.source_reaction,
+                        args.source_coefficient,
+                        args.target_coefficient,
+                        args.num_workers,
+                        args.keep_merged,
+                        args.fraction_of,
+                        args.objective_id,
+                        args.is_max,
+                        args.del_sp_pro,
+                        args.del_sp_react,
+                        args.upper_flux_bound,
+                        args.lower_flux_bound,
+                        args.compartment_id,
+                        args.pathway_id,
+                        args.created_reaction_pathway_id,
+                        args.rpcache)
+
+if __name__ == "__main__":
+    main()

@@ -3,6 +3,7 @@
 import libsbml
 import sys
 import logging
+import argparse
 from scipy import stats
 import numpy as np
 import json
@@ -12,7 +13,7 @@ import tempfile
 import os
 import time
 
-from .rpSBML import rpSBML
+from rpSBML import rpSBML
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"
@@ -346,3 +347,39 @@ class rpGlobalScore(rpSBML):
         if write_results:
             self.updateBRSynthPathway(rpsbml_dict, pathway_id)
         return globalScore
+
+def main():
+    parser = argparse.ArgumentParser(description='Calculate the a global score after calculating the FBA and the Thermo for a collection of heterologous pathways')
+    parser.add_argument("-i", "--rpcollection", type=str, help="rpcollection file input", required=True)
+    parser.add_argument("-o", "--rpcollection_output", type=str, default=None, help="Path to the output rpcollection file (Default is overwrite)")
+    parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
+    parser.add_argument("-s", "--weight_rp_steps", type=float, default=0.10002239003499142, help="Penalty for the number of steps")
+    parser.add_argument("-r", "--weight_rule_score", type=float, default=0.13346271414277305, help="Penalty for the reaction rule")
+    parser.add_argument("-f", "--weight_fba", type=float, default=0.6348436269211155, help="Penalty for FBA flux")
+    parser.add_argument("-t", "--weight_thermo", type=float, default=0.13167126890112002, help="Penalty for thermodynamic potential")
+    parser.add_argument("-m", "--max_rp_steps", type=int, default=15, help="Upper bound for the number of steps")
+    parser.add_argument("-tc", "--thermo_ceil", type=float, default=5000.0, help="The upper bound for the thermodynamic")
+    parser.add_argument("-tf", "--thermo_floor", type=float, default=-5000.0, help="The lower bound for the thermodynamic")
+    parser.add_argument("-fc", "--fba_ceil", type=float, default=5.0, help="The upper bound for flux")
+    parser.add_argument("-ff", "--fba_floor", type=float, default=0.0, help="The lower bound for flux")
+    parser.add_argument("-p", "--pathway_id", type=str, default='rp_pathway', help="Name of the heterologous pathway")
+    parser.add_argument("-b", "--objective_id", type=str, default='obj_fraction', help="Name of the heterologous objective function")
+    parser.add_argument("-ti", "--dfG_prime_m", type=str, default='dfG_prime_m', help="Name of the thermodynamic value to use")
+    args = parser.parse_args()
+    rpFBA.runCollection(args.rpcollection,
+                        args.rpcollection_output,
+                        args.weight_rp_steps,
+                        args.weight_rule_score,
+                        args.weight_fba,
+                        args.weight_thermo,
+                        args.max_rp_steps,
+                        args.thermo_ceil,
+                        args.thermo_floor,
+                        args.fba_ceil,
+                        args.fba_floor,
+                        args.pathway_id,
+                        args.objective_id,
+                        args.thermo_id)
+
+if __name__ == "__main__":
+    main()

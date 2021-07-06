@@ -15,7 +15,7 @@ import json
 #import pandas as pd
 #import numpy as np
 
-from .rpCache import rpCache
+from rpCache import rpCache
 
 __author__ = "Melchior du Lac"
 __copyright__ = "Copyright 2020"

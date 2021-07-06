@@ -3,6 +3,7 @@ import time
 import glob
 import pickle
 import tarfile
+import argparse
 import gzip
 import logging
 import json
@@ -11,8 +12,8 @@ import csv
 import os
 
 from selenzy import Selenzy
-from .rpSBML import rpSBML
-from .rpCache import rpCache
+from rpSBML import rpSBML
+from rpCache import rpCache
 
 
 __author__ = "Melchior du Lac"
@@ -333,3 +334,42 @@ class rpSelenzyme(rpSBML):
                 self.logger.warning('Cannot retreive the reaction rule of model '+str(self.model.getId()))
                 return False
         return all_results
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Run Selenzyme on a collection of files')
+    parser.add_argument("-i", "--rpcollection", type=str, help="rpcollection file input", required=True)
+    parser.add_argument("-t", "--host_taxonomy_id", type=str, help="Taxonomy ID of the target organism", required=True)
+    parser.add_argument("-o", "--rpcollection_output", type=str, default=None, help="Path to the output rpcollection file (Default is overwrite)")
+    parser.add_argument("-r", "--num_results", type=int, default=50, help="Maximum number of enzymes to return per reaction")
+    parser.add_argument("-d", "--direction", type=int, default=0, help="Direction of the reaction rule (0: reverse, 1: forward)")
+    parser.add_argument("-m", "--noMSA", type=bool, default=True, help="Do not compute MSA/conservation scores")
+    parser.add_argument("-fp", "--fingerptint", type=str, default='RDK', help="Fingerprint type")
+    parser.add_argument("-rx", "--rxntype", type=str, default='smarts', help="Reaction rule types")
+    parser.add_argument("-a", "--min_aa_length", type=int, default=100, help="Alignement amino acid length")
+    parser.add_argument("-ua", "--uniprot_aa_length", type=int, default=None, help="Uniprot amino acid length")
+    parser.add_argument("-p", "--pathway_id", type=str, default='rp_pathway', help="Name of the heterologous pathway")
+    parser.add_argument("-pc", "--cache_obj", type=str, default=None, help="Selenzyme cache")
+    parser.add_argument("-dd", "--data_dir", type=str, default=None, help="Path to the selenzyme paths")
+    parser.add_argument("-cp", "--cache_path", type=str, default=None, help="Path to the cache files")
+    parser.add_argument("-ca", "--rpcache", type=str, default=None, help="Path to the cache")
+    args = parser.parse_args()
+    rpFBA.runCollection(args.rpcollection,
+                        args.host_taxonomy_id,
+                        args.rpcollection_output,
+                        args.num_results,
+                        args.direction,
+                        args.noMSA,
+                        args.fingerptint,
+                        args.rxntype,
+                        args.min_aa_length,
+                        args.pathway_id,
+                        args.cache_obj,
+                        args.uniprot_aa_length,
+                        args.data_dir,
+                        args.cache_path,
+                        args.rpcache)
+
+
+if __name__ == "__main__":
+    main()

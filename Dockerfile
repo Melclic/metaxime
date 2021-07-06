@@ -3,7 +3,7 @@ FROM continuumio/miniconda3:4.9.2
 RUN apt-get update && apt-get install build-essential -y
 RUN conda install -c conda-forge rdkit openbabel networkx==2.3 cython python-libsbml 
 RUN conda install -c conda-forge cobra
-RUN pip3 install objsize
+RUN pip3 install objsize timeout_decorator
 
 ###### MARVIN ####
 
@@ -47,14 +47,18 @@ RUN cd equilibrator-assets && pip3 install -e . && cd ..
 
 WORKDIR /home/
 
-RUN pip3 install timeout_decorator
-
 #### generate the cache
 ADD metaxime /home/metaxime/
-ADD selenzy /home/selenzy/
+ADD selenzy /home/metaxime/selenzy/
 RUN mkdir /home/metaxime/input_cache/
 COPY selenzy/rpselenzyme_data.tar.xz /home/metaxime/input_cache/
 COPY init_eq.py /home/
 RUN python3 init_eq.py
 COPY init_cache.py /home/
 RUN python3 init_cache.py
+WORKDIR /home/metaxime/
+COPY README.md /home/metaxime/
+COPY LICENSE /home/metaxime/
+RUN pip3 install -e .
+
+WORKDIR /home/
