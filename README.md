@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 # MetaXime
 
-WARNING: Non-functional. Requires separating all the individual modules into individual dockers is the way to go (perhaps CWL)
+This project parses a TSV file that describes pathways and converts it to SBML. Then you have different analysis methods, such as thermodynamics, FBA and other analysis.
 
 ## Introduction
 
