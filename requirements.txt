@@ -1,0 +1,6 @@
+rdkit
+pandas
+numpy
+compress_json
+networkx
+biopathopt
