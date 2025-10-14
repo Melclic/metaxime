@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import re
 import networkx as nx
+from tqdm import tqdm
 
 from typing import Dict, Tuple, Any, Optional, Iterable, Literal, Set, Union, List
 from typing import Callable, Dict, Any, Mapping, Optional
@@ -58,6 +59,8 @@ class ParserRP2(RR_Data):
         Returns:
             Tuple[Optional[str], float]: (Best matching key, Tanimoto score). Returns (None, 0.0) if no confident match found.
         """
+        if pd.isna(query_inchi) or str(query_inchi).lower() in ('nan', '', 'null', 'none'):
+            return None, 0.0
         gen = rdFingerprintGenerator.GetMorganGenerator(radius=2,fpSize=n_bits)
         query_mol = Chem.MolFromInchi(query_inchi)
         if query_mol is None:
@@ -203,6 +206,16 @@ class ParserRP2(RR_Data):
                 - "score": float, average score of the transformation.
                 - "reaction_smiles": str, reaction SMILES (if unique).
         """
+        def parse_list_strings_flat(lst):
+            """Convert string lists like '[4.4.1.1, 4.5.1.2, NOEC]' into a flat list of unique EC numbers,
+            ignoring 'NOEC' entries."""
+            items = []
+            for s in lst:
+                s = s.strip().strip("[]")
+                if s:
+                    parts = [x.strip() for x in s.split(",")]
+                    items.extend(p for p in parts if p and p.upper() != "NOEC")
+            return sorted(set(items))
         df = pd.read_csv(scope_path)
         # Compute mean scores per transformation
         transf_id__score = (
@@ -224,11 +237,19 @@ class ParserRP2(RR_Data):
                 transf_id__reaction_smiles[tid] = list(smiles_set)[0]
             else:
                 logging.warning(f"Multiple reaction SMILES found for {tid}: {smiles_set}")
+        # Collect the EC numbers
+        transf_id__ec = (
+                df[['Transformation ID', 'EC number']]
+                .groupby('Transformation ID')['EC number']
+                .apply(parse_list_strings_flat)
+                .to_dict()
+        )
         # Combine into structured dictionary
         scope = {
             tid: {
                 "score": transf_id__score.get(tid, np.nan),
-                "reaction_smiles": transf_id__reaction_smiles.get(tid, None)
+                "reaction_smiles": transf_id__reaction_smiles.get(tid, None),
+                "ec-code": transf_id__ec.get(tid, []),
             }
             for tid in transf_id__score.keys()
         }
@@ -542,7 +563,8 @@ class ParserRP2(RR_Data):
             None
         """
         to_ret = {}
-        for rp_path_num in all_paths:
+        path_iterator = tqdm(all_paths, desc='Processing RP2 completed paths') if self.use_progressbar else all_paths
+        for rp_path_num in path_iterator:
             logging.debug(f'------ {rp_path_num} -------')
             to_ret[rp_path_num] = []
             for rp_subpath in all_paths[rp_path_num]:
@@ -601,11 +623,12 @@ class ParserRP2(RR_Data):
                     reaction.lower_bound = reaction_lower_bound  
                     reaction.upper_bound = reaction_upper_bound
                     reaction.annotation.update({
-                        'rp_score': self.rp_scope[rp_rule_trans_id]['score'],
+                        'rp_score': self.rp_scope.get(rp_rule_trans_id, {}).get('score', 0.0),
                         'rp_step': path_step,
                         'rp_id': rp_rule,
-                        'mnxr': self.single_depr_mnxr(rp_subpath[path_step].get('reaction')),
+                        'metanetx.reaction': self.single_depr_mnxr(rp_subpath[path_step].get('reaction', '')),
                         #add the ec from out_scope
+                        'ec-code': self.rp_scope.get(rp_rule_trans_id, {}).get('ec-code', [])
                     })
                     #Metabolite
                     for cid in rp_reactants|rp_products:
@@ -616,9 +639,9 @@ class ParserRP2(RR_Data):
                                 xref, _ = self.mnxm_xref(cid)
                             model_meta[cid] = Metabolite(
                                     f'{cid}_{compartment_id}',
-                                    formula=xref.get('formula', ''),
+                                    formula=xref.get('formula', None),
                                     name=xref.get('name', cid),
-                                    charge=xref.get('charge', ''),
+                                    charge=xref.get('charge', 0.0),
                                     compartment=compartment_id,
                                 
                             )
@@ -636,5 +659,14 @@ class ParserRP2(RR_Data):
                     )
                     model_reac.append(reaction)
                 model.add_reactions(model_reac)
+                #sanitize
+                for m in model.metabolites:
+                    try:
+                        int(m.charge)
+                    except ValueError:
+                        m.charge = 0.0
+                for m in model.metabolites:
+                    if not isinstance(m.formula, str) or m.formula in ('nan', 'None', 'NaN', ''):
+                        m.formula = None
                 to_ret[rp_path_num][idx] = model
         return to_ret

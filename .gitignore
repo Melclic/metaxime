@@ -13,3 +13,7 @@ node_modules
 docker_files/rp2/license.cxl
 docker_files/rp2/marvin_linux_20.9.deb
 html/js/jsme
+nextflow/work/
+nextflow/results/
+nextflow/input/
+
