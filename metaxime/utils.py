@@ -23,6 +23,7 @@ from typing import Dict
 def merge_models(
     source_model: Model,
     input_target_model: Model,
+    source_target_compartment_conv: dict = {},
 ) -> Model:
     """Merge a COBRApy model into another by matching metabolites via annotation overlap.
 
@@ -62,10 +63,11 @@ def merge_models(
     # Match metabolites based on annotation overlap
     for gen_m in source_model.metabolites:
         for ori_m in target_model.metabolites:
-            if _annotations_overlap(gen_m.annotation, ori_m.annotation):
-                logging.debug(f"{gen_m.id} matches {ori_m.id}")
-                gen_ori_convert_metabolites[gen_m.id] = ori_m.id
-                break
+            if ori_m.compartment==source_target_compartment_conv.get(gen_m.compartment, gen_m.compartment):
+                if _annotations_overlap(gen_m.annotation, ori_m.annotation):
+                    logging.debug(f"{gen_m.id} matches {ori_m.id}")
+                    gen_ori_convert_metabolites[gen_m.id] = ori_m.id
+                    break
     # Copy reactions with mapped metabolites
     new_reactions = []
     for r in source_model.reactions:
