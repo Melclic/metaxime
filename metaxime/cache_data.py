@@ -1,6 +1,7 @@
 from biopathopt import Data
 import compress_json
 import logging
+import requests
 
 from .utils import read_compressed_tsv
 

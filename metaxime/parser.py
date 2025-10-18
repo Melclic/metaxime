@@ -300,25 +300,31 @@ class ParserRP2(RR_Data):
                     logging.warning(f"Could not convert SMILES to InChIKey for CID={cid}: {smiles!r}")
                 # get the xref
                 xref = None
-                mnxm = None
                 if 'MNXM' in cid:
-                    xref, _ = self.mnxm_xref(self.single_depr_mnxm(cid))
-                    xref['xref'] = merge_annot_dicts(
-                        xref['xref'],
-                        rp_strc[cid],
-                    )
-                    rp_strc[cid] = xref
+                    try:
+                        xref, _ = self.mnxm_xref(self.single_depr_mnxm(cid))
+                        xref['xref'] = merge_annot_dicts(
+                            xref['xref'],
+                            rp_strc[cid],
+                        )
+                        rp_strc[cid] = xref
+                    except KeyError:
+                        pass
                 else:
                     try:
                         mnxm = self.inchikey_mnxm[rp_strc[cid]["InChIKey"]]
+                        xref, _ = self.mnxm_xref(mnxm)
                     except KeyError:
                         try:
                             mnxm = self.inchikey2_mnxm['-'.join(rp_strc[cid]["InChIKey"].split('-')[:2])]
+                            xref, _ = self.mnxm_xref(mnxm)
                         except KeyError:
-                            pass
-                    if mnxm:
-                        xref, _ = self.mnxm_xref(mnxm)
-                #print(f"xref: {xref['xref']}")
+                            xref = self.exact_pubchem_search(
+                                    query=rp_strc[cid]["InChIKey"], 
+                                    itype='inchikey', 
+                                    return_lowest_cid=True
+                            )
+                            #TODO: use the xref and search for the best info
                 if xref:
                     xref['xref'] = merge_annot_dicts(
                         xref['xref'],
@@ -636,7 +642,10 @@ class ParserRP2(RR_Data):
                             try:
                                 xref = self.rp_strc[cid]
                             except KeyError:
-                                xref, _ = self.mnxm_xref(cid)
+                                try:
+                                    xref, _ = self.mnxm_xref(cid)
+                                except KeyError:
+                                    xref =  {}
                             model_meta[cid] = Metabolite(
                                     f'{cid}_{compartment_id}',
                                     formula=xref.get('formula', None),

@@ -56,7 +56,7 @@ The results may be inspected once the job is completed. The following error
 To build the project, navigate to the project folder and run the following commands:
 
 ```
-docker build -t metaxime -f Dockerfile .
+docker build -t metaxime -f images/Dockerfile .
 docker run -it -v $(pwd)/mx-results:/mx-results -p 80:80 -p 8888:8888 metaxime
 ```
 
