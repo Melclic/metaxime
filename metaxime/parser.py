@@ -595,6 +595,7 @@ class ParserRP2(RR_Data):
     def return_rp2_models(
         self,
         compartment_id: str = "c",
+        extracellular_compartment_id: str = "e",
         reaction_lower_bound: float = 0.0,
         reaction_upper_bound: float = 1000.0,
     ) -> Dict[int, Dict[int, Model]]:
@@ -637,7 +638,12 @@ class ParserRP2(RR_Data):
                         'ec-code': self.rp_scope.get(rp_rule_trans_id, {}).get('ec-code', [])
                     })
                     #Metabolite
+                    target_meta_cid = None
+                    print(rp_reactants|rp_products)
                     for cid in rp_reactants|rp_products:
+                        if 'TARGET' in cid and not target_meta_cid:
+                            print(f'Found target: {cid}')
+                            target_meta_cid = cid
                         if not cid in model_meta:
                             try:
                                 xref = self.rp_strc[cid]
@@ -667,6 +673,38 @@ class ParserRP2(RR_Data):
                         model_reaction_dict
                     )
                     model_reac.append(reaction)
+                #add a reaction that transports the target to extracellular 
+                transport_reaction = Reaction('transport_target')
+                transport_reaction.name = 'transport_target'
+                transport_reaction.subsystem = ''
+                transport_reaction.lower_bound = reaction_lower_bound  
+                transport_reaction.upper_bound = reaction_upper_bound
+                trans_target_meta = Metabolite(
+                        f'{target_meta_cid}_{extracellular_compartment_id}',
+                        formula=xref.get('formula', model_meta[target_meta_cid].annotation.get('formula')),
+                        name=xref.get('name', target_meta_cid),
+                        charge=xref.get('charge', model_meta[target_meta_cid].annotation.get('charge')),
+                        compartment=extracellular_compartment_id,
+                )
+                trans_target_meta.annotation.update(dict(model_meta[target_meta_cid].annotation))
+                trans_reaction_dict = {
+                        model_meta[target_meta_cid]: -1.0,
+                        trans_target_meta: 1.0,
+                }
+                transport_reaction.add_metabolites(trans_reaction_dict)
+                model_reac.append(transport_reaction)
+                #add a sink
+                sink_reaction = Reaction('sink_target')
+                sink_reaction.name = 'sink_target'
+                sink_reaction.subsystem = ''
+                sink_reaction.lower_bound = reaction_lower_bound  
+                sink_reaction.upper_bound = reaction_upper_bound
+                sink_reaction_dict = {
+                        trans_target_meta: -1.0
+                }
+                sink_reaction.add_metabolites(sink_reaction_dict)
+                model_reac.append(sink_reaction)
+                #add to model
                 model.add_reactions(model_reac)
                 #sanitize
                 for m in model.metabolites:
