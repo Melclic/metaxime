@@ -2,6 +2,7 @@ from biopathopt import Data
 import compress_json
 import logging
 import requests
+import os
 
 from .utils import read_compressed_tsv
 
@@ -14,7 +15,10 @@ class RR_Data(Data):
         """Class that inherits Data used to build a cobra model
         """
         super().__init__(low_memory_mode=low_memory_mode, use_progressbar=use_progressbar)
+        #super().__init__()
+        self._rr_recipes = None
 
+    @property
     def rr_recipes(self):
         """Return the chemical properties of molecules
 

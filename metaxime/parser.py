@@ -30,6 +30,7 @@ class ParserRP2(RR_Data):
             rp2_paths_path: str,
             use_progressbar=False, 
             low_memory_mode=False,
+            match_strc_search_threshold: float = 0.8,
         ):
         """Class that inherits Data used to build a cobra model
         """
@@ -38,7 +39,7 @@ class ParserRP2(RR_Data):
         self.rp_scope = self._read_rp2scope(rp2_scope_path)
         self.rp_paths = self._read_rp2paths(rp2_paths_path)
         self.all_paths = self._extract_all_paths(self.rp_paths)
-        self.completed_paths = self._process_all_paths(self.all_paths)
+        self.completed_paths = self._process_all_paths(self.all_paths, match_threshold=match_strc_search_threshold)
 
 
     def _best_inchi_match(
@@ -555,6 +556,7 @@ class ParserRP2(RR_Data):
     def _process_all_paths(
         self,
         all_paths: Dict[int, Any],
+        match_threshold: float = 0.8,
     ) -> None:
         """Iterate through all pathway structures and process each subpath step.
 
@@ -582,6 +584,7 @@ class ParserRP2(RR_Data):
                         to_overwrite[path_step] = self._complete_monocomponent_reaction(
                                 rp_subpath[path_step],
                                 rp_path=self.rp_paths[rp_path_num][path_step],
+                                match_threshold=match_threshold,
                             )
                     except KeyError as e:
                         logging.warning(f"Skipping {rp_path_num} because of the following KeyError: {e}")
@@ -639,10 +642,10 @@ class ParserRP2(RR_Data):
                     })
                     #Metabolite
                     target_meta_cid = None
-                    print(rp_reactants|rp_products)
+                    logging.debug(rp_reactants|rp_products)
                     for cid in rp_reactants|rp_products:
                         if 'TARGET' in cid and not target_meta_cid:
-                            print(f'Found target: {cid}')
+                            logging(f'Found target: {cid}')
                             target_meta_cid = cid
                         if not cid in model_meta:
                             try:
