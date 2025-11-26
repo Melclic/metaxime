@@ -62,7 +62,7 @@ class ParserRP2(RR_Data):
         """
         if pd.isna(query_inchi) or str(query_inchi).lower() in ('nan', '', 'null', 'none'):
             return None, 0.0
-        gen = rdFingerprintGenerator.GetMorganGenerator(radius=2,fpSize=n_bits)
+        gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius,fpSize=n_bits)
         query_mol = Chem.MolFromInchi(query_inchi)
         if query_mol is None:
             logging.error(f"Invalid query InChI: {query_inchi}")
@@ -413,12 +413,12 @@ class ParserRP2(RR_Data):
 
         return to_ret
 
-
     def _complete_monocomponent_reaction(
         self,
         input_subpath: Dict[str, Any],
         rp_path: Dict,
         match_threshold: float = 0.8,
+        #conv_rp_ids: Dict = {},
     ) -> None:
         """
         Complete a single monocomponent RP2 step by reconciling predicted species with
@@ -428,6 +428,11 @@ class ParserRP2(RR_Data):
             subpath: Dict with keys 'rule', 'reaction', 'substrate'.
             match_threshold: Minimum similarity to accept the target match without fallback.
 
+        NOTE:
+            Main and secondary species are handled separately:
+                - Main reactants/products are used to determine the direction.
+                - Only secondary reactants/products are added if missing.
+
         Returns:
             The updated subpath (mutated copy in-place).
         """
@@ -436,10 +441,11 @@ class ParserRP2(RR_Data):
         rp_rule_reac = subpath["reaction"]
         rp_rule_substrate = subpath["substrate"]
 
-        # 1) Recover original recipe reactants/products (prefer rr_recipes, fall back to cache)
+        # 1) Recover original recipe reactants/products, keeping main and secondary separate
         try:
+            # Full recipe (main + secondary) still useful for mapping and logging
             ori_reactants = self.rr_recipes[rp_rule_reac]["main_reactants"] | self.rr_recipes[rp_rule_reac]["secondary_reactants"]
-            ori_products  = self.rr_recipes[rp_rule_reac]["main_products"]  | self.rr_recipes[rp_rule_reac]["secondary_products"]
+            ori_products = self.rr_recipes[rp_rule_reac]["main_products"] | self.rr_recipes[rp_rule_reac]["secondary_products"]
         except (KeyError, TypeError):
             try:
                 base_id = self.single_depr_mnxr(rp_rule_reac)
@@ -454,91 +460,138 @@ class ParserRP2(RR_Data):
             except (KeyError, TypeError):
                 raise KeyError(f"Cannot find original reactants/products for {rp_rule_reac}")
 
-        logging.debug(f"\t\tori_reactants: {ori_reactants}")
-        logging.debug(f"\t\tori_products: {ori_products}")
+        logging.debug(f"\t\tori_reactants (all): {ori_reactants}")
+        logging.debug(f"\t\tori_products (all): {ori_products}")
 
         # 2) Build InChI pool for all species mentioned in the original recipe
-        ori_strc_inchi: Dict[str, str] = {}
+        #    (we keep all, but direction will be based on "main" only)
+        ori_strc_inchi: Dict[Dict[str, str]] = {}
+        ori_strc_inchi['reactants'] = {}
+        ori_strc_inchi['products'] = {}
         left_out: list[str] = []
-        for mid in (ori_reactants | ori_products):
-            inchi = self.rp_strc.get(mid, {}).get("InChI")
-            if not inchi:
-                try:
-                    tmp = self.mnxm_prop[mid]["InChI"]
-                    if not pd.isna(tmp):
-                        inchi = tmp
-                except KeyError:
-                    inchi = None
-            if inchi:
-                ori_strc_inchi[mid] = inchi
-            else:
-                logging.warning(f"Cannot recover the InChI for {mid}")
-                left_out.append(mid)
+        for type, ori_spe in zip(['reactants', 'products'], [ori_reactants, ori_products]):
+            for mid in ori_spe:
+                inchi = self.rp_strc.get(mid, {}).get("InChI")
+                if not inchi:
+                    try:
+                        tmp = self.mnxm_prop[mid]["InChI"]
+                        if not pd.isna(tmp):
+                            inchi = tmp
+                    except KeyError:
+                        inchi = None
+                if inchi:
+                    ori_strc_inchi[type][mid] = inchi
+                else:
+                    logging.warning(f"Cannot recover the InChI for {mid}")
+                    left_out.append(mid)
 
         # 3) Identify the predicted major product on the RP2 right-hand side
         rp_right = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate]["right"]
+        logging.debug(f"\t\trp_right: {rp_right}")
         if len(rp_right) != 1:
             raise KeyError(f"Multiple elements on RP2 right-hand side: {rp_right}")
 
         rp_predict_strc_id = next(iter(rp_right.keys()))
-        target_best_mnxm, score = self._best_inchi_match(self.rp_strc[rp_predict_strc_id]["InChI"], ori_strc_inchi)
-
-        if score <= match_threshold and left_out:
-            if len(left_out) == 1:
+        #if rp_predict_strc_id in conv_rp_ids:
+        #    target_best_mnxm = conv_rp_ids[rp_predict_strc_id]
+        #else:
+        target_best_mnxm, score = self._best_inchi_match(
+            self.rp_strc[rp_predict_strc_id]["InChI"],
+            ori_strc_inchi['reactants'] | ori_strc_inchi['products'],
+        )
+        #Fallback to unidentified 
+        if score <= match_threshold:
+            if left_out and len(left_out) == 1:
                 logging.warning(f"Using unknown as main RHS metabolite: {left_out[0]}")
                 target_best_mnxm = left_out[0]
             else:
-                raise KeyError("Cannot confidently identify the RHS metabolite")
+                raise KeyError(
+                    f"Cannot confidently identify the RHS metabolite: left_out: {left_out}, score: {score}"
+                )
 
         logging.debug(f"\t\t{rp_predict_strc_id} -> {target_best_mnxm}")
+        logging.debug(f"\t\treaction: {rp_rule_reac}")
 
-        # 4) Determine orientation by checking where the target metabolite belongs
+        # 4) Determine orientation using main reactants/products
         if target_best_mnxm in ori_products:
             reactant_dir, product_dir = "left", "right"
         elif target_best_mnxm in ori_reactants:
             reactant_dir, product_dir = "right", "left"
         else:
-            raise KeyError("Cannot recognize reactant/product orientation")
+            raise KeyError(
+                f"Cannot recognize reactant/product orientation from main species for {target_best_mnxm}"
+            )
 
         # 5) Fetch predicted sides for this step
         rp_reactants = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][reactant_dir]
-        rp_products  = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][product_dir]
-        logging.debug(f"\t\trp_reactants: {rp_reactants}")
-        logging.debug(f"\t\trp_products: {rp_products}")
+        rp_products = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][product_dir]
+        logging.debug(f"\t\tOrientated rp_reactants: {rp_reactants}")
+        logging.debug(f"\t\tOrientated rp_products: {rp_products}")
 
         # 6) Map predicted species to original IDs using InChI similarity (reactants)
         reactants_rp2ori: Dict[str, str] = {}
         for mid in rp_reactants:
             if mid not in ori_reactants:
+                #if mid in conv_rp_ids:
+                #    reactants_rp2ori[mid] = conv_rp_ids[mid]
+                #else:
                 inchi = self.rp_strc.get(mid, {}).get("InChI")
                 if inchi:
-                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi)
+                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['reactants'])
                     reactants_rp2ori[mid] = best_mnxm
+                else:
+                    logging.warning(f'Cannot convert the reactant: {mid} InchI')
 
         # 7) Map predicted species to original IDs (products)
         products_rp2ori: Dict[str, str] = {rp_predict_strc_id: target_best_mnxm}
         for mid in rp_products:
             if mid not in ori_products and mid != rp_predict_strc_id:
+                #if mid in conv_rp_ids:
+                #    products_rp2ori[mid] = conv_rp_ids.get(mid)
+                #else:
                 inchi = self.rp_strc.get(mid, {}).get("InChI")
                 if inchi:
-                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi)
+                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['products'])
                     products_rp2ori[mid] = best_mnxm
+                else:
+                    logging.warning(f'Cannot convert the product: {mid} InchI')
 
-        logging.debug(f"\t\tConverted rp_reactants: {[reactants_rp2ori.get(i, i) for i in rp_reactants.keys()]}")
-        logging.debug(f"\t\tConverted rp_products: {[products_rp2ori.get(i, i) for i in rp_products.keys()]}")
-
-        # 8) Determine which species are missing (to add from the recipe)
-        to_add_reactants = set(ori_reactants.keys()) - {reactants_rp2ori.get(i, i) for i in rp_reactants.keys()}
-        to_add_products  = set(ori_products.keys())  - {products_rp2ori.get(i, i)  for i in rp_products.keys()}
-        logging.debug(f"\t\tto_add_reactants: {to_add_reactants}")
-        logging.debug(f"\t\tto_add_products: {to_add_products}")
+        logging.debug(
+            "\t\tConverted rp_reactants: "
+            f"{[reactants_rp2ori.get(i, i) for i in rp_reactants.keys()]}"
+        )
+        logging.debug(
+            "\t\tConverted rp_products: "
+            f"{[products_rp2ori.get(i, i) for i in rp_products.keys()]}"
+        )
+        '''
+        for i in reactants_rp2ori:
+            if 'CMPD_' in i or 'TARGET_' in i:
+                if i not in conv_rp_ids:
+                    conv_rp_ids[i] = reactants_rp2ori[i]
+        for i in products_rp2ori:
+            if 'CMPD_' in i or 'TARGET_' in i:
+                if i not in conv_rp_ids:
+                    conv_rp_ids[i] = products_rp2ori[i]
+        '''
+        # 8) Determine which species are missing
+        existing_reactants = {reactants_rp2ori.get(i, i) for i in rp_reactants.keys()}
+        existing_products = {products_rp2ori.get(i, i) for i in rp_products.keys()}
+        # Note that there should be no other 
+        to_add_reactants = set(ori_reactants.keys()) - existing_reactants
+        to_add_products = set(ori_products.keys()) - existing_products
+        logging.debug(f"\t\tto_add_reactants (secondary only): {to_add_reactants}")
+        logging.debug(f"\t\tto_add_products (secondary only): {to_add_products}")
 
         # 9) Populate the completed subpath
         subpath["reactants"] = copy.deepcopy(rp_reactants)
-        subpath["products"]  = copy.deepcopy(rp_products)
-        subpath["transformation_id"] = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate]["transformation_id"]
+        subpath["products"] = copy.deepcopy(rp_products)
+        subpath["transformation_id"] = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][
+            "transformation_id"
+        ]
+        subpath["direction"] = 1 if reactant_dir=='left' else -1
 
-        # Add any missing recipe species with their stoichiometries
+        # Add any missing SECONDARY species with their stoichiometries
         for mid in to_add_products:
             subpath["products"][mid] = ori_products[mid]
         for mid in to_add_reactants:
@@ -548,10 +601,7 @@ class ParserRP2(RR_Data):
         logging.debug(f"\t\tfull products: {subpath['products']}")
         logging.debug("\t -------")
 
-        # TODO: if you need to reconcile stoichiometries beyond simple union, do it here.
-
-        return subpath
-
+        return subpath#, conv_rp_ids
 
     def _process_all_paths(
         self,
@@ -573,21 +623,28 @@ class ParserRP2(RR_Data):
         to_ret = {}
         path_iterator = tqdm(all_paths, desc='Processing RP2 completed paths') if self.use_progressbar else all_paths
         for rp_path_num in path_iterator:
-            logging.debug(f'------ {rp_path_num} -------')
+            logging.debug(f'------ Path: {rp_path_num} -------')
             to_ret[rp_path_num] = []
+            count = 0
             for rp_subpath in all_paths[rp_path_num]:
+                count += 1
+                logging.debug(f'------ SubPath: {count} -------')
+                #conv_rp_ids = {}
                 to_overwrite = {}
                 is_valid = True
                 for path_step in rp_subpath:
                     try:
                         logging.debug(f"\t-> {path_step}")
+                        #to_overwrite[path_step], conv_rp_ids = self._complete_monocomponent_reaction(
                         to_overwrite[path_step] = self._complete_monocomponent_reaction(
                                 rp_subpath[path_step],
                                 rp_path=self.rp_paths[rp_path_num][path_step],
                                 match_threshold=match_threshold,
+                                #conv_rp_ids=conv_rp_ids,
                             )
+                        #logging.debug(f"\tconv_rp_ids: {conv_rp_ids}")
                     except KeyError as e:
-                        logging.warning(f"Skipping {rp_path_num} because of the following KeyError: {e}")
+                        logging.warning(f"Skipping path {rp_path_num} subpath {count} because of the following KeyError: {e}")
                         is_valid = False
                         break
                 if is_valid:
@@ -613,18 +670,27 @@ class ParserRP2(RR_Data):
             Dict mapping path_num -> {subpath_index -> cobra.Model}.
         """
         to_ret = {}
-
+        # TODO: check the orientation of the reaction so that it matches the correct one
         for rp_path_num in self.completed_paths:
             logging.debug(f'------ {rp_path_num} -------')
             to_ret[rp_path_num] = {}
-            for idx, rp_subpath in enumerate(self.completed_paths[rp_path_num]):
-                model = Model(f'rp2_{rp_path_num}_{idx}')
+            for rp_subpath_num, rp_subpath in enumerate(self.completed_paths[rp_path_num]):
+                model = Model(f'rp2_{rp_path_num}_{rp_subpath_num}')
                 model_meta = {}
                 model_reac = []
                 for path_step in rp_subpath: #step in that enumarated path
+                    #print(rp_subpath[path_step])
                     rp_rule = rp_subpath[path_step]['rule']
-                    rp_reactants = rp_subpath[path_step]['reactants']
-                    rp_products = rp_subpath[path_step]['products']
+                    direction = rp_subpath[path_step]['direction']
+                    if direction==1:
+                        rp_reactants = rp_subpath[path_step]['reactants']
+                        rp_products = rp_subpath[path_step]['products']
+                    elif direction==-1:
+                        rp_reactants = rp_subpath[path_step]['products']
+                        rp_products = rp_subpath[path_step]['reactants']
+                    else:
+                        logging.error('Cannot recognize the direction')
+                        break
                     rp_rule_trans_id = rp_subpath[path_step]['transformation_id']
                     #Reaction
                     reaction = Reaction(rp_rule_trans_id)
@@ -645,7 +711,7 @@ class ParserRP2(RR_Data):
                     logging.debug(rp_reactants|rp_products)
                     for cid in rp_reactants|rp_products:
                         if 'TARGET' in cid and not target_meta_cid:
-                            logging(f'Found target: {cid}')
+                            logging.info(f'Found target: {cid}')
                             target_meta_cid = cid
                         if not cid in model_meta:
                             try:
@@ -676,36 +742,37 @@ class ParserRP2(RR_Data):
                         model_reaction_dict
                     )
                     model_reac.append(reaction)
-                #add a reaction that transports the target to extracellular 
-                transport_reaction = Reaction('transport_target')
-                transport_reaction.name = 'transport_target'
-                transport_reaction.subsystem = ''
-                transport_reaction.lower_bound = reaction_lower_bound  
-                transport_reaction.upper_bound = reaction_upper_bound
-                trans_target_meta = Metabolite(
-                        f'{target_meta_cid}_{extracellular_compartment_id}',
-                        formula=xref.get('formula', model_meta[target_meta_cid].annotation.get('formula')),
-                        name=xref.get('name', target_meta_cid),
-                        charge=xref.get('charge', model_meta[target_meta_cid].annotation.get('charge')),
-                        compartment=extracellular_compartment_id,
-                )
-                trans_target_meta.annotation.update(dict(model_meta[target_meta_cid].annotation))
-                trans_reaction_dict = {
-                        model_meta[target_meta_cid]: -1.0,
-                        trans_target_meta: 1.0,
-                }
-                transport_reaction.add_metabolites(trans_reaction_dict)
-                model_reac.append(transport_reaction)
-                #add a sink
-                sink_reaction = Reaction('sink_target')
-                sink_reaction.name = 'sink_target'
-                sink_reaction.subsystem = ''
-                sink_reaction.lower_bound = reaction_lower_bound  
-                sink_reaction.upper_bound = reaction_upper_bound
-                sink_reaction_dict = {
-                        trans_target_meta: -1.0
-                }
-                sink_reaction.add_metabolites(sink_reaction_dict)
+                #add a reaction that transports the target to extracellular if target
+                if target_meta_cid: 
+                    transport_reaction = Reaction('transport_target')
+                    transport_reaction.name = 'transport_target'
+                    transport_reaction.subsystem = ''
+                    transport_reaction.lower_bound = reaction_lower_bound  
+                    transport_reaction.upper_bound = reaction_upper_bound
+                    trans_target_meta = Metabolite(
+                            f'{target_meta_cid}_{extracellular_compartment_id}',
+                            formula=xref.get('formula', model_meta[target_meta_cid].annotation.get('formula')),
+                            name=xref.get('name', target_meta_cid),
+                            charge=xref.get('charge', model_meta[target_meta_cid].annotation.get('charge')),
+                            compartment=extracellular_compartment_id,
+                    )
+                    trans_target_meta.annotation.update(dict(model_meta[target_meta_cid].annotation))
+                    trans_reaction_dict = {
+                            model_meta[target_meta_cid]: -1.0,
+                            trans_target_meta: 1.0,
+                    }
+                    transport_reaction.add_metabolites(trans_reaction_dict)
+                    model_reac.append(transport_reaction)
+                    #add a sink
+                    sink_reaction = Reaction('sink_target')
+                    sink_reaction.name = 'sink_target'
+                    sink_reaction.subsystem = ''
+                    sink_reaction.lower_bound = reaction_lower_bound  
+                    sink_reaction.upper_bound = reaction_upper_bound
+                    sink_reaction_dict = {
+                            trans_target_meta: -1.0
+                    }
+                    sink_reaction.add_metabolites(sink_reaction_dict)
                 model_reac.append(sink_reaction)
                 #add to model
                 model.add_reactions(model_reac)
@@ -718,5 +785,5 @@ class ParserRP2(RR_Data):
                 for m in model.metabolites:
                     if not isinstance(m.formula, str) or m.formula in ('nan', 'None', 'NaN', ''):
                         m.formula = None
-                to_ret[rp_path_num][idx] = model
+                to_ret[rp_path_num][rp_subpath_num] = model
         return to_ret
