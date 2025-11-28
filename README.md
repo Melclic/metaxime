@@ -12,7 +12,100 @@ This project parses the output of [RetroPath2.0](https://www.myexperiment.org/wo
 
 This is part of one of the projects that may be found [here](https://github.com/brsynth) and lives as a [Galaxy platform](https://galaxy-synbiocad.org/). The point of this project is to use an alternative method and enable researchers to use other workflow tools to run the design pipeline.
 
-## How to run 
+## Usage
+
+If using Docker, the image `melclic/metaxime:latest` can de used to run the pipeline.
+
+```bash
+python run_pipeline.py \
+    --scope notebooks/data/out_scope.csv \
+    --compounds notebooks/data/out_compounds.csv \
+    --paths notebooks/data/out_paths.csv \
+    --target_model iML1515.xml \
+    --out_tar merged_rp2_models.zip \
+    --source_comp c \
+    --target_comp c \
+    --use_inchikey2 \
+    --find_all_parentless
+```
+
+## Command Line Arguments
+
+### Required Arguments
+
+#### --scope <path>
+Path to `out_scope.csv`.
+
+#### --compounds <path>
+Path to `out_compounds.csv`.
+
+#### --paths <path>
+Path to `out_paths.csv`.
+
+#### --target_model <path>
+COBRA SBML model into which each RP2 pathway model will be merged.
+
+#### --out_tar <path>
+Path to the resulting ZIP archive.
+
+### Optional Arguments
+
+#### --source_comp <id>
+Compartment ID expected in RP2 models. Default: `c`
+
+#### --target_comp <id>
+Compartment ID in the target COBRA model. Default: `c`
+
+#### --use_inchikey2
+Enable fallback metabolite matching using the first two blocks of the InChIKey.
+
+#### --find_all_parentless
+Do not include merged models where the parentless metabolites in the original model cannot be found in the target model.
+This would cause the flux to be 0 if trying top optimize for the target.
+
+## Output
+
+A single ZIP archive containing all merged SBML models.
+
+## Temporary Directory Handling
+
+Uses `tempfile.TemporaryDirectory()` for automatic cleanup.
+
+## Running via Nextflow
+
+```bash
+nextflow run main.nf \
+    --scope notebooks/data/out_scope.csv \
+    --compounds notebooks/data/out_compounds.csv \
+    --paths notebooks/data/out_paths.csv \
+    --target_model iML1515.xml \
+    --out_tar results/merged_rp2_models.zip \
+    --source_comp c \
+    --target_comp c \
+    --use_inchikey2 \
+    --find_all_parentless \
+    -with-docker
+```
+
+## Example Run
+
+```bash
+python run_pipeline.py \
+    --scope notebooks/data/out_scope.csv \
+    --compounds .notebooks/data/out_compounds.csv \
+    --paths notebooks/data/out_paths.csv \
+    --target_model models/iML1515.xml \
+    --out_tar output/merged.zip \
+    --use_inchikey2 \
+    --find_all_parentless
+```
+
+
+
+
+
+
+
 
 To predict metabolic pathways, click on "Run Job" on the top banner. 
 
