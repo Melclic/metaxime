@@ -1,180 +1,143 @@
-#!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
 /*
- * Merge SBML models
- *
- * Example:
- *   nextflow run merge_model.nf --source_input_model user_model.xml --target_input_model iML1515.xml
+ * Help message
  */
-
-
-/* ----------------------------
- * Parameters
- * ---------------------------- */
-params.help = false
-params.output_folder = 'results'
-params.merge = [ source_input_model: null, target_input_model: null ]
-params.parse = [ rp2_scope: null, rp2_compounds: null, rp2_paths: null, compartment_id: 'c' ]
-
-/* ----------------------------
- * Process
- * ---------------------------- */
-process merge_models {
-    errorStrategy 'terminate'
-    container "metaxime:rewrite"
-
-    publishDir (
-        path: { "${params.output_folder}/" },
-        mode: "copy",
-        pattern: "merged_model.xml"
-    )
-
-    input:
-      path source_model_file
-      path target_model_file
-
-    output:
-      path "merged_model.xml", emit: merged_model
-
-    script:
-    """
-#!/usr/bin/env python3
-import sys
-from cobra.io import write_sbml_model
-from metaxime.utils import merge_models
-import biopathopt
-
-#source_model = read_sbml_model("${source_model_file}")
-source_model =  biopathopt.ModelBuilder("${source_model_file}")
-#target_model = read_sbml_model("${target_model_file}")
-target_model =  biopathopt.ModelBuilder("${target_model_file}")
-merged = merge_models(source_model.model, target_model.model)
-write_sbml_model(merged, 'merged_model.xml')
-    """
-}
-
-process parse_rp2 {
-  container "metaxime:rewrite"
-  errorStrategy 'terminate'
-
-  publishDir(
-    path: { "${params.output_folder}/" },
-    mode: 'copy',
-    pattern: '*.xml'
-  )
-
-  input:
-    path rp2_scope_file
-    path rp2_compounds_file
-    path rp2_paths_file
-    val comp_id
-
-  output:
-    path "*.xml", emit: models
-
-  script:
-  """
-#!/usr/bin/env python3
-import json
-import pathlib
-from cobra.io import write_sbml_model
-from metaxime.parser import ParserRP2
-
-# Parse and build models
-parser = ParserRP2(
-    rp2_scope_path="${rp2_scope_file}",
-    rp2_cmp_path="${rp2_compounds_file}",
-    rp2_paths_path="${rp2_paths_file}",
-)
-all_models = parser.return_rp2_models(
-    compartment_id="${comp_id}"
-) 
-
-# Save each model
-for path_id in all_models:
-    for sub_path_id in all_models[path_id]:
-        write_sbml_model(all_models[path_id][sub_path_id], f"{all_models[path_id][sub_path_id].id}.xml")
-  """
-}
-
-/* ----------------------------
- * Workflow
- * ---------------------------- */
-
-def helpMessageMerge() {
-    log.info """
-╭─────────────────────────────────────────────────────────────╮
-│                       Merge COBRA Models                     │
-╰─────────────────────────────────────────────────────────────╯
-
-Usage:
-  nextflow run merge_model.nf --input_model <SBML_FILE> [--out_name merged_model.xml]
-
-Options:
-  --source_input_model <path>   Path to source input SBML model (required)
-  --target_input_model <path>   Path to target input SBML model (required)
-  --output_folder <path>    Path to the folder output (default: metaxime)
-  --help                 Show this help message
-
-Example:
- nextflow run merge_model.nf --source_input_model user_model.xml --target_input_model iML1515.xml
-""".stripIndent()
-}
-
-workflow merge {
-    def P = (params.merge ?: [:]) as Map
-
-    ch_source_model = Channel.fromPath(P.get('source_input_model')?: '', checkIfExists: true)
-    ch_target_model = Channel.fromPath(P.get('target_input_model')?: '', checkIfExists: true)
-
-    if (params.help || !P.source_input_model || !P.target_input_model){
-        helpMessageMerge()
-        exit 0
-    }
-
-    merge_models(ch_source_model, ch_target_model)
-}
-
 def helpMessageParse() {
-  log.info """
+    log.info """
 ╭────────────────────────────────────────────────────────────╮
-│                 RP2 → COBRA Models Exporter                │
+│          RP2 to COBRA model merger and zip exporter        │
 ╰────────────────────────────────────────────────────────────╯
 
 Options:
-    --rp2_scope <path>          Path to RP2 out_scope.csv file (required)
-    --rp2_compounds <path>      Path to RP2 out_compounds.csv file (required)
-    --rp2_paths <path>          Path to RP2 out_paths.csv file (required)
-    --output_folder <path>      Output directory for generated models
-                                (default: "metaxime")
-    --compartment_id <string>   Compartment ID to assign to metabolites
+    --scope <path>              Path to RP2 out_scope csv file (required)
+    --compounds <path>          Path to RP2 out_compounds csv file (required)
+    --paths <path>              Path to RP2 out_paths csv file (required)
+    --target_model <path>       Path to target COBRA SBML model (required)
+
+    --out_tar <path>            Name or path of output zip file
+                                (default: "merged_rp2_models.zip")
+
+    --source_comp <string>      Source compartment id for RP2 models
                                 (default: "c")
+    --target_comp <string>      Target compartment id for COBRA model
+                                (default: "c")
+
+    --use_inchikey2             Enable InChIKey2 based fallback matching
+    --find_all_parentless       Enable search and rescue of parentless metabolites
+
     --help                      Show this help message
 
 Usage:
-    nextflow run parse_rp2_models.nf \\
-        --rp2_scope out_scope.csv \\
-        --rp2_compounds out_compounds.csv \\
-        --rp2_paths out_paths.csv \\
-        --output_folder metaxime_models \\
-        --compartment_id c
+    nextflow run main.nf \\
+        --scope out_scope.csv \\
+        --compounds out_compounds.csv \\
+        --paths out_paths.csv \\
+        --target_model iML1515.xml \\
+        --out_tar merged_rp2_models.zip \\
+        --source_comp c \\
+        --target_comp c \\
+        --use_inchikey2 \\
+        --find_all_parentless
 """.stripIndent()
 }
 
-workflow parse {
-    def P = (params.parse ?: [:]) as Map
-    def COMP_ID = (P.get('compartment_id') ?: 'c') as String
+/*
+ * Show help and exit if requested
+ */
+if (params.help) {
+    helpMessageParse()
+    exit 0
+}
 
-    ch_scope     = Channel.fromPath(P.get('rp2_scope')    ?: '', checkIfExists: true)
-    ch_compounds = Channel.fromPath(P.get('rp2_compounds')?: '', checkIfExists: true)
-    ch_paths     = Channel.fromPath(P.get('rp2_paths')    ?: '', checkIfExists: true)
-    ch_compartment = Channel.value(COMP_ID)
+/*
+ * Defaults
+ */
+params.scope           = null
+params.compounds       = null
+params.paths           = null
+params.target_model    = null
 
-    if( params.help || !P.rp2_scope || !P.rp2_compounds || !P.rp2_paths ) {
-        helpMessageParse()
-        exit 0
-    }
+params.out_tar         = "merged_rp2_models.zip"
 
-    parse_rp2(ch_scope, ch_compounds, ch_paths, ch_compartment)
+params.source_comp     = "c"
+params.target_comp     = "c"
+
+params.use_inchikey2        = params.use_inchikey2 ? true : false
+params.find_all_parentless  = params.find_all_parentless ? true : false
+
+/*
+ * Validate required parameters
+ */
+if (!params.scope || !params.compounds || !params.paths || !params.target_model) {
+    log.error "Missing required arguments"
+    helpMessageParse()
+    exit 1
+}
+
+/*
+ * Main workflow
+ */
+workflow {
+
+    Channel
+        .fromPath(params.scope)
+        .set { scope_ch }
+
+    Channel
+        .fromPath(params.compounds)
+        .set { compounds_ch }
+
+    Channel
+        .fromPath(params.paths)
+        .set { paths_ch }
+
+    Channel
+        .fromPath(params.target_model)
+        .set { target_model_ch }
+
+    RUN_MERGE_PIPELINE(
+        scope_ch,
+        compounds_ch,
+        paths_ch,
+        target_model_ch
+    )
+}
+
+/*
+ * Process calling the Python pipeline
+ */
+process RUN_MERGE_PIPELINE {
+
+    tag "merge_rp2_models"
+    container "melclic/metaxime:latest"
+
+    publishDir {
+        // Use the directory part of out_tar for publishing
+        def outFile = file(params.out_tar)
+        def parent  = outFile.parent
+        parent ? parent.toString() : "."
+    }, mode: 'copy', overwrite: true
+
+    input:
+        path scope_file
+        path compounds_file
+        path paths_file
+        path target_model_file
+
+    output:
+        path "*.zip", emit: merged_zip
+
+    """
+    python /home/MetaXime/run_pipeline.py \
+        --scope ${scope_file} \
+        --compounds ${compounds_file} \
+        --paths ${paths_file} \
+        --target_model ${target_model_file} \
+        --out_tar ${params.out_tar} \
+        --source_comp ${params.source_comp} \
+        --target_comp ${params.target_comp} \
+        ${params.use_inchikey2        ? "--use_inchikey2" : ""} \
+        ${params.find_all_parentless  ? "--find_all_parentless" : ""}
+    """
 }

@@ -72,7 +72,11 @@ class ParserRP2(RR_Data):
         best_key, best_score = None, -1.0
 
         for key, inchi in inchi_dict.items():
-            mol = Chem.MolFromInchi(inchi)
+            try:
+                mol = Chem.MolFromInchi(inchi)
+            except TypeError:
+                logging.warning(f'ArgumentError for MolFromInchi for {inchi}: self.')
+                mol = None
             if mol is None:
                 logging.warning(f"Invalid InChI for {key}")
                 continue
@@ -285,53 +289,87 @@ class ParserRP2(RR_Data):
             df = pd.read_csv(path)
             for _, row in df.iterrows():
                 cid = str(row.iloc[0])
+                logging.debug(f'---- {cid} ----')
                 smiles = str(row.iloc[1])
-                rp_strc[cid] = {"SMILES": smiles}
+                tmp_strc = {"smiles": smiles}
                 # InChI
                 try:
                     res_conv = convert_depiction(idepic=smiles, itype="smiles", otype={"inchi"})
-                    rp_strc[cid]["InChI"] = res_conv["inchi"]
+                    tmp_strc["inchi"] = res_conv["inchi"]
                 except NotImplementedError:
                     logging.warning(f"Could not convert SMILES to InChI for CID={cid}: {smiles!r}")
                 # InChIKey
                 try:
                     res_conv = convert_depiction(idepic=smiles, itype="smiles", otype={"inchikey"})
-                    rp_strc[cid]["InChIKey"] = res_conv["inchikey"]
+                    tmp_strc["inchi_key"] = res_conv["inchikey"]
                 except NotImplementedError:
                     logging.warning(f"Could not convert SMILES to InChIKey for CID={cid}: {smiles!r}")
                 # get the xref
-                xref = None
+                out_xref = {}
+                out_desc = {}
                 if 'MNXM' in cid:
                     try:
                         xref, _ = self.mnxm_xref(self.single_depr_mnxm(cid))
-                        xref['xref'] = merge_annot_dicts(
+                        xref = {k.lower(): v for k, v in xref.items()} #TODO include in original biopathopt 
+                        #TODO include in original biopathopt 
+                        out_xref = {**tmp_strc, **{k: v for k, v in xref['xref'].items() if k not in tmp_strc}}
+                        out_xref = merge_annot_dicts(
+                            out_xref,
                             xref['xref'],
-                            rp_strc[cid],
                         )
-                        rp_strc[cid] = xref
+                        out_desc = {k: v for k, v in xref.items() if k != 'xref'}
                     except KeyError:
                         pass
                 else:
                     try:
-                        mnxm = self.inchikey_mnxm[rp_strc[cid]["InChIKey"]]
+                        mnxm = self.inchikey_mnxm[tmp_strc["inchi_key"]]
                         xref, _ = self.mnxm_xref(mnxm)
+                        xref = {k.lower(): v for k, v in xref.items()}
+                        out_xref = {**tmp_strc, **{k: v for k, v in xref['xref'].items() if k not in tmp_strc}}
+                        out_xref = merge_annot_dicts(
+                            out_xref,
+                            xref['xref'],
+                        )
+                        out_desc = {k: v for k, v in xref.items() if k != 'xref'}
                     except KeyError:
                         try:
-                            mnxm = self.inchikey2_mnxm['-'.join(rp_strc[cid]["InChIKey"].split('-')[:2])]
+                            mnxm = self.inchikey2_mnxm['-'.join(tmp_strc["inchi_key"].split('-')[:2])]
                             xref, _ = self.mnxm_xref(mnxm)
+                            xref = {k.lower(): v for k, v in xref.items()} 
+                            out_xref = {**tmp_strc, **{k: v for k, v in xref['xref'].items() if k not in tmp_strc}}
+                            out_xref = merge_annot_dicts(
+                                out_xref,
+                                xref['xref'],
+                            )
+                            out_desc = {k: v for k, v in xref.items() if k != 'xref'}
                         except KeyError:
                             xref = self.exact_pubchem_search(
-                                    query=rp_strc[cid]["InChIKey"], 
+                                    query=tmp_strc["inchi_key"], 
                                     itype='inchikey', 
                                     return_lowest_cid=True
                             )
+                            xref = {k.lower(): v for k, v in xref.items()}
+                            out_xref = {**tmp_strc, **{k: v for k, v in xref['xref'].items() if k not in tmp_strc}}
+                            out_xref = merge_annot_dicts(
+                                out_xref,
+                                xref['xref'],
+                            )
+                            out_desc = {k: v for k, v in xref.items() if k != 'xref'}
                             #TODO: use the xref and search for the best info
-                if xref:
-                    xref['xref'] = merge_annot_dicts(
-                        xref['xref'],
-                        rp_strc[cid],
-                    )
-                    rp_strc[cid] = xref
+                if not 'inchi' in out_xref and 'InChI' in out_desc:
+                    if not pd.isna(out_desc['InChI']):
+                        out_xref['inchi'] = out_desc['InChI']
+                if not 'inchi_key' in out_xref and 'InChIKey' in out_desc:
+                    if not pd.isna(out_desc['InChIKey']):
+                        out_xref['inchi_key'] = out_desc['InChIKey']
+                if not 'smiles' in out_xref and 'SMILES' in out_desc:
+                    if not pd.isna(out_desc['SMILES']):
+                        out_xref['smiles'] = out_desc['SMILES']
+                rp_strc[cid] = {}
+                rp_strc[cid]['xref']= out_xref
+                rp_strc[cid]['desc'] = out_desc
+                logging.debug(f'out_xref: {out_xref}')
+                logging.debug(f'out_desc: {out_desc}')
         except (FileNotFoundError, OSError, pd.errors.EmptyDataError) as e:
             logging.error(f"Could not read the compounds file ({path}): {e}")
             raise RuntimeError from e
@@ -460,8 +498,8 @@ class ParserRP2(RR_Data):
             except (KeyError, TypeError):
                 raise KeyError(f"Cannot find original reactants/products for {rp_rule_reac}")
 
-        logging.debug(f"\t\tori_reactants (all): {ori_reactants}")
-        logging.debug(f"\t\tori_products (all): {ori_products}")
+        logging.debug(f"\t\tori_reactants: {ori_reactants}")
+        logging.debug(f"\t\tori_products: {ori_products}")
 
         # 2) Build InChI pool for all species mentioned in the original recipe
         #    (we keep all, but direction will be based on "main" only)
@@ -471,14 +509,11 @@ class ParserRP2(RR_Data):
         left_out: list[str] = []
         for type, ori_spe in zip(['reactants', 'products'], [ori_reactants, ori_products]):
             for mid in ori_spe:
-                inchi = self.rp_strc.get(mid, {}).get("InChI")
-                if not inchi:
-                    try:
-                        tmp = self.mnxm_prop[mid]["InChI"]
-                        if not pd.isna(tmp):
-                            inchi = tmp
-                    except KeyError:
-                        inchi = None
+                inchi = (
+                    self.rp_strc.get(mid, {}).get("xref", {}).get("inchi")
+                    or self.rp_strc.get(mid, {}).get("desc", {}).get("inchi")
+                    or self.mnxm_prop.get(mid, {}).get("InChI")
+                )
                 if inchi:
                     ori_strc_inchi[type][mid] = inchi
                 else:
@@ -496,7 +531,7 @@ class ParserRP2(RR_Data):
         #    target_best_mnxm = conv_rp_ids[rp_predict_strc_id]
         #else:
         target_best_mnxm, score = self._best_inchi_match(
-            self.rp_strc[rp_predict_strc_id]["InChI"],
+            self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('inchi'),
             ori_strc_inchi['reactants'] | ori_strc_inchi['products'],
         )
         #Fallback to unidentified 
@@ -535,12 +570,12 @@ class ParserRP2(RR_Data):
                 #if mid in conv_rp_ids:
                 #    reactants_rp2ori[mid] = conv_rp_ids[mid]
                 #else:
-                inchi = self.rp_strc.get(mid, {}).get("InChI")
-                if inchi:
+                inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                if inchi and not pd.isna(inchi):
                     best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['reactants'])
                     reactants_rp2ori[mid] = best_mnxm
                 else:
-                    logging.warning(f'Cannot convert the reactant: {mid} InchI')
+                    logging.warning(f'Cannot convert the reactant: {mid} InchI -> {inchi}')
 
         # 7) Map predicted species to original IDs (products)
         products_rp2ori: Dict[str, str] = {rp_predict_strc_id: target_best_mnxm}
@@ -549,12 +584,12 @@ class ParserRP2(RR_Data):
                 #if mid in conv_rp_ids:
                 #    products_rp2ori[mid] = conv_rp_ids.get(mid)
                 #else:
-                inchi = self.rp_strc.get(mid, {}).get("InChI")
-                if inchi:
+                inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                if inchi and not pd.isna(inchi):
                     best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['products'])
                     products_rp2ori[mid] = best_mnxm
                 else:
-                    logging.warning(f'Cannot convert the product: {mid} InchI')
+                    logging.warning(f'Cannot convert the product: {mid} InchI -> {inchi}')
 
         logging.debug(
             "\t\tConverted rp_reactants: "
@@ -678,6 +713,7 @@ class ParserRP2(RR_Data):
                 model = Model(f'rp2_{rp_path_num}_{rp_subpath_num}')
                 model_meta = {}
                 model_reac = []
+                target_meta_cid = None
                 for path_step in rp_subpath: #step in that enumarated path
                     #print(rp_subpath[path_step])
                     rp_rule = rp_subpath[path_step]['rule']
@@ -707,32 +743,39 @@ class ParserRP2(RR_Data):
                         'ec-code': self.rp_scope.get(rp_rule_trans_id, {}).get('ec-code', [])
                     })
                     #Metabolite
-                    target_meta_cid = None
                     logging.debug(rp_reactants|rp_products)
                     for cid in rp_reactants|rp_products:
                         if 'TARGET' in cid and not target_meta_cid:
                             logging.info(f'Found target: {cid}')
                             target_meta_cid = cid
                         if not cid in model_meta:
-                            try:
-                                xref = self.rp_strc[cid]
-                            except KeyError:
+                            xref = self.rp_strc.get(cid, {}).get('xref')
+                            desc = self.rp_strc.get(cid, {}).get('desc')
+                            if not xref:
                                 try:
                                     xref, _ = self.mnxm_xref(cid)
+                                    desc = {k: v for k, v in xref.items() if k != 'xref'}
+                                    xref = xref['xref']
+                                    if not 'inchi' in xref and 'InChI' in desc:
+                                        if not pd.isna(desc['InChI']):
+                                            xref['inchi'] = desc['InChI']
+                                    if not 'inchi_key' in xref and 'InChIKey' in desc:
+                                        if not pd.isna(desc['InChIKey']):
+                                            xref['inchi_key'] = desc['InChIKey']
+                                    if not 'smiles' in xref and 'SMILES' in desc:
+                                        if not pd.isna(desc['SMILES']):
+                                            xref['smiles'] = desc['SMILES']
                                 except KeyError:
                                     xref =  {}
+                                    desc = {}
                             model_meta[cid] = Metabolite(
                                     f'{cid}_{compartment_id}',
-                                    formula=xref.get('formula', None),
-                                    name=xref.get('name', cid),
-                                    charge=xref.get('charge', 0.0),
+                                    formula=desc.get('formula', None),
+                                    name=desc.get('name', cid),
+                                    charge=desc.get('charge', 0.0),
                                     compartment=compartment_id,
-                                
                             )
-                            if 'xref' in xref:
-                                model_meta[cid].annotation.update(xref['xref'])
-                            else:
-                                model_meta[cid].annotation.update(xref)
+                            model_meta[cid].annotation.update(xref)
                     model_reaction_dict = {}
                     for cid in rp_products:
                         model_reaction_dict[model_meta[cid]] = rp_products[cid]
@@ -743,36 +786,38 @@ class ParserRP2(RR_Data):
                     )
                     model_reac.append(reaction)
                 #add a reaction that transports the target to extracellular if target
-                if target_meta_cid: 
-                    transport_reaction = Reaction('transport_target')
-                    transport_reaction.name = 'transport_target'
-                    transport_reaction.subsystem = ''
-                    transport_reaction.lower_bound = reaction_lower_bound  
-                    transport_reaction.upper_bound = reaction_upper_bound
-                    trans_target_meta = Metabolite(
-                            f'{target_meta_cid}_{extracellular_compartment_id}',
-                            formula=xref.get('formula', model_meta[target_meta_cid].annotation.get('formula')),
-                            name=xref.get('name', target_meta_cid),
-                            charge=xref.get('charge', model_meta[target_meta_cid].annotation.get('charge')),
-                            compartment=extracellular_compartment_id,
-                    )
-                    trans_target_meta.annotation.update(dict(model_meta[target_meta_cid].annotation))
-                    trans_reaction_dict = {
-                            model_meta[target_meta_cid]: -1.0,
-                            trans_target_meta: 1.0,
-                    }
-                    transport_reaction.add_metabolites(trans_reaction_dict)
-                    model_reac.append(transport_reaction)
-                    #add a sink
-                    sink_reaction = Reaction('sink_target')
-                    sink_reaction.name = 'sink_target'
-                    sink_reaction.subsystem = ''
-                    sink_reaction.lower_bound = reaction_lower_bound  
-                    sink_reaction.upper_bound = reaction_upper_bound
-                    sink_reaction_dict = {
-                            trans_target_meta: -1.0
-                    }
-                    sink_reaction.add_metabolites(sink_reaction_dict)
+                if not target_meta_cid:
+                    logging.warning('Did not find the target metabolite... skipping')
+                    break
+                transport_reaction = Reaction('transport_target')
+                transport_reaction.name = 'transport_target'
+                transport_reaction.subsystem = ''
+                transport_reaction.lower_bound = reaction_lower_bound  
+                transport_reaction.upper_bound = reaction_upper_bound
+                trans_target_meta = Metabolite(
+                        f'{target_meta_cid}_{extracellular_compartment_id}',
+                        formula=xref.get('formula', model_meta[target_meta_cid].annotation.get('formula')),
+                        name=xref.get('name', target_meta_cid),
+                        charge=xref.get('charge', model_meta[target_meta_cid].annotation.get('charge')),
+                        compartment=extracellular_compartment_id,
+                )
+                trans_target_meta.annotation.update(dict(model_meta[target_meta_cid].annotation))
+                trans_reaction_dict = {
+                        model_meta[target_meta_cid]: -1.0,
+                        trans_target_meta: 1.0,
+                }
+                transport_reaction.add_metabolites(trans_reaction_dict)
+                model_reac.append(transport_reaction)
+                #add a sink
+                sink_reaction = Reaction('sink_target')
+                sink_reaction.name = 'sink_target'
+                sink_reaction.subsystem = ''
+                sink_reaction.lower_bound = reaction_lower_bound  
+                sink_reaction.upper_bound = reaction_upper_bound
+                sink_reaction_dict = {
+                        trans_target_meta: -1.0
+                }
+                sink_reaction.add_metabolites(sink_reaction_dict)
                 model_reac.append(sink_reaction)
                 #add to model
                 model.add_reactions(model_reac)
@@ -780,10 +825,11 @@ class ParserRP2(RR_Data):
                 for m in model.metabolites:
                     try:
                         int(m.charge)
-                    except ValueError:
+                    except (ValueError, TypeError) as e:
                         m.charge = 0.0
                 for m in model.metabolites:
                     if not isinstance(m.formula, str) or m.formula in ('nan', 'None', 'NaN', ''):
                         m.formula = None
+                #TODO identify the source molecules and make sure they are all recognized - if not, ignore
                 to_ret[rp_path_num][rp_subpath_num] = model
         return to_ret

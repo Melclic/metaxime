@@ -16,14 +16,47 @@ from cobra import Model, Reaction, Metabolite
 
 ##### Merge
 
-import logging
 from cobra import Model, Reaction, Metabolite
 from typing import Dict
+
+import networkx as nx
+
+def cobra_to_bipartite_graph(model):
+    """
+    Build a bipartite NetworkX graph from a COBRA model.
+    Metabolites and reactions are separate node types.
+
+    Edges store stoichiometry and direction.
+    """
+    G = nx.DiGraph()
+
+    for rxn in model.reactions:
+        # Add reaction node
+        G.add_node(rxn.id, type="reaction")
+
+        # Reactants (stoich < 0)
+        for met, coeff in rxn.metabolites.items():
+            if coeff < 0:
+                G.add_node(met.id, type="metabolite")
+                G.add_edge(met.id, rxn.id, stoich=coeff, role="reactant")
+
+        # Products (stoich > 0)
+        for met, coeff in rxn.metabolites.items():
+            if coeff > 0:
+                G.add_node(met.id, type="metabolite")
+                G.add_edge(rxn.id, met.id, stoich=coeff, role="product")
+
+    return G
+
 
 def merge_models(
     source_model: Model,
     input_target_model: Model,
+    source_compartment: str = 'c',
+    target_compartment: str = 'c',
     source_target_compartment_conv: dict = {},
+    find_all_parentless_source: bool = False,
+    use_inchikey2: bool = False,
 ) -> Model:
     """Merge a COBRApy model into another by matching metabolites via annotation overlap.
 
@@ -54,20 +87,56 @@ def merge_models(
                 items = [v]
             return {str(x).strip().lower() for x in items if x is not None}
         for key in set(a) & set(b):
-            if _to_norm_set(a[key]) & _to_norm_set(b[key]):
-                return True
+            if 'cobrak' not in key:
+                if _to_norm_set(a[key]) & _to_norm_set(b[key]):
+                    return True
         return False
+
+    if find_all_parentless_source:
+        G = cobra_to_bipartite_graph(source_model)
+        parentless = [n for n, d in G.in_degree() if d == 0]
+        G = None
+    else:
+        parentless = []
+    logging.debug(f'These are the parentless metabolites to find: {parentless}')
 
     target_model = input_target_model.copy()
     gen_ori_convert_metabolites: Dict[str, str] = {}
     # Match metabolites based on annotation overlap
-    for gen_m in source_model.metabolites:
-        for ori_m in target_model.metabolites:
-            if ori_m.compartment==source_target_compartment_conv.get(gen_m.compartment, gen_m.compartment):
-                if _annotations_overlap(gen_m.annotation, ori_m.annotation):
-                    logging.debug(f"{gen_m.id} matches {ori_m.id}")
-                    gen_ori_convert_metabolites[gen_m.id] = ori_m.id
-                    break
+    for source_met in source_model.metabolites:
+        if source_met.compartment==source_compartment or source_met.compartment in source_target_compartment_conv:
+            is_source_met_found = False
+            for target_met in target_model.metabolites:
+                if target_met.compartment==target_compartment or target_met.compartment==source_target_compartment_conv.get(source_met.compartment, source_met.compartment):
+                    if _annotations_overlap(source_met.annotation, target_met.annotation):
+                        logging.debug(f"{source_met.id} matches {target_met.id}")
+                        parentless = [i for i in parentless if i != source_met.id]
+                        gen_ori_convert_metabolites[source_met.id] = target_met.id
+                        is_source_met_found = True
+                        break
+            ## use inchikey of 2 to check
+            if not is_source_met_found and use_inchikey2:
+                source_inchikey2 = source_met.annotation.get('inchi_key')
+                if source_inchikey2:
+                    try:
+                        source_inchikey2 = '-'.join(source_inchikey2.split('-')[:2])
+                    except (TypeError, KeyError, AttributeError) as e:
+                        logging.warning(f'Cannot deconstruct the following inchi_key: {source_inchikey2}')
+                        break
+                    for target_met in target_model.metabolites:
+                        if target_met.compartment==target_compartment or target_met.compartment==source_target_compartment_conv.get(source_met.compartment, source_met.compartment):
+                            target_inchikey2 = target_met.annotation.get('inchi_key')
+                            if target_inchikey2:
+                                target_inchikey2 = '-'.join(target_inchikey2.split('-')[:2])
+                                if source_inchikey2==target_inchikey2:
+                                    parentless = [i for i in parentless if i != source_met.id]
+                                    gen_ori_convert_metabolites[source_met.id] = target_met.id
+                                    break
+            
+    
+    if find_all_parentless_source and parentless:
+        raise ValueError(f'Not all parentless metabolites are found: {parentless}')
+
     # Copy reactions with mapped metabolites
     new_reactions = []
     for r in source_model.reactions:
@@ -95,7 +164,6 @@ def merge_models(
 #COBRA-K connector
 
 #### convert
-
 
 def convert_depiction(
     idepic: str,
