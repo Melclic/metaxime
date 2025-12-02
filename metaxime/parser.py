@@ -42,17 +42,17 @@ class ParserRP2(RR_Data):
         self.completed_paths = self._process_all_paths(self.all_paths, match_threshold=match_strc_search_threshold)
 
 
-    def _best_inchi_match(
+    def _best_strc_match(
         self,
-        query_inchi: str,
-        inchi_dict: Dict[str, str],
+        strc_query: str,
+        strc_dict: Dict[str, str],
         radius: int = 2,
         n_bits: int = 2048,
     ) -> Tuple[Optional[str], float]:
         """Find the key of the molecule most similar to the given InChI using RDKit Morgan fingerprints.
 
         Args:
-            query_inchi (str): The query molecule InChI.
+            query_inchi (str): The query molecule structure.
             inchi_dict (Dict[str, str]): Dictionary with keys as identifiers and values as InChIs.
             radius (int): Morgan fingerprint radius. Defaults to 2.
             threshold (float): Minimum similarity threshold for a confident match. Defaults to 0.7.
@@ -60,25 +60,29 @@ class ParserRP2(RR_Data):
         Returns:
             Tuple[Optional[str], float]: (Best matching key, Tanimoto score). Returns (None, 0.0) if no confident match found.
         """
-        if pd.isna(query_inchi) or str(query_inchi).lower() in ('nan', '', 'null', 'none'):
+        if pd.isna(strc_query) or str(strc_query).lower() in ('nan', '', 'null', 'none'):
             return None, 0.0
         gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius,fpSize=n_bits)
-        query_mol = Chem.MolFromInchi(query_inchi)
+        if strc_query.strip().startswith("InChI="):
+            query_mol = Chem.MolFromInchi(strc_query)
+        else:
+            query_mol = Chem.MolFromSmiles(strc_query)
         if query_mol is None:
-            logging.error(f"Invalid query InChI: {query_inchi}")
+            logging.error(f"Invalid query InChI: {strc_query}")
             return None, 0.0
-
         query_fp = gen.GetFingerprint(query_mol)
         best_key, best_score = None, -1.0
-
-        for key, inchi in inchi_dict.items():
+        for key, strc in strc_dict.items():
             try:
-                mol = Chem.MolFromInchi(inchi)
+                if strc.strip().startswith("InChI="):
+                    mol = Chem.MolFromInchi(strc)
+                else:
+                    mol = Chem.MolFromSmiles(strc)
             except TypeError:
-                logging.warning(f'ArgumentError for MolFromInchi for {inchi}: self.')
-                mol = None
+                logging.warning(f'ArgumentError for MolFromInchi or MolFromSmiles for {strc}')
+                continue
             if mol is None:
-                logging.warning(f"Invalid InChI for {key}")
+                logging.warning(f"Invalid input structure for {key}: {strc}")
                 continue
             sim = TanimotoSimilarity(query_fp, gen.GetFingerprint(mol))
             if sim > best_score:
@@ -478,7 +482,8 @@ class ParserRP2(RR_Data):
         rp_rule = subpath["rule"]
         rp_rule_reac = subpath["reaction"]
         rp_rule_substrate = subpath["substrate"]
-
+        logging.debug(f'\t\trp_rule: {rp_rule}')
+        logging.debug(f'\t\trp_rule_reac: {rp_rule_reac}')
         # 1) Recover original recipe reactants/products, keeping main and secondary separate
         try:
             # Full recipe (main + secondary) still useful for mapping and logging
@@ -503,9 +508,9 @@ class ParserRP2(RR_Data):
 
         # 2) Build InChI pool for all species mentioned in the original recipe
         #    (we keep all, but direction will be based on "main" only)
-        ori_strc_inchi: Dict[Dict[str, str]] = {}
-        ori_strc_inchi['reactants'] = {}
-        ori_strc_inchi['products'] = {}
+        ori_strc_dict: Dict[Dict[str, str]] = {}
+        ori_strc_dict['reactants'] = {}
+        ori_strc_dict['products'] = {}
         left_out: list[str] = []
         for type, ori_spe in zip(['reactants', 'products'], [ori_reactants, ori_products]):
             for mid in ori_spe:
@@ -514,10 +519,17 @@ class ParserRP2(RR_Data):
                     or self.rp_strc.get(mid, {}).get("desc", {}).get("inchi")
                     or self.mnxm_prop.get(mid, {}).get("InChI")
                 )
-                if inchi:
-                    ori_strc_inchi[type][mid] = inchi
+                smiles = (
+                    self.rp_strc.get(mid, {}).get("xref", {}).get("smiles")
+                    or self.rp_strc.get(mid, {}).get("desc", {}).get("smiles")
+                    or self.mnxm_prop.get(mid, {}).get("SMILES")
+                )
+                if inchi and not pd.isna(inchi):
+                    ori_strc_dict[type][mid] = inchi
+                elif smiles and not pd.isna(smiles):
+                    ori_strc_dict[type][mid] = smiles
                 else:
-                    logging.warning(f"Cannot recover the InChI for {mid}")
+                    logging.warning(f"Cannot recover the structure for {mid}")
                     left_out.append(mid)
 
         # 3) Identify the predicted major product on the RP2 right-hand side
@@ -530,9 +542,17 @@ class ParserRP2(RR_Data):
         #if rp_predict_strc_id in conv_rp_ids:
         #    target_best_mnxm = conv_rp_ids[rp_predict_strc_id]
         #else:
-        target_best_mnxm, score = self._best_inchi_match(
-            self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('inchi'),
-            ori_strc_inchi['reactants'] | ori_strc_inchi['products'],
+        logging.debug(f'\t\trp_predict_strc_id: {rp_predict_strc_id}')
+        target_strc = (
+                    self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('inchi')
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('desc', {}).get('inchi')
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('smiles')
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('desc', {}).get('smiles')
+                )
+        logging.debug(f"\t\ttarget_strc: {target_strc}")
+        target_best_mnxm, score = self._best_strc_match(
+            target_strc,
+            ori_strc_dict['reactants'] | ori_strc_dict['products'],
         )
         #Fallback to unidentified 
         if score <= match_threshold:
@@ -540,39 +560,61 @@ class ParserRP2(RR_Data):
                 logging.warning(f"Using unknown as main RHS metabolite: {left_out[0]}")
                 target_best_mnxm = left_out[0]
             else:
-                raise KeyError(
-                    f"Cannot confidently identify the RHS metabolite: left_out: {left_out}, score: {score}"
-                )
+                ### fallback to uising the retrorules direction
+                # Note that this will not work with the new rules
+                target_best_mnxm = None
+                if self.rr_recipes[rp_rule_reac]['Direction']==1:
+                    main_names = self.rr_recipes[rp_rule_reac]['main_products']
+                    if len(main_names) == 1:
+                        target_best_mnxm = next(iter(main_names.keys()))
+                    else:
+                        target_best_mnxm = None
+                elif self.rr_recipes[rp_rule_reac]['Direction']==-1:
+                    main_names = self.rr_recipes[rp_rule_reac]['main_reactants']
+                    if len(main_names) == 1:
+                        target_best_mnxm = next(iter(main_names.keys()))
+                    else:
+                        target_best_mnxm = None
+                if not target_best_mnxm:
+                    raise KeyError(
+                        f"Cannot confidently identify the RHS metabolite: left_out: {left_out}, score: {score}"
+                    )
 
         logging.debug(f"\t\t{rp_predict_strc_id} -> {target_best_mnxm}")
-        logging.debug(f"\t\treaction: {rp_rule_reac}")
-
+        
         # 4) Determine orientation using main reactants/products
         if target_best_mnxm in ori_products:
             reactant_dir, product_dir = "left", "right"
+            orientated_reactants = ori_reactants
+            orientated_products = ori_products
         elif target_best_mnxm in ori_reactants:
             reactant_dir, product_dir = "right", "left"
+            orientated_reactants = ori_products
+            orientated_products = ori_reactants
         else:
             raise KeyError(
                 f"Cannot recognize reactant/product orientation from main species for {target_best_mnxm}"
             )
 
         # 5) Fetch predicted sides for this step
-        rp_reactants = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][reactant_dir]
-        rp_products = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][product_dir]
-        logging.debug(f"\t\tOrientated rp_reactants: {rp_reactants}")
-        logging.debug(f"\t\tOrientated rp_products: {rp_products}")
+        rp_reactants = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate]['left']
+        rp_products = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate]['right']
+        
+        logging.debug(f"\t\tOrientated rp_reactants: {orientated_reactants}")
+        logging.debug(f"\t\tOrientated rp_products: {orientated_products}")
 
         # 6) Map predicted species to original IDs using InChI similarity (reactants)
         reactants_rp2ori: Dict[str, str] = {}
         for mid in rp_reactants:
-            if mid not in ori_reactants:
+            if mid not in orientated_reactants:
                 #if mid in conv_rp_ids:
                 #    reactants_rp2ori[mid] = conv_rp_ids[mid]
                 #else:
                 inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                if not inchi:
+                    inchi = self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
                 if inchi and not pd.isna(inchi):
-                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['reactants'])
+                    best_mnxm, _ = self._best_strc_match(inchi, ori_strc_dict['reactants'])
                     reactants_rp2ori[mid] = best_mnxm
                 else:
                     logging.warning(f'Cannot convert the reactant: {mid} InchI -> {inchi}')
@@ -580,13 +622,15 @@ class ParserRP2(RR_Data):
         # 7) Map predicted species to original IDs (products)
         products_rp2ori: Dict[str, str] = {rp_predict_strc_id: target_best_mnxm}
         for mid in rp_products:
-            if mid not in ori_products and mid != rp_predict_strc_id:
+            if mid not in orientated_products and mid != rp_predict_strc_id:
                 #if mid in conv_rp_ids:
                 #    products_rp2ori[mid] = conv_rp_ids.get(mid)
                 #else:
                 inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                if not inchi:
+                    inchi = self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
                 if inchi and not pd.isna(inchi):
-                    best_mnxm, _ = self._best_inchi_match(inchi, ori_strc_inchi['products'])
+                    best_mnxm, _ = self._best_strc_match(inchi, ori_strc_dict['products'])
                     products_rp2ori[mid] = best_mnxm
                 else:
                     logging.warning(f'Cannot convert the product: {mid} InchI -> {inchi}')
@@ -613,8 +657,8 @@ class ParserRP2(RR_Data):
         existing_reactants = {reactants_rp2ori.get(i, i) for i in rp_reactants.keys()}
         existing_products = {products_rp2ori.get(i, i) for i in rp_products.keys()}
         # Note that there should be no other 
-        to_add_reactants = set(ori_reactants.keys()) - existing_reactants
-        to_add_products = set(ori_products.keys()) - existing_products
+        to_add_reactants = set(orientated_reactants.keys()) - existing_reactants
+        to_add_products = set(orientated_products.keys()) - existing_products
         logging.debug(f"\t\tto_add_reactants (secondary only): {to_add_reactants}")
         logging.debug(f"\t\tto_add_products (secondary only): {to_add_products}")
 
@@ -628,9 +672,9 @@ class ParserRP2(RR_Data):
 
         # Add any missing SECONDARY species with their stoichiometries
         for mid in to_add_products:
-            subpath["products"][mid] = ori_products[mid]
+            subpath["products"][mid] = orientated_products[mid]
         for mid in to_add_reactants:
-            subpath["reactants"][mid] = ori_reactants[mid]
+            subpath["reactants"][mid] = orientated_reactants[mid]
 
         logging.debug(f"\t\tfull reactants: {subpath['reactants']}")
         logging.debug(f"\t\tfull products: {subpath['products']}")

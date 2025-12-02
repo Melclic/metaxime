@@ -1,6 +1,6 @@
 # MetaXime
 
-This projects makes it more accessible to study the output of RetroPath2.0 by converting the results to metabolic models for downstream analysis. The project also uses CobraK to perform different 
+This projects makes it more accessible to study the output of RetroPath2.0 by converting the results to metabolic models for downstream analysis. 
 
 ## Requirements
 
@@ -10,7 +10,7 @@ This projects makes it more accessible to study the output of RetroPath2.0 by co
 
 This project parses the output of [RetroPath2.0](https://www.myexperiment.org/workflows/4987/versions/16.html) and completes the monocomponent reactions of the tool to full reactions. This includes all the cofactors that makes the reaction complete and extracts them to a cobrapy metabolic model. This includes a sink and source to enable the user to simulate the production of the molecule. The project also has the ability to merge two models together, and works seamlessly with the [retrosynthesis](https://github.com/melclic/retrosynthesis). 
 
-This is part of one of the projects that may be found [here](https://github.com/brsynth) and lives as a [Galaxy platform](https://galaxy-synbiocad.org/). The point of this project is to use an alternative method and enable researchers to use other workflow tools to run the design pipeline.
+This is part of one of the projects that may be found [here](https://github.com/brsynth) and lives as a [Galaxy platform](https://galaxy-synbiocad.org/). The point of this project is to use an alternative method and enable researchers to use other workflow tools to run the design pipeline. It essentially does the same thing as [rpCompletion](https://github.com/brsynth/rptools/blob/master/rptools/rpcompletion/README.md) from [rptools](https://github.com/brsynth/rptools).
 
 ## Usage
 

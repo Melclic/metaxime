@@ -28,7 +28,7 @@ def build_cli():
     parser.add_argument("--source_comp", default="c", help="Source compartment id")
     parser.add_argument("--target_comp", default="c", help="Target compartment id")
     parser.add_argument("--use_inchikey2", action="store_true", help="Use InChIKey2 fallback")
-    parser.add_argument("--find_all_parentless", action="store_true", help="Enable parentless search")
+    parser.add_argument("--find_all_parentless", action="store_true", help="Do not include models with parentless heterologous molecules")
 
     return parser
 

@@ -14,9 +14,7 @@ Options:
     --compounds <path>          Path to RP2 out_compounds csv file (required)
     --paths <path>              Path to RP2 out_paths csv file (required)
     --target_model <path>       Path to target COBRA SBML model (required)
-
-    --out_tar <path>            Name or path of output zip file
-                                (default: "merged_rp2_models.zip")
+    --output_folder <path>      Output folder (required)
 
     --source_comp <string>      Source compartment id for RP2 models
                                 (default: "c")
@@ -42,17 +40,6 @@ Usage:
 """.stripIndent()
 }
 
-/*
- * Show help and exit if requested
- */
-if (params.help) {
-    helpMessageParse()
-    exit 0
-}
-
-/*
- * Defaults
- */
 params.scope           = null
 params.compounds       = null
 params.paths           = null
@@ -63,61 +50,19 @@ params.out_tar         = "merged_rp2_models.zip"
 params.source_comp     = "c"
 params.target_comp     = "c"
 
-params.use_inchikey2        = params.use_inchikey2 ? true : false
-params.find_all_parentless  = params.find_all_parentless ? true : false
+params.use_inchikey2        = true
+params.find_all_parentless  = true
 
-/*
- * Validate required parameters
- */
-if (!params.scope || !params.compounds || !params.paths || !params.target_model) {
-    log.error "Missing required arguments"
-    helpMessageParse()
-    exit 1
-}
-
-/*
- * Main workflow
- */
-workflow {
-
-    Channel
-        .fromPath(params.scope)
-        .set { scope_ch }
-
-    Channel
-        .fromPath(params.compounds)
-        .set { compounds_ch }
-
-    Channel
-        .fromPath(params.paths)
-        .set { paths_ch }
-
-    Channel
-        .fromPath(params.target_model)
-        .set { target_model_ch }
-
-    RUN_MERGE_PIPELINE(
-        scope_ch,
-        compounds_ch,
-        paths_ch,
-        target_model_ch
-    )
-}
-
-/*
- * Process calling the Python pipeline
- */
 process RUN_MERGE_PIPELINE {
 
     tag "merge_rp2_models"
     container "melclic/metaxime:latest"
 
-    publishDir {
-        // Use the directory part of out_tar for publishing
-        def outFile = file(params.out_tar)
-        def parent  = outFile.parent
-        parent ? parent.toString() : "."
-    }, mode: 'copy', overwrite: true
+    publishDir (
+        path: { "${params.output_folder}/" },
+        mode: "copy", 
+        pattern: "output.zip"
+    )
 
     input:
         path scope_file
@@ -126,18 +71,46 @@ process RUN_MERGE_PIPELINE {
         path target_model_file
 
     output:
-        path "*.zip", emit: merged_zip
+        path "output.zip", emit: merged_zip
 
-    """
-    python /home/MetaXime/run_pipeline.py \
-        --scope ${scope_file} \
-        --compounds ${compounds_file} \
-        --paths ${paths_file} \
-        --target_model ${target_model_file} \
-        --out_tar ${params.out_tar} \
-        --source_comp ${params.source_comp} \
-        --target_comp ${params.target_comp} \
-        ${params.use_inchikey2        ? "--use_inchikey2" : ""} \
-        ${params.find_all_parentless  ? "--find_all_parentless" : ""}
-    """
+    script:
+        """
+        python /home/MetaXime/run_pipeline.py \
+            --scope ${scope_file} \
+            --compounds ${compounds_file} \
+            --paths ${paths_file} \
+            --target_model ${target_model_file} \
+            --out_tar output.zip \
+            --source_comp ${params.source_comp} \
+            --target_comp ${params.target_comp} \
+            ${params.use_inchikey2        ? "--use_inchikey2" : ""} \
+            ${params.find_all_parentless  ? "--find_all_parentless" : ""}
+        """
+}
+
+
+workflow {
+
+    if (params.help) {
+        helpMessageParse()
+        exit 0
+    }
+
+    if (!params.scope || !params.compounds || !params.paths || !params.target_model) {
+        log.error "Missing required arguments"
+        helpMessageParse()
+        exit 1
+    }
+
+    scope_ch = channel.fromPath(params.scope, checkIfExists: true)
+    compounds_ch = channel.fromPath(params.compounds, checkIfExists: true)
+    paths_ch = channel.fromPath(params.paths, checkIfExists: true)
+    target_model_ch = channel.fromPath(params.target_model, checkIfExists: true)
+
+    RUN_MERGE_PIPELINE(
+        scope_ch,
+        compounds_ch,
+        paths_ch,
+        target_model_ch
+    )
 }
