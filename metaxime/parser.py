@@ -459,8 +459,9 @@ class ParserRP2(RR_Data):
         self,
         input_subpath: Dict[str, Any],
         rp_path: Dict,
-        match_threshold: float = 0.8,
+        match_threshold: float = 0.51,
         #conv_rp_ids: Dict = {},
+        found_cmp: Dict = {},
     ) -> None:
         """
         Complete a single monocomponent RP2 step by reconciling predicted species with
@@ -564,22 +565,23 @@ class ParserRP2(RR_Data):
                 # Note that this will not work with the new rules
                 target_best_mnxm = None
                 if self.rr_recipes[rp_rule_reac]['Direction']==1:
-                    main_names = self.rr_recipes[rp_rule_reac]['main_products']
+                    main_names = list(self.rr_recipes[rp_rule_reac]['main_products'].keys())
                     if len(main_names) == 1:
-                        target_best_mnxm = next(iter(main_names.keys()))
+                        target_best_mnxm = main_names[0]
                     else:
                         target_best_mnxm = None
                 elif self.rr_recipes[rp_rule_reac]['Direction']==-1:
-                    main_names = self.rr_recipes[rp_rule_reac]['main_reactants']
+                    main_names = list(self.rr_recipes[rp_rule_reac]['main_reactants'].keys())
                     if len(main_names) == 1:
-                        target_best_mnxm = next(iter(main_names.keys()))
+                        target_best_mnxm = main_names[0]
                     else:
                         target_best_mnxm = None
                 if not target_best_mnxm:
                     raise KeyError(
                         f"Cannot confidently identify the RHS metabolite: left_out: {left_out}, score: {score}"
                     )
-
+        
+        found_cmp[rp_predict_strc_id] = target_best_mnxm
         logging.debug(f"\t\t{rp_predict_strc_id} -> {target_best_mnxm}")
         
         # 4) Determine orientation using main reactants/products
@@ -658,7 +660,13 @@ class ParserRP2(RR_Data):
         existing_products = {products_rp2ori.get(i, i) for i in rp_products.keys()}
         # Note that there should be no other 
         to_add_reactants = set(orientated_reactants.keys()) - existing_reactants
+        for i in set(rp_reactants.keys()) & set(found_cmp.keys()):
+            logging.debug(f'\t\tthe following reactant is already found: ({i}): {found_cmp[i]}')
+            to_add_reactants.discard(found_cmp[i])
         to_add_products = set(orientated_products.keys()) - existing_products
+        for i in set(rp_products.keys()) & set(found_cmp.keys()):
+            logging.debug(f'\t\tthe following product is already found: ({i}): {found_cmp[i]}')
+            to_add_products.discard(found_cmp[i])
         logging.debug(f"\t\tto_add_reactants (secondary only): {to_add_reactants}")
         logging.debug(f"\t\tto_add_products (secondary only): {to_add_products}")
 
@@ -668,7 +676,7 @@ class ParserRP2(RR_Data):
         subpath["transformation_id"] = rp_path[rp_rule][rp_rule_reac][rp_rule_substrate][
             "transformation_id"
         ]
-        subpath["direction"] = 1 if reactant_dir=='left' else -1
+        #subpath["direction"] = 1 if reactant_dir=='left' else -1
 
         # Add any missing SECONDARY species with their stoichiometries
         for mid in to_add_products:
@@ -710,16 +718,17 @@ class ParserRP2(RR_Data):
                 logging.debug(f'------ SubPath: {count} -------')
                 #conv_rp_ids = {}
                 to_overwrite = {}
+                found_cmp = {}
                 is_valid = True
-                for path_step in rp_subpath:
+                for path_step in sorted(rp_subpath.keys(), reverse=True):
                     try:
-                        logging.debug(f"\t-> {path_step}")
                         #to_overwrite[path_step], conv_rp_ids = self._complete_monocomponent_reaction(
                         to_overwrite[path_step] = self._complete_monocomponent_reaction(
                                 rp_subpath[path_step],
                                 rp_path=self.rp_paths[rp_path_num][path_step],
                                 match_threshold=match_threshold,
                                 #conv_rp_ids=conv_rp_ids,
+                                found_cmp=found_cmp,
                             )
                         #logging.debug(f"\tconv_rp_ids: {conv_rp_ids}")
                     except KeyError as e:
@@ -761,16 +770,18 @@ class ParserRP2(RR_Data):
                 for path_step in rp_subpath: #step in that enumarated path
                     #print(rp_subpath[path_step])
                     rp_rule = rp_subpath[path_step]['rule']
-                    direction = rp_subpath[path_step]['direction']
-                    if direction==1:
-                        rp_reactants = rp_subpath[path_step]['reactants']
-                        rp_products = rp_subpath[path_step]['products']
-                    elif direction==-1:
-                        rp_reactants = rp_subpath[path_step]['products']
-                        rp_products = rp_subpath[path_step]['reactants']
-                    else:
-                        logging.error('Cannot recognize the direction')
-                        break
+                    rp_reactants = rp_subpath[path_step]['reactants']
+                    rp_products = rp_subpath[path_step]['products']
+                    # direction = rp_subpath[path_step]['direction']
+                    # if direction==1:
+                    #     rp_reactants = rp_subpath[path_step]['reactants']
+                    #     rp_products = rp_subpath[path_step]['products']
+                    # elif direction==-1:
+                    #     rp_reactants = rp_subpath[path_step]['products']
+                    #     rp_products = rp_subpath[path_step]['reactants']
+                    # else:
+                    #     logging.error('Cannot recognize the direction')
+                    #     break
                     rp_rule_trans_id = rp_subpath[path_step]['transformation_id']
                     #Reaction
                     reaction = Reaction(rp_rule_trans_id)
@@ -782,7 +793,7 @@ class ParserRP2(RR_Data):
                         'rp_score': self.rp_scope.get(rp_rule_trans_id, {}).get('score', 0.0),
                         'rp_step': path_step,
                         'rp_id': rp_rule,
-                        'metanetx.reaction': self.single_depr_mnxr(rp_subpath[path_step].get('reaction', '')),
+                        'metanetx.reaction': rp_subpath[path_step].get('reaction', ''),
                         #add the ec from out_scope
                         'ec-code': self.rp_scope.get(rp_rule_trans_id, {}).get('ec-code', [])
                     })

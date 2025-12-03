@@ -29,6 +29,11 @@ python run_pipeline.py \
     --find_all_parentless
 ```
 
+You can build it yourself with:
+```
+docker build -t melclic/metaxime:latest -f Dockerfile .
+```
+
 ## Command Line Arguments
 
 ### Required Arguments
