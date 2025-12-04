@@ -604,22 +604,27 @@ class ParserRP2(RR_Data):
         
         logging.debug(f"\t\tOrientated rp_reactants: {orientated_reactants}")
         logging.debug(f"\t\tOrientated rp_products: {orientated_products}")
-
+        logging.debug(f"\t\trp_reactants: {rp_reactants}")
+        logging.debug(f"\t\trp_products: {rp_products}")
         # 6) Map predicted species to original IDs using InChI similarity (reactants)
         reactants_rp2ori: Dict[str, str] = {}
         for mid in rp_reactants:
             if mid not in orientated_reactants:
                 #if mid in conv_rp_ids:
                 #    reactants_rp2ori[mid] = conv_rp_ids[mid]
-                #else:
-                inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
-                if not inchi:
-                    inchi = self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
-                if inchi and not pd.isna(inchi):
-                    best_mnxm, _ = self._best_strc_match(inchi, ori_strc_dict['reactants'])
+                #else\
+                search_str = (
+                    self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                    or self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('smiles')
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('desc', {}).get('smiles')
+                )
+                if search_str:
+                    best_mnxm, _ = self._best_strc_match(search_str, ori_strc_dict['reactants'])
                     reactants_rp2ori[mid] = best_mnxm
                 else:
-                    logging.warning(f'Cannot convert the reactant: {mid} InchI -> {inchi}')
+                    logging.warning(f'Cannot find reactant structure for {mid}: {search_str}')
+
 
         # 7) Map predicted species to original IDs (products)
         products_rp2ori: Dict[str, str] = {rp_predict_strc_id: target_best_mnxm}
@@ -628,14 +633,17 @@ class ParserRP2(RR_Data):
                 #if mid in conv_rp_ids:
                 #    products_rp2ori[mid] = conv_rp_ids.get(mid)
                 #else:
-                inchi = self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
-                if not inchi:
-                    inchi = self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
-                if inchi and not pd.isna(inchi):
-                    best_mnxm, _ = self._best_strc_match(inchi, ori_strc_dict['products'])
+                search_str = (
+                    self.rp_strc.get(mid, {}).get('xref', {}).get("inchi")
+                    or self.rp_strc.get(mid, {}).get('desc', {}).get("inchi")
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('xref', {}).get('smiles')
+                    or self.rp_strc.get(rp_predict_strc_id, {}).get('desc', {}).get('smiles')
+                )
+                if search_str:
+                    best_mnxm, _ = self._best_strc_match(search_str, ori_strc_dict['products'])
                     products_rp2ori[mid] = best_mnxm
                 else:
-                    logging.warning(f'Cannot convert the product: {mid} InchI -> {inchi}')
+                    logging.warning(f'Cannot find product structure for {mid}: {search_str}')
 
         logging.debug(
             "\t\tConverted rp_reactants: "
