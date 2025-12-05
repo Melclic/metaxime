@@ -2,7 +2,9 @@
 import argparse
 import logging
 from pathlib import Path
-import zipfile
+import networkx as nx
+import tarfile
+import json
 import tempfile
 
 from metaxime.parser import ParserRP2
@@ -42,8 +44,8 @@ def main():
 
     target_model_path = Path(args.target_model).resolve()
 
-    out_zip = Path(args.out_tar).resolve()
-    out_zip.parent.mkdir(parents=True, exist_ok=True)
+    out_tar = Path(args.out_tar).resolve()
+    out_tar.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
@@ -69,24 +71,40 @@ def main():
                         find_all_parentless_source=args.find_all_parentless,
                         use_inchikey2=args.use_inchikey2,
                     )
-                    out_file = tmpdir / f"{model_id}.xml"
-                    write_sbml_model(merged, str(out_file))
-                    logging.info("Saved %s", out_file)
+
+                    # SBML output
+                    sbml_file = tmpdir / f"{model_id}.xml"
+                    write_sbml_model(merged, str(sbml_file))
+                    logging.info("Saved merged SBML: %s", sbml_file)
+
+                    # Graph JSON output
+                    G = parser.cobra_model_to_digraph(all_models[path_id][sub_path_id])
+                    G_json = nx.node_link_data(G)
+                    json_file = tmpdir / f"{model_id}.json"
+                    with json_file.open("w", encoding="utf-8") as fh:
+                        json.dump(G_json, fh, ensure_ascii=False, indent=2)
+                    logging.info("Saved heterologous pathway JSON: %s", json_file)
+
                 except ValueError as e:
                     logging.warning("Error in %s: %s", model_id, e)
-        # Create zip with maximum compression
-        with zipfile.ZipFile(
-            out_zip,
-            mode="w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
-        ) as zf:
-            for xml_file in tmpdir.glob("*.xml"):
-                arcname = f"merged_rp2_models/{xml_file.name}"
-                zf.write(xml_file, arcname=arcname)
-                logging.debug("Added %s as %s", xml_file, arcname)
-        logging.info("Archive created at: %s", out_zip)
+
+        # Create tar.gz with maximum gzip compression
+        with tarfile.open(out_tar, mode="w:gz", compresslevel=9) as tf:
+            # SBML models under merged_sbml_model/
+            for sbml_file in tmpdir.glob("*.xml"):
+                arcname = f"merged_sbml_model/{sbml_file.name}"
+                tf.add(sbml_file, arcname=arcname)
+                logging.debug("Added SBML %s as %s", sbml_file, arcname)
+
+            # Graph JSON under heterologous_pathway_json/
+            for json_file in tmpdir.glob("*.json"):
+                arcname = f"heterologous_pathway_json/{json_file.name}"
+                tf.add(json_file, arcname=arcname)
+                logging.debug("Added JSON %s as %s", json_file, arcname)
+
+        logging.info("Archive created at: %s", out_tar)
         logging.info("Temporary folder will be removed when context ends")
+
     logging.info("Done")
 
 

@@ -12,6 +12,7 @@ from typing import Dict, Tuple, Any, Optional, Iterable, Literal, Set, Union, Li
 from typing import Callable, Dict, Any, Mapping, Optional
 
 from cobra import Model, Reaction, Metabolite
+import cobra
 
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
@@ -896,3 +897,158 @@ class ParserRP2(RR_Data):
                 #TODO identify the source molecules and make sure they are all recognized - if not, ignore
                 to_ret[rp_path_num][rp_subpath_num] = model
         return to_ret
+
+
+    ######### Graph ########
+
+
+    def cobra_model_to_digraph(self, model: cobra.Model) -> nx.DiGraph:
+        """Convert a COBRApy model to a directed NetworkX graph.
+
+        The resulting graph is bipartite:
+
+        * Metabolite nodes:
+        * ``type = "metabolite"``
+        * ``id`` (node name) is ``metabolite.id``
+        * attributes: ``name``, ``compartment``, ``formula``, ``charge``, ``annotation``
+        * Reaction nodes:
+        * ``type = "reaction"``
+        * ``id`` (node name) is ``reaction.id``
+        * attributes: ``name``, ``subsystem``, ``lower_bound``, ``upper_bound``,
+            ``reversible``, ``gene_reaction_rule``, ``annotation``
+
+        Edges are directed according to stoichiometry:
+
+        * Reactants: metabolite → reaction (coefficient < 0)
+        * Products: reaction → metabolite (coefficient > 0)
+
+        Edge attributes include:
+
+        * ``stoichiometry`` (float)
+        * ``role``: ``"reactant"`` or ``"product"``
+
+        Args:
+            model: A COBRApy metabolic model instance.
+
+        Returns:
+            A directed NetworkX graph representing the full COBRA model.
+
+        Examples:
+            >>> import cobra
+            >>> from networkx import DiGraph
+            >>> model = cobra.test.create_test_model("textbook")
+            >>> G = cobra_model_to_digraph(model)
+            >>> isinstance(G, DiGraph)
+            True
+            >>> any(data["type"] == "metabolite" for _, data in G.nodes(data=True))
+            True
+            >>> any(data["type"] == "reaction" for _, data in G.nodes(data=True))
+            True
+        """
+        G = nx.DiGraph()
+
+        # Add metabolite nodes
+        for met in model.metabolites:
+            # Determine if cofactor:
+            mnxm = met.annotation.get('metanetx.chemical', [])
+            if isinstance(mnxm, str):
+                mnxm = [mnxm]
+            elif isinstance(mnxm, list):
+                pass
+            else:
+                logging.warning(f'Annotation entry {met.id} must be list or str: {mnxm}')
+            if set(mnxm) & set(self.mnxm_cofactors):
+                is_cofactor = True
+            else:
+                is_cofactor = False
+            G.add_node(
+                met.id,
+                type="metabolite",
+                name=met.name,
+                compartment=met.compartment,
+                formula=getattr(met, "formula", None),
+                charge=getattr(met, "charge", None),
+                annotation=met.annotation,
+                is_cofactor=is_cofactor,
+            )
+
+        # Add reaction nodes + edges
+        for rxn in model.reactions:
+            rxn_annotation: Dict[str, Any] = dict(getattr(rxn, "annotation", {}) or {})
+
+            G.add_node(
+                rxn.id,
+                type="reaction",
+                name=rxn.name,
+                subsystem=getattr(rxn, "subsystem", None),
+                lower_bound=float(rxn.lower_bound),
+                upper_bound=float(rxn.upper_bound),
+                reversible=bool(rxn.reversibility),
+                gene_reaction_rule=rxn.gene_reaction_rule,
+                annotation=rxn_annotation,
+            )
+
+            # reaction.metabolites is {Metabolite: coefficient}
+            for met, coeff in rxn.metabolites.items():
+                # Reactants: negative stoichiometry
+                if coeff < 0:
+                    G.add_edge(
+                        met.id,
+                        rxn.id,
+                        stoichiometry=float(coeff),
+                        role="reactant",
+                    )
+                # Products: positive stoichiometry
+                elif coeff > 0:
+                    G.add_edge(
+                        rxn.id,
+                        met.id,
+                        stoichiometry=float(coeff),
+                        role="product",
+                    )
+
+        return G
+
+
+    def remove_dangling_reactions(G: nx.DiGraph) -> nx.DiGraph:
+        """Return a subgraph without parentless or childless reaction nodes.
+
+        A reaction node is removed if:
+        - it has no metabolite predecessors (parentless), or
+        - it has no metabolite successors (childless).
+
+        Args:
+            G: A NetworkX directed graph with 'type' attributes
+            where nodes have type == 'reaction' or 'metabolite'.
+
+        Returns:
+            A pruned DiGraph containing only nodes that are
+            part of a reaction connected on both sides.
+        """
+        bad_reactions: Set[str] = set()
+
+        for node, data in G.nodes(data=True):
+            if data.get("type") != "reaction":
+                continue
+
+            # metabolite parents
+            metabolite_predecessors = [
+                p for p in G.predecessors(node)
+                if G.nodes[p].get("type") == "metabolite"
+            ]
+
+            # metabolite children
+            metabolite_successors = [
+                s for s in G.successors(node)
+                if G.nodes[s].get("type") == "metabolite"
+            ]
+
+            # mark reaction for removal
+            if not metabolite_predecessors or not metabolite_successors:
+                bad_reactions.add(node)
+
+        # compute final node list
+        nodes_to_keep = set(G.nodes()) - bad_reactions
+
+        # build pruned graph
+        return G.subgraph(nodes_to_keep).copy()
