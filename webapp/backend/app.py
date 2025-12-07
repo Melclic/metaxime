@@ -21,8 +21,8 @@ from metaxime.utils import convert_depiction
 
 SCRIPT_DIR: Path = Path(__file__).resolve().parent
 
-WORKFLOW_SCRIPT: Path = (SCRIPT_DIR / "../nextflow/complete_workflow.nf").resolve()
-WORKFLOW_CONFIG: Path = (SCRIPT_DIR / "../nextflow/nextflow.config").resolve()
+WORKFLOW_SCRIPT: Path = (SCRIPT_DIR / "../../nextflow/complete_workflow.nf").resolve()
+WORKFLOW_CONFIG: Path = (SCRIPT_DIR / "../../nextflow/nextflow.config").resolve()
 
 RUN_DB_PATH: Path = SCRIPT_DIR / "run_db.json"
 DEFAULT_RUN_ROOT: Path = SCRIPT_DIR / "run_files"
@@ -127,10 +127,6 @@ class JobInfo(BaseModel):
             Root directory created for this job.
         nxf_work_dir:
             Directory used for Nextflow -work-dir.
-        log_dir:
-            Directory for Nextflow log files.
-        log_file:
-            Path to the Nextflow log file (-log).
         output_folder:
             Directory used for --output_folder.
         payload:
@@ -156,8 +152,6 @@ class JobInfo(BaseModel):
     work_dir: Optional[str] = None
     job_dir: Optional[str] = None
     nxf_work_dir: Optional[str] = None
-    log_dir: Optional[str] = None
-    log_file: Optional[str] = None
     output_folder: Optional[str] = None
 
     payload: Dict[str, Any]
@@ -250,7 +244,7 @@ def load_job_store_from_db() -> None:
             if job.error_message is None:
                 job.error_message = "Server restarted while job was in progress"
             if job.finished_at is None:
-                job.finished_at = datetime.utcnow()
+                job.finished_at = datetime.now()
 
         loaded[job.id] = job
 
@@ -297,7 +291,6 @@ def build_nextflow_command(job: JobInfo) -> List[str]:
     target_inchi = str(p["target_inchi"])
     output_folder = str(p["output_folder"])
     nxf_work_dir = str(p["nxf_work_dir"])
-    log_file = str(p["log_file"])
 
     args: List[str] = [
         "nextflow",
@@ -315,8 +308,6 @@ def build_nextflow_command(job: JobInfo) -> List[str]:
         str(WORKFLOW_CONFIG),
         "-ansi-log",
         "false",
-        "-log",
-        log_file,
     ]
 
     if p.get("rules_file") is not None:
@@ -371,22 +362,23 @@ def worker_loop() -> None:
         try:
             with job_store_lock:
                 job = job_store.get(job_id)
-
             if job is None:
                 continue
 
             with job_store_lock:
                 job.status = JobStatus.RUNNING
-                job.started_at = datetime.utcnow()
+                job.started_at = datetime.now()
                 job_store[job_id] = job
+
             persist_job_store()
 
             args = build_nextflow_command(job)
-            args = [str(a) for a in args]
+            #args = [str(a) for a in args]
 
             with job_store_lock:
                 job.command_preview = shell_join(args)
                 job_store[job_id] = job
+
             persist_job_store()
 
             try:
@@ -398,13 +390,16 @@ def worker_loop() -> None:
                     text=True,
                 )
                 stdout, stderr = process.communicate()
+                print(f'stdout: {stdout}')
+                print(f'stderr: {stderr}')
                 exit_code = process.returncode
+                print(f'exit_code: {exit_code}')
 
                 with job_store_lock:
                     job.stdout = stdout
                     job.stderr = stderr
                     job.exit_code = exit_code
-                    job.finished_at = datetime.utcnow()
+                    job.finished_at = datetime.now()
                     if exit_code == 0:
                         job.status = JobStatus.COMPLETED
                     else:
@@ -416,7 +411,7 @@ def worker_loop() -> None:
                 with job_store_lock:
                     job.status = JobStatus.FAILED
                     job.error_message = str(exc)
-                    job.finished_at = datetime.utcnow()
+                    job.finished_at = datetime.now()
                     job_store[job_id] = job
                 persist_job_store()
         finally:
@@ -503,38 +498,29 @@ def create_job(request: JobCreateRequest) -> JobInfo:
 
     job_dir_path = base_output_dir / job_id
     nxf_work_dir_path = job_dir_path / "_work_dir"
-    log_dir_path = job_dir_path / "_log"
     output_folder_path = job_dir_path / "_output"
-    log_file_path = log_dir_path / "nextflow.log"
 
     nxf_work_dir_path.mkdir(parents=True, exist_ok=True)
-    log_dir_path.mkdir(parents=True, exist_ok=True)
     output_folder_path.mkdir(parents=True, exist_ok=True)
 
     job_dir = str(job_dir_path)
     nxf_work_dir = str(nxf_work_dir_path)
-    log_dir = str(log_dir_path)
-    log_file = str(log_file_path)
     output_folder = str(output_folder_path)
 
     payload["model_file"] = str(payload["model_file"])
     payload["target_inchi"] = str(payload["target_inchi"])
-    payload["target_smiles"] = convert_depiction(str(payload["target_inchi"]), 'inchi', 'smiles')
+    payload["target_smiles"] = convert_depiction(str(payload["target_inchi"]), itype='inchi', otype=['smiles'])['smiles']
     payload["job_dir"] = job_dir
     payload["nxf_work_dir"] = nxf_work_dir
-    payload["log_dir"] = log_dir
-    payload["log_file"] = log_file
     payload["output_folder"] = output_folder
 
     job = JobInfo(
         id=job_id,
         status=JobStatus.QUEUED,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
         work_dir=run_cwd,
         job_dir=job_dir,
         nxf_work_dir=nxf_work_dir,
-        log_dir=log_dir,
-        log_file=log_file,
         output_folder=output_folder,
         payload=payload,
     )
