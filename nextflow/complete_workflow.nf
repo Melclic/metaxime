@@ -67,7 +67,7 @@ params.accept_partial_results = false
 
 params.diameters  = "2,4,6,8,10,12,14,16"
 params.rule_type  = "all"
-params.ram_limit  = 15
+params.ram_limit  = 18
 
 params.source_comp = "c"
 params.target_comp = "c"

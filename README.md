@@ -34,6 +34,11 @@ You can build it yourself with:
 docker build -t melclic/metaxime:latest -f Dockerfile .
 ```
 
+```
+npm install -D @types/module-name
+npm install dagre-d3-es
+```
+
 ## Command Line Arguments
 
 ### Required Arguments

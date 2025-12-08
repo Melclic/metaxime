@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import numpy as np
+import re
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -711,6 +712,66 @@ def delete_job(job_id: str) -> JobSummary:
 
     persist_job_store()
     return summary
+
+@app.get("/jobs/{job_id}/status", response_class=JSONResponse)
+def get_job_status(job_id: str) -> JSONResponse:
+    """Return job status and RP2 error code if the job failed.
+
+    If the job status is FAILED, this endpoint scans the `.nextflow.log`
+    file located in the job directory and extracts the last RP2 status
+    code of the form:
+
+        [ERROR] RP2 status code: <int>
+
+    Args:
+        job_id: Job identifier.
+
+    Returns:
+        JSONResponse:
+            Example (success or running):
+            {
+              "job_id": "abc123",
+              "status": "COMPLETED",
+              "rp2_status_code": null
+            }
+
+            Example (failed):
+            {
+              "job_id": "abc123",
+              "status": "FAILED",
+              "rp2_status_code": 20
+            }
+
+    Raises:
+        HTTPException:
+            - 404 if the job does not exist
+    """
+    # Lookup job
+    with job_store_lock:
+        job = job_store.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    status = job.status
+    rp2_status_code: int | None = None
+    if status == JobStatus.FAILED:
+        log_path = Path(job.job_dir) / ".nextflow.log"
+        if log_path.exists():
+            pattern = re.compile(r"RP2 status code:\s*(\d+)")
+            with log_path.open("r", encoding="utf-8", errors="ignore") as fh:
+                for line in fh:
+                    match = pattern.search(line)
+                    if match:
+                        rp2_status_code = int(match.group(1))
+
+    return JSONResponse(
+        content={
+            "job_id": job_id,
+            "status": status.value if hasattr(status, "value") else str(status),
+            "rp2_status_code": rp2_status_code,
+        }
+    )
 
 ##### results getters
 

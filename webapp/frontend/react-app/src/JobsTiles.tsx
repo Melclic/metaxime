@@ -1,7 +1,25 @@
 // JobsTiles.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+// @ts-ignore
 import { SmilesSVG } from "./SmilesSVG";
+
+type JobStatusResponse = {
+  job_id: string;
+  status: string;
+  rp2_status_code: number | null;
+};
+
+const RP2_STATUS_MESSAGES: Record<number, string> = {
+  0: "OK",
+  10: "Timeout error",
+  20: "Memory error",
+  30: "Source in sink",
+  31: "Source in sink not found",
+  40: "No result produced",
+  50: "Operating system error",
+  60: "Out of RAM"
+};
 
 type JobSummary = {
   id: string;
@@ -47,7 +65,9 @@ function useResponsiveColumns(): number {
 
 export function JobsTiles() {
   const [jobs, setJobs] = useState<JobSummary[]>([]);
+  const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(true);
+
   const [error, setError] = useState<string>("");
 
   const columns = useResponsiveColumns();
@@ -56,8 +76,8 @@ export function JobsTiles() {
   useEffect(() => {
     async function fetchJobs() {
       try {
-        setLoading(true);
-        setError("");
+        //setLoading(true);
+        //setError("");
         const response = await fetch("http://localhost:8000/jobs");
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -67,13 +87,60 @@ export function JobsTiles() {
       } catch (err: any) {
         console.error(err);
         setError("Could not load jobs");
-      } finally {
-        setLoading(false);
-      }
+      } //finally {
+      //   setLoading(false);
+      // }
     }
 
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    async function fetchFailedJobStatuses() {
+      const failedJobs = jobs.filter(j => j.status === "failed");
+
+      if (failedJobs.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const entries = await Promise.all(
+        failedJobs.map(async job => {
+          try {
+            const res = await fetch(
+              `http://localhost:8000/jobs/${encodeURIComponent(
+                job.id,
+              )}/status`,
+            );
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`);
+            }
+            const data: JobStatusResponse = await res.json();
+
+            if (data.rp2_status_code !== null) {
+              const msg =
+                RP2_STATUS_MESSAGES[data.rp2_status_code] ??
+                `Unknown error (${data.rp2_status_code})`;
+              return [job.id, msg] as const;
+            }
+            return [job.id, "Unknown failure"] as const;
+          } catch (err) {
+            console.error(err);
+            return [job.id, "Unknown failure"] as const;
+          }
+        }),
+      );
+
+      setJobErrors(Object.fromEntries(entries));
+      setLoading(false);
+    }
+
+    if (jobs.length > 0) {
+      fetchFailedJobStatuses();
+    } else {
+      setLoading(false);
+    }
+  }, [jobs]);
 
   if (loading) {
     return <p>Loading jobs…</p>;
@@ -103,48 +170,79 @@ export function JobsTiles() {
           alignItems: "stretch",
         }}
       >
-        {jobs.map(job => (
-          <div
-            key={job.id}
-            style={cardStyle}
-            onClick={() => navigate(`/jobs/${encodeURIComponent(job.id)}/results`)}
-            role="button"
-          >
-            <div style={cardHeaderStyle}>
-              <span style={cardTitleStyle}>Job</span>
-              <span style={statusBadgeStyle(job.status)}>{job.status}</span>
-            </div>
+        {jobs.map(job => {
+          const isFailed = job.status === "failed";
+          const isCompleted = job.status === "completed";
+          const errorMessage = jobErrors[job.id];
 
-            <div style={cardBodyStyle}>
-              <Field label="Id" value={job.id} />
-              <Field label="Created" value={formatDate(job.created_at)} />
-              <Field label="Started" value={formatDate(job.started_at)} />
-              <Field label="Finished" value={formatDate(job.finished_at)} />
-            </div>
-
-            <div style={structureContainerStyle}>
-              <div
-                style={{
-                  fontSize: "0.8rem",
-                  opacity: 0.7,
-                  marginBottom: 4,
-                }}
-              >
-                Structure
+          return (
+            <div
+              key={job.id}
+              style={{
+                ...cardStyle,
+                cursor: isCompleted ? "pointer" : "default",
+                opacity: isFailed ? 0.7 : 1,
+              }}
+              onClick={() => {
+                if (isCompleted) {
+                  navigate(
+                    `/jobs/${encodeURIComponent(job.id)}/results`
+                  );
+                }
+              }}
+              role={isCompleted ? "button" : undefined}
+            >
+              <div style={cardHeaderStyle}>
+                <span style={cardTitleStyle}>Job</span>
+                <span style={statusBadgeStyle(job.status)}>
+                  {job.status}
+                </span>
               </div>
-              {job.target_smiles ? (
-                <SmilesSVG smiles={job.target_smiles} width={260} height={160} />
-              ) : (
-                <div style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-                  No structure available
+
+              <div style={cardBodyStyle}>
+                <Field label="Id" value={job.id} />
+                <Field label="Created" value={formatDate(job.created_at)} />
+                <Field label="Started" value={formatDate(job.started_at)} />
+                <Field label="Finished" value={formatDate(job.finished_at)} />
+
+                {isFailed && errorMessage && (
+                  <Field
+                    label="Error"
+                    value={errorMessage}
+                    multiline
+                  />
+                )}
+              </div>
+
+              <div style={structureContainerStyle}>
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    opacity: 0.7,
+                    marginBottom: 4,
+                  }}
+                >
+                  Structure
                 </div>
-              )}
+                {job.target_smiles ? (
+                  <SmilesSVG
+                    smiles={job.target_smiles}
+                    width={260}
+                    height={160}
+                  />
+                ) : (
+                  <div style={{ fontSize: "0.9rem", opacity: 0.7 }}>
+                    No structure available
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
+
 }
 
 function Field({ label, value, multiline }: FieldProps) {

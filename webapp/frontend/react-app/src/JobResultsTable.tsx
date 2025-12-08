@@ -1,5 +1,5 @@
-// JobResultsTable.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type JobResult = {
   id: string;
@@ -22,6 +22,8 @@ export function JobResultsTable({ jobId }: JobResultsTableProps) {
 
   const [sortKey, setSortKey] = useState<SortKey>("id");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!jobId) return;
@@ -58,6 +60,14 @@ export function JobResultsTable({ jobId }: JobResultsTableProps) {
       setSortKey(column);
       setSortDirection("asc");
     }
+  }
+
+  function handleRowClick(resultId: string) {
+    navigate(
+      `/jobs/${encodeURIComponent(jobId)}/results/${encodeURIComponent(
+        resultId
+      )}/pathway`
+    );
   }
 
   const sortedResults = useMemo(() => {
@@ -138,7 +148,11 @@ export function JobResultsTable({ jobId }: JobResultsTableProps) {
         </thead>
         <tbody>
           {sortedResults.map(row => (
-            <tr key={row.id}>
+            <tr
+              key={row.id}
+              onClick={() => handleRowClick(row.id)}
+              style={rowStyle}
+            >
               <td style={cellStyle}>{row.id}</td>
               <td style={cellStyle}>{row.steps}</td>
               <td style={cellStyle}>{formatNumber(row.rp_mean_score)}</td>
@@ -147,6 +161,9 @@ export function JobResultsTable({ jobId }: JobResultsTableProps) {
           ))}
         </tbody>
       </table>
+      <p style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 8 }}>
+        Click a row to view the pathway.
+      </p>
     </div>
   );
 }
@@ -186,6 +203,10 @@ function SortableHeader({
     </th>
   );
 }
+
+const rowStyle: React.CSSProperties = {
+  cursor: "pointer",
+};
 
 const cellStyle: React.CSSProperties = {
   border: "1px solid #ddd",

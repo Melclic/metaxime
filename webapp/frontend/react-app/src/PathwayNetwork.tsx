@@ -1,15 +1,16 @@
-import React, { useEffect, useRef } from "react";
+// PathwayNetwork.tsx
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-// @ts-ignore
 import * as d3 from "d3";
-import * as dagreD3 from 'dagre-d3-es';
+import * as dagreD3 from "dagre-d3-es";
 import { SmilesSVG } from "./SmilesSVG";
 
 type MetaboliteNode = {
   id: string;
   type: "metabolite";
-  name: string;
+  name?: string;
   topology: string;
+  is_cofactor?: boolean;
   annotation?: {
     smiles?: string;
     [key: string]: unknown;
@@ -20,7 +21,7 @@ type MetaboliteNode = {
 type ReactionNode = {
   id: string;
   type: "reaction";
-  name: string;
+  name?: string;
   topology: string;
   annotation?: {
     [key: string]: unknown;
@@ -54,19 +55,34 @@ export type PathwayNetworkProps = {
   height?: number | string;
 };
 
-/**
- * Draws a metabolic network using dagre-d3, similar to the old makeNetwork / drawNetwork
- * implementation, but using the SmilesSVG React component to render metabolite structures.
- *
- * - Metabolites are rendered as SVG structures (via SmilesSVG inside HTML labels / foreignObject)
- * - Reactions are rendered as simple rounded boxes with their id as text
- */
 export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
   graph,
   width = "100%",
   height = 500,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [showCofactors, setShowCofactors] = useState<boolean>(true);
+
+  // Filter graph based on cofactor visibility
+  const filteredGraph = useMemo<PathwayGraph>(() => {
+    if (showCofactors) {
+      return graph;
+    }
+
+    const keptNodes = graph.nodes.filter(
+      n => !(n.type === "metabolite" && n.is_cofactor === true),
+    );
+    const keptIds = new Set(keptNodes.map(n => n.id));
+    const keptLinks = graph.links.filter(
+      l => keptIds.has(l.source) && keptIds.has(l.target),
+    );
+
+    return {
+      ...graph,
+      nodes: keptNodes,
+      links: keptLinks,
+    };
+  }, [graph, showCofactors]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -77,14 +93,14 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
 
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
+      // upper bound stays constant, lower bound will be updated
       .scaleExtent([0.5, 7])
-      .on("zoom", (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
+      .on("zoom", event => {
         inner.attr("transform", event.transform);
       });
 
     svg.call(zoom as any);
 
-    // Create dagre graph
     const g = new dagreD3.graphlib.Graph()
       .setGraph({
         nodesep: 30,
@@ -99,11 +115,10 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
     const chemHeight = 100;
 
     // Nodes
-    graph.nodes.forEach(node => {
+    filteredGraph.nodes.forEach(node => {
       if (node.type === "metabolite") {
-        // HTML container that will host the SmilesSVG React component
         const container = document.createElement("div");
-        container.id = `mol-${node.id}`;
+        container.id = `mol-svg-${node.id}`;
         container.style.width = `${chemWidth}px`;
         container.style.height = `${chemHeight}px`;
 
@@ -114,17 +129,19 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
           height: chemHeight,
         });
       } else if (node.type === "reaction") {
+        const labelText =
+          node.name && node.name.trim().length > 0 ? node.name : node.id;
         g.setNode(node.id, {
           labelType: "string",
-          label: node.id,
-          width: chemWidth * 0.6,
+          label: labelText,
+          width: chemWidth * 0.7,
           height: chemHeight * 0.4,
         });
       }
     });
 
     // Edges
-    graph.links.forEach(link => {
+    filteredGraph.links.forEach(link => {
       g.setEdge(link.source, link.target);
     });
 
@@ -134,49 +151,194 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
       n.rx = n.ry = 5;
     });
 
-    // Render
     const render = new (dagreD3 as any).render();
     render(inner as any, g as any);
 
-    // Fit / center the graph (similar to zoomFit)
+    // Style overrides: white boxes, black borders, black arrows, Arial font
+    inner
+      .selectAll("g.node rect")
+      .attr("fill", "#ffffff")
+      .attr("stroke", "#000000")
+      .attr("stroke-width", 1.2);
+
+    inner
+      .selectAll("g.node ellipse, g.node polygon")
+      .attr("fill", "#ffffff")
+      .attr("stroke", "#000000")
+      .attr("stroke-width", 1.2);
+
+    inner
+      .selectAll("g.edgePath path")
+      .attr("stroke", "#000000")
+      .attr("stroke-width", 1.5)
+      .attr("fill", "none");
+
+    inner
+      .selectAll("marker path")
+      .attr("fill", "#000000");
+
+    // Default node text styling
+    inner
+      .selectAll("g.node text")
+      .attr("font-family", "Arial, sans-serif")
+      .attr("font-size", 11);
+
+    // Add metabolite labels
+    filteredGraph.nodes.forEach(node => {
+      if (node.type !== "metabolite") return;
+
+      const labelText =
+        node.name && node.name.trim().length > 0 ? node.name : node.id;
+
+      const n = g.node(node.id);
+      if (!n) return;
+
+      // y position slightly above the top border so it does not sit on the line
+      const topY = n.y - n.height / 3;
+      const labelY = topY - 10; // move more up to avoid overlapping the border
+
+      inner
+        .append("text")
+        .attr("x", n.x)
+        .attr("y", labelY)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 11)
+        .attr("font-family", "Arial, sans-serif")
+        .attr("fill", "#000")
+        .attr("pointer-events", "none")
+        .text(labelText);
+    });
+
+    // Fit and center, and set this scale as the minimum zoom
     const bounds = inner.node()?.getBBox();
     if (bounds && bounds.width && bounds.height) {
       const parent = svgRef.current.parentElement;
-      const fullWidth = parent?.clientWidth ?? 800;
-      const fullHeight = parent?.clientHeight ?? 400;
+      if (!parent) return;
+
+      const fullWidth = parent.getBoundingClientRect().width;
+      const fullHeight =
+        typeof height === "number"
+          ? height
+          : parent.getBoundingClientRect().height || 400;
 
       const midX = bounds.x + bounds.width / 2;
       const midY = bounds.y + bounds.height / 2;
 
-      const scale =
-        0.85 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
+      const initialScale =
+        0.95 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
+
       const translate: [number, number] = [
-        fullWidth / 2 - midX * scale,
-        fullHeight / 2 - midY * scale,
+        fullWidth / 2 - midX * initialScale,
+        fullHeight / 2 - midY * initialScale,
       ];
+
+      // Use the initial scale as the minimum zoom so you cannot zoom out further
+      zoom.scaleExtent([initialScale, 7]);
 
       const transform = d3.zoomIdentity
         .translate(translate[0], translate[1])
-        .scale(scale);
+        .scale(initialScale);
 
       svg.transition().duration(300).call(zoom.transform as any, transform);
     }
 
-    // Render SmilesSVG inside each metabolite container
-    graph.nodes.forEach(node => {
+    // Render SmilesSVG into metabolite nodes
+    filteredGraph.nodes.forEach(node => {
       if (node.type !== "metabolite") return;
       const smiles = node.annotation?.smiles;
       if (!smiles) return;
 
-      const container = document.getElementById(`mol-${node.id}`);
-      if (!container) return;
+      const svgContainer = document.getElementById(`mol-svg-${node.id}`);
+      if (!svgContainer) return;
 
-      const root = createRoot(container);
+      const root = createRoot(svgContainer);
       root.render(
-        <SmilesSVG smiles={smiles} width={chemWidth} height={chemHeight} />
+        <SmilesSVG smiles={smiles} width={chemWidth} height={chemHeight} />,
       );
     });
-  }, [graph, height, width]);
+  }, [filteredGraph, height, width]);
 
-  return <svg ref={svgRef} width={width} height={height} />;
+  const handleDownloadSvg = () => {
+    if (!svgRef.current) return;
+
+    const svgNode = svgRef.current.cloneNode(true) as SVGSVGElement;
+    svgNode.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svgNode.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+    const serializer = new XMLSerializer();
+    const source = serializer.serializeToString(svgNode);
+    const blob = new Blob([source], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${graph.id ?? "pathway"}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ width: "100%" }}>
+      <div
+        style={{
+          marginBottom: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <span style={{ marginRight: 8 }}>Cofactors</span>
+          <label style={{ marginRight: 12 }}>
+            <input
+              type="radio"
+              name="cofactor-visibility"
+              value="show"
+              checked={showCofactors}
+              onChange={() => setShowCofactors(true)}
+              style={{ marginRight: 4 }}
+            />
+            Show
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="cofactor-visibility"
+              value="hide"
+              checked={!showCofactors}
+              onChange={() => setShowCofactors(false)}
+              style={{ marginRight: 4 }}
+            />
+            Hide
+          </label>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadSvg}
+          style={{
+            padding: "4px 10px",
+            fontSize: 13,
+            borderRadius: 4,
+            border: "1px solid #ccc",
+            backgroundColor: "#f7f7f7",
+            cursor: "pointer",
+          }}
+        >
+          Download SVG
+        </button>
+      </div>
+
+      <svg
+        ref={svgRef}
+        style={{ width, height }}
+        preserveAspectRatio="xMidYMid meet"
+      />
+    </div>
+  );
 };
