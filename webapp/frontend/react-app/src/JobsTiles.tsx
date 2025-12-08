@@ -1,4 +1,6 @@
+// JobsTiles.tsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SmilesSVG } from "./SmilesSVG";
 
 type JobSummary = {
@@ -7,6 +9,7 @@ type JobSummary = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  // optional, in case backend does not always provide it
   target_smiles?: string | null;
 };
 
@@ -48,6 +51,7 @@ export function JobsTiles() {
   const [error, setError] = useState<string>("");
 
   const columns = useResponsiveColumns();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchJobs() {
@@ -100,7 +104,12 @@ export function JobsTiles() {
         }}
       >
         {jobs.map(job => (
-          <div key={job.id} style={cardStyle}>
+          <div
+            key={job.id}
+            style={cardStyle}
+            onClick={() => navigate(`/jobs/${encodeURIComponent(job.id)}/results`)}
+            role="button"
+          >
             <div style={cardHeaderStyle}>
               <span style={cardTitleStyle}>Job</span>
               <span style={statusBadgeStyle(job.status)}>{job.status}</span>
@@ -177,6 +186,8 @@ const cardStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   justifyContent: "space-between",
+  cursor: "pointer",
+  transition: "box-shadow 0.15s ease, transform 0.15s ease",
 };
 
 const cardHeaderStyle: React.CSSProperties = {

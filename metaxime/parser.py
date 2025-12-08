@@ -23,6 +23,11 @@ from metaxime.utils import convert_depiction
 
 from biopathopt.utils import merge_annot_dicts
 
+"""
+TODO: seperate each pathway as its own class and move the graph and other
+modifications there (see run_pipeline for each pathways parsing methods)
+"""
+
 class ParserRP2(RR_Data):
     def __init__(
             self, 
@@ -903,7 +908,7 @@ class ParserRP2(RR_Data):
 
 
     def cobra_model_to_digraph(self, model: cobra.Model) -> nx.DiGraph:
-        """Convert a COBRApy model to a directed NetworkX graph.
+        """Convert a COBRApy model to a directed NetworkX graph for plotting
 
         The resulting graph is bipartite:
 
@@ -946,76 +951,82 @@ class ParserRP2(RR_Data):
             True
         """
         G = nx.DiGraph()
-
         # Add metabolite nodes
         for met in model.metabolites:
-            # Determine if cofactor:
-            mnxm = met.annotation.get('metanetx.chemical', [])
-            if isinstance(mnxm, str):
-                mnxm = [mnxm]
-            elif isinstance(mnxm, list):
-                pass
-            else:
-                logging.warning(f'Annotation entry {met.id} must be list or str: {mnxm}')
-            if set(mnxm) & set(self.mnxm_cofactors):
-                is_cofactor = True
-            else:
-                is_cofactor = False
-            G.add_node(
-                met.id,
-                type="metabolite",
-                name=met.name,
-                compartment=met.compartment,
-                formula=getattr(met, "formula", None),
-                charge=getattr(met, "charge", None),
-                annotation=met.annotation,
-                is_cofactor=is_cofactor,
-            )
-
+            if met.id not in [i.id for i in model.reactions.sink_target.metabolites]:
+                # Determine if cofactor:
+                mnxm = met.annotation.get('metanetx.chemical', [])
+                if isinstance(mnxm, str):
+                    mnxm = [mnxm]
+                elif isinstance(mnxm, list):
+                    pass
+                else:
+                    logging.warning(f'Annotation entry {met.id} must be list or str: {mnxm}')
+                if set(mnxm) & set(self.mnxm_cofactors):
+                    is_cofactor = True
+                else:
+                    is_cofactor = False
+                G.add_node(
+                    met.id,
+                    type="metabolite",
+                    name=met.name,
+                    compartment=met.compartment,
+                    formula=getattr(met, "formula", None),
+                    charge=getattr(met, "charge", None),
+                    annotation=met.annotation,
+                    is_cofactor=is_cofactor,
+                )
         # Add reaction nodes + edges
         for rxn in model.reactions:
-            rxn_annotation: Dict[str, Any] = dict(getattr(rxn, "annotation", {}) or {})
+            if rxn.id not in ['transport_target', 'sink_target']:
+                rxn_annotation: Dict[str, Any] = dict(getattr(rxn, "annotation", {}) or {})
 
-            G.add_node(
-                rxn.id,
-                type="reaction",
-                name=rxn.name,
-                subsystem=getattr(rxn, "subsystem", None),
-                lower_bound=float(rxn.lower_bound),
-                upper_bound=float(rxn.upper_bound),
-                reversible=bool(rxn.reversibility),
-                gene_reaction_rule=rxn.gene_reaction_rule,
-                annotation=rxn_annotation,
-            )
-
-            # reaction.metabolites is {Metabolite: coefficient}
-            for met, coeff in rxn.metabolites.items():
-                # Reactants: negative stoichiometry
-                if coeff < 0:
-                    G.add_edge(
-                        met.id,
-                        rxn.id,
-                        stoichiometry=float(coeff),
-                        role="reactant",
-                    )
-                # Products: positive stoichiometry
-                elif coeff > 0:
-                    G.add_edge(
-                        rxn.id,
-                        met.id,
-                        stoichiometry=float(coeff),
-                        role="product",
-                    )
-
+                G.add_node(
+                    rxn.id,
+                    type="reaction",
+                    name=rxn.name,
+                    subsystem=getattr(rxn, "subsystem", None),
+                    lower_bound=float(rxn.lower_bound),
+                    upper_bound=float(rxn.upper_bound),
+                    reversible=bool(rxn.reversibility),
+                    gene_reaction_rule=rxn.gene_reaction_rule,
+                    annotation=rxn_annotation,
+                )
+                # reaction.metabolites is {Metabolite: coefficient}
+                for met, coeff in rxn.metabolites.items():
+                    # Reactants: negative stoichiometry
+                    if coeff < 0:
+                        G.add_edge(
+                            met.id,
+                            rxn.id,
+                            stoichiometry=float(coeff),
+                            role="reactant",
+                        )
+                    # Products: positive stoichiometry
+                    elif coeff > 0:
+                        G.add_edge(
+                            rxn.id,
+                            met.id,
+                            stoichiometry=float(coeff),
+                            role="product",
+                        )
         return G
 
 
-    def remove_dangling_reactions(G: nx.DiGraph) -> nx.DiGraph:
+    def remove_dangling_reactions(self, G: nx.DiGraph) -> nx.DiGraph:
         """Return a subgraph without parentless or childless reaction nodes.
 
         A reaction node is removed if:
         - it has no metabolite predecessors (parentless), or
         - it has no metabolite successors (childless).
+
+        To be used as:
+        ```
+        tmp_G = remove_dangling_reactions(G)
+        parentless_nodes = [n for n in tmp_G.nodes if tmp_G.in_degree(n) == 0]
+        childless_nodes = [n for n in tmp_G.nodes if tmp_G.out_degree(n) == 0]
+        tmp_G = None
+        ```
 
         Args:
             G: A NetworkX directed graph with 'type' attributes

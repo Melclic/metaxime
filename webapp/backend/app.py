@@ -9,9 +9,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import numpy as np
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
 
 from metaxime.utils import convert_depiction
 
@@ -709,6 +712,199 @@ def delete_job(job_id: str) -> JobSummary:
     persist_job_store()
     return summary
 
+##### results getters
+
+@app.get("/jobs/{job_id}/output", response_class=JSONResponse)
+def get_job_output_json(job_id: str):
+    """Return the output.json file for a completed job.
+
+    The file is expected at:
+        job_dir / "_output" / "output.json"
+
+    Args:
+        job_id:
+            Identifier of the job.
+
+    Returns:
+        JSONResponse:
+            Contents of output.json.
+
+    Raises:
+        HTTPException:
+            If the job does not exist, is not completed,
+            or output.json is missing or invalid.
+    """
+    with job_store_lock:
+        job = job_store.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not completed (status={job.status})",
+        )
+
+    job_dir = Path(job.job_dir)
+    output_json_path = job_dir / "_output" / "output.json"
+
+    if not output_json_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="output.json not found for this job",
+        )
+
+    try:
+        with output_json_path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid JSON in output.json: {exc}",
+        )
+
+    return JSONResponse(content=data)
+
+
+@app.get("/jobs/{job_id}/results", response_class=JSONResponse)
+def get_job_results_summary(job_id: str):
+    """Return a reduced results summary for a job.
+
+    The summary format is:
+        [{ "id": i, "steps": steps }]
+
+    Where i is the index (or identifier) of each result entry.
+
+    Args:
+        job_id:
+            Identifier of the job.
+
+    Returns:
+        JSONResponse:
+            List of result summaries.
+
+    Raises:
+        HTTPException:
+            If the job does not exist, is not completed,
+            or output.json is missing or invalid.
+    """
+    with job_store_lock:
+        job = job_store.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not completed (status={job.status})",
+        )
+
+    output_json_path = (
+        Path(job.job_dir) / "_output" / "output.json"
+    )
+
+    if not output_json_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="output.json not found for this job",
+        )
+
+    try:
+        with output_json_path.open("r", encoding="utf-8") as fh:
+            tmp_json = json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid JSON in output.json: {exc}",
+        )
+
+    if not isinstance(tmp_json, dict):
+        raise HTTPException(
+            status_code=500,
+            detail="output.json does not contain a list",
+        )
+
+    results = [
+        {
+            "id": rp_id,
+            "steps": tmp_json[rp_id].get("steps"),
+            "rp_mean_score": float(np.mean([i.get('annotation', {}).get('rp_score', 0.0) for i in tmp_json[rp_id]['nodes'] if i.get('type', None)=='reaction'])),
+            "rp_std_score": float(np.std([i.get('annotation', {}).get('rp_score', 0.0) for i in tmp_json[rp_id]['nodes'] if i.get('type', None)=='reaction'])),
+        }
+        for rp_id in tmp_json
+    ]
+
+    return JSONResponse(content=results)
+
+
+@app.get("/jobs/{job_id}/results/{result_id}", response_class=JSONResponse)
+def get_job_result_pathway(job_id: str, result_id: str):
+    """Return the pathway JSON for a specific result of a job.
+
+    The pathway data is read from:
+        job_dir / "_output" / "output.json"
+
+    Args:
+        job_id:
+            Identifier of the job.
+        result_id:
+            Identifier of the result (e.g. "rp2_1_0").
+
+    Returns:
+        JSONResponse:
+            The pathway JSON corresponding to the requested result.
+
+    Raises:
+        HTTPException:
+            If the job does not exist, is not completed,
+            output.json is missing or invalid,
+            or the result_id is not found.
+    """
+    with job_store_lock:
+        job = job_store.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not completed (status={job.status})",
+        )
+
+    output_json_path = Path(job.job_dir) / "_output" / "output.json"
+
+    if not output_json_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="output.json not found for this job",
+        )
+
+    try:
+        with output_json_path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid JSON in output.json: {exc}",
+        )
+
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=500,
+            detail="output.json does not contain a dict keyed by result_id",
+        )
+
+    entry = data.get(result_id)
+    if entry is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Result '{result_id}' not found for job '{job_id}'",
+        )
+
+    return JSONResponse(content=entry)
 
 if __name__ == "__main__":
     import uvicorn

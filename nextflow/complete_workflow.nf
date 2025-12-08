@@ -142,6 +142,11 @@ process PARSE_RP2 {
         mode: "copy", 
         pattern: "output.zip"
     )
+    publishDir (
+        path: { "${params.output_folder}/" },
+        mode: "copy", 
+        pattern: "output.json"
+    )
 
     input:
         path(scope_file)
@@ -151,6 +156,7 @@ process PARSE_RP2 {
 
     output:
         path "output.zip", emit: merged_zip
+        path "output.json", emit: summary_graphs
 
     script:
         """
@@ -160,6 +166,7 @@ process PARSE_RP2 {
             --paths        ${paths_file} \\
             --target_model ${target_model_file} \\
             --out_tar      output.zip \\
+            --out_json     output.json \\
             --source_comp  ${params.source_comp} \\
             --target_comp  ${params.target_comp} \\
             ${params.use_inchikey2        ? "--use_inchikey2" : ""} \\
