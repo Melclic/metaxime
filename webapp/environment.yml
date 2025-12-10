@@ -1,0 +1,18 @@
+name: metaxime_app
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.11
+  - fastapi
+  - uvicorn
+  - pydantic
+  - python-dotenv
+  - requests
+  - nodejs
+  - git
+  - nextflow
+  - rdkit
+  - nextflow

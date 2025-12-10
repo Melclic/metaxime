@@ -1,6 +1,5 @@
 import enum
 import json
-import os
 import queue
 import subprocess
 import threading
@@ -17,8 +16,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-
-from metaxime.utils import convert_depiction
+from utils import convert_depiction
 
 # ---------------------------------------------------------------------------
 # Paths and constants
