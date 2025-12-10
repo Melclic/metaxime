@@ -3,7 +3,7 @@ set -e
 
 # ---------- CONFIG ----------
 BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/backend"
-FRONTEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/frontend/react-app"
+FRONTEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/frontend"
 
 BACKEND_HOST="0.0.0.0"
 BACKEND_PORT="8000"
