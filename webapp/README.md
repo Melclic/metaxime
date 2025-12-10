@@ -1,6 +1,6 @@
 # Metaxime App
 
-**Metaxime** is a full‑stack application for the prediction of metabolic routes enabling the production of a **molecule of interest** within a **strain (metabolic model) of interest**.
+**Metaxime App** is a full‑stack application for the prediction of metabolic routes enabling the production of a **molecule of interest** within a **strain (metabolic model) of interest**. It basically serves a frontend to the user and a more user friendly interface, and includes all the parts of the workflow that one would want. 
 
 The application provides:
 - A **FastAPI backend** to run metabolic pathway prediction jobs
@@ -97,6 +97,14 @@ metaxime-app/
 ├── environment.yml          # Conda env definition
 ├── run_app.sh               # Launch script
 └── README.md
+```
+
+These are the frontend dependencies:
+
+```
+npm install -D @types/module-name
+npm install dagre-d3-es
+npm install @mui/material @mui/icons-material @emotion/styled @emotion/react
 ```
 
 ---

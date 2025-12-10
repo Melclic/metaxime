@@ -16,8 +16,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-
-from .utils import convert_depiction
+from utils import convert_depiction
 
 # ---------------------------------------------------------------------------
 # Paths and constants

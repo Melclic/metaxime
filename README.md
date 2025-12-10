@@ -2,7 +2,7 @@
 
 This projects makes it more accessible to study the output of RetroPath2.0 by converting the results to metabolic models for downstream analysis. 
 
-## Requirements
+## Dependencies
 
 [BioPathOpt](https://github.com/melclic/bioPathOpt)
 
@@ -14,7 +14,22 @@ This is part of one of the projects that may be found [here](https://github.com/
 
 ## Usage
 
+### Docker
+
 If using Docker, the image `melclic/metaxime:latest` can de used to run the pipeline.
+
+```
+docker pull melclic/metaxime:latest
+```
+
+You can build it yourself with:
+```
+docker build -t melclic/metaxime:latest -f Dockerfile .
+```
+
+## Command Line Arguments
+
+Within the docker you can use
 
 ```bash
 python run_pipeline.py \
@@ -28,19 +43,6 @@ python run_pipeline.py \
     --use_inchikey2 \
     --find_all_parentless
 ```
-
-You can build it yourself with:
-```
-docker build -t melclic/metaxime:latest -f Dockerfile .
-```
-
-```
-npm install -D @types/module-name
-npm install dagre-d3-es
-npm install @mui/material @mui/icons-material @emotion/styled @emotion/react
-```
-
-## Command Line Arguments
 
 ### Required Arguments
 
@@ -78,11 +80,9 @@ This would cause the flux to be 0 if trying top optimize for the target.
 
 A single ZIP archive containing all merged SBML models.
 
-## Temporary Directory Handling
-
-Uses `tempfile.TemporaryDirectory()` for automatic cleanup.
-
 ## Running via Nextflow
+
+To run using nextflow, you can use:
 
 ```bash
 nextflow run main.nf \
@@ -99,6 +99,8 @@ nextflow run main.nf \
 ```
 
 ## Example Run
+
+To use the command line directly, you can use:
 
 ```bash
 python run_pipeline.py \
