@@ -1,226 +1,256 @@
-import React, { useEffect, useMemo, useState } from "react";
+// JobResultsTable.tsx
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-type JobResult = {
-  id: string;
-  steps: number;
-  rp_mean_score: number;
-  rp_std_score: number;
-};
+import {
+  Box,
+  CircularProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TableSortLabel,
+  Typography,
+} from "@mui/material";
 
 type JobResultsTableProps = {
   jobId: string;
 };
 
-type SortKey = keyof JobResult;
-type SortDirection = "asc" | "desc";
+type JobResult = {
+  id: string;
+  steps: number;
+  rp_mean_score?: number;
+  rp_std_score?: number;
+};
 
-export function JobResultsTable({ jobId }: JobResultsTableProps) {
+type Order = "asc" | "desc";
+
+// Comparators specialised for JobResult so TS is happy with optional fields
+function descendingComparator(
+  a: JobResult,
+  b: JobResult,
+  orderBy: keyof JobResult,
+): number {
+  const av = a[orderBy];
+  const bv = b[orderBy];
+
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1;
+  if (bv == null) return -1;
+
+  if (bv < av) return -1;
+  if (bv > av) return 1;
+  return 0;
+}
+
+function getComparator(
+  order: Order,
+  orderBy: keyof JobResult,
+): (a: JobResult, b: JobResult) => number {
+  return order === "desc"
+    ? (a, b) => descendingComparator(a, b, orderBy)
+    : (a, b) => -descendingComparator(a, b, orderBy);
+}
+
+function stableSort(
+  array: JobResult[],
+  comparator: (a: JobResult, b: JobResult) => number,
+): JobResult[] {
+  const stabilized: Array<[JobResult, number]> = array.map(
+    (el, index) => [el, index],
+  );
+  stabilized.sort((a, b) => {
+    const order = comparator(a[0], b[0]);
+    if (order !== 0) return order;
+    return a[1] - b[1];
+  });
+  return stabilized.map(el => el[0]);
+}
+
+export const JobResultsTable: React.FC<JobResultsTableProps> = ({
+  jobId,
+}) => {
+  const navigate = useNavigate();
+
   const [results, setResults] = useState<JobResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
-  const [sortKey, setSortKey] = useState<SortKey>("id");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-
-  const navigate = useNavigate();
+  const [order, setOrder] = useState<Order>("asc");
+  const [orderBy, setOrderBy] = useState<keyof JobResult>("id");
 
   useEffect(() => {
-    if (!jobId) return;
-
     async function fetchResults() {
       try {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `http://localhost:8000/jobs/${encodeURIComponent(jobId)}/results`
+        const res = await fetch(
+          `http://localhost:8000/jobs/${encodeURIComponent(jobId)}/results`,
         );
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
-
-        const data: JobResult[] = await response.json();
+        const data: JobResult[] = await res.json();
         setResults(data);
       } catch (err: any) {
         console.error(err);
-        setError("Could not load job results");
+        setError("Could not load results");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchResults();
+    void fetchResults();
   }, [jobId]);
 
-  function handleSort(column: SortKey) {
-    if (column === sortKey) {
-      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(column);
-      setSortDirection("asc");
-    }
-  }
+  const handleRequestSort = (property: keyof JobResult) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
 
-  function handleRowClick(resultId: string) {
+  const handleRowClick = (resultId: string) => {
     navigate(
-      `/jobs/${encodeURIComponent(jobId)}/results/${encodeURIComponent(
-        resultId
-      )}/pathway`
+      `/jobs/${encodeURIComponent(
+        jobId,
+      )}/results/${encodeURIComponent(resultId)}`,
+    );
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          mt: 4,
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress />
+      </Box>
     );
   }
 
-  const sortedResults = useMemo(() => {
-    const copy = [...results];
-    copy.sort((a, b) => {
-      const aVal = a[sortKey];
-      const bVal = b[sortKey];
-
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-      }
-
-      const aStr = String(aVal);
-      const bStr = String(bVal);
-      if (aStr < bStr) return sortDirection === "asc" ? -1 : 1;
-      if (aStr > bStr) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-    return copy;
-  }, [results, sortKey, sortDirection]);
-
-  if (!jobId) {
-    return <p>Please select a job.</p>;
-  }
-
-  if (loading) {
-    return <p>Loading results…</p>;
-  }
-
   if (error) {
-    return <p style={{ color: "red" }}>{error}</p>;
+    return (
+      <Box sx={{ mt: 4 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
   }
 
-  if (sortedResults.length === 0) {
-    return <p>No results found for this job.</p>;
+  if (results.length === 0) {
+    return (
+      <Box sx={{ mt: 4 }}>
+        <Typography>No results found for this job.</Typography>
+      </Box>
+    );
   }
 
   return (
-    <div style={{ width: "100%", overflowX: "auto" }}>
-      <table
-        style={{
-          borderCollapse: "collapse",
-          width: "100%",
-          fontSize: "0.9rem",
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="h5" gutterBottom>
+        Pathway results
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        Click on a row to open the pathway network for that result.
+      </Typography>
+
+      <TableContainer
+        component={Paper}
+        sx={{
+          maxHeight: "70vh",
         }}
       >
-        <thead>
-          <tr>
-            <SortableHeader
-              label="Id"
-              column="id"
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              label="Steps"
-              column="steps"
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              label="RP mean score"
-              column="rp_mean_score"
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              label="RP standard score"
-              column="rp_std_score"
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-          </tr>
-        </thead>
-        <tbody>
-          {sortedResults.map(row => (
-            <tr
-              key={row.id}
-              onClick={() => handleRowClick(row.id)}
-              style={rowStyle}
-            >
-              <td style={cellStyle}>{row.id}</td>
-              <td style={cellStyle}>{row.steps}</td>
-              <td style={cellStyle}>{formatNumber(row.rp_mean_score)}</td>
-              <td style={cellStyle}>{formatNumber(row.rp_std_score)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 8 }}>
-        Click a row to view the pathway.
-      </p>
-    </div>
+        <Table stickyHeader size="small" aria-label="job results table">
+          <TableHead>
+            <TableRow>
+              <TableCell sortDirection={orderBy === "id" ? order : false}>
+                <TableSortLabel
+                  active={orderBy === "id"}
+                  direction={orderBy === "id" ? order : "asc"}
+                  onClick={() => handleRequestSort("id")}
+                >
+                  Id
+                </TableSortLabel>
+              </TableCell>
+
+              <TableCell
+                sortDirection={orderBy === "steps" ? order : false}
+                align="right"
+              >
+                <TableSortLabel
+                  active={orderBy === "steps"}
+                  direction={orderBy === "steps" ? order : "asc"}
+                  onClick={() => handleRequestSort("steps")}
+                >
+                  Steps
+                </TableSortLabel>
+              </TableCell>
+
+              <TableCell
+                sortDirection={orderBy === "rp_mean_score" ? order : false}
+                align="right"
+              >
+                <TableSortLabel
+                  active={orderBy === "rp_mean_score"}
+                  direction={orderBy === "rp_mean_score" ? order : "asc"}
+                  onClick={() => handleRequestSort("rp_mean_score")}
+                >
+                  Mean score
+                </TableSortLabel>
+              </TableCell>
+
+              <TableCell
+                sortDirection={orderBy === "rp_std_score" ? order : false}
+                align="right"
+              >
+                <TableSortLabel
+                  active={orderBy === "rp_std_score"}
+                  direction={orderBy === "rp_std_score" ? order : "asc"}
+                  onClick={() => handleRequestSort("rp_std_score")}
+                >
+                  Std score
+                </TableSortLabel>
+              </TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {stableSort(results, getComparator(order, orderBy)).map(
+              row => (
+                <TableRow
+                  hover
+                  key={row.id}
+                  onClick={() => handleRowClick(row.id)}
+                  sx={{
+                    cursor: "pointer",
+                  }}
+                >
+                  <TableCell component="th" scope="row">
+                    {row.id}
+                  </TableCell>
+                  <TableCell align="right">{row.steps}</TableCell>
+                  <TableCell align="right">
+                    {row.rp_mean_score != null
+                      ? row.rp_mean_score.toFixed(3)
+                      : "–"}
+                  </TableCell>
+                  <TableCell align="right">
+                    {row.rp_std_score != null
+                      ? row.rp_std_score.toFixed(3)
+                      : "–"}
+                  </TableCell>
+                </TableRow>
+              ),
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
-}
-
-type SortableHeaderProps = {
-  label: string;
-  column: SortKey;
-  sortKey: SortKey;
-  sortDirection: SortDirection;
-  onSort: (column: SortKey) => void;
 };
-
-function SortableHeader({
-  label,
-  column,
-  sortKey,
-  sortDirection,
-  onSort,
-}: SortableHeaderProps) {
-  const active = sortKey === column;
-  const indicator = active ? (sortDirection === "asc" ? "▲" : "▼") : "";
-
-  return (
-    <th
-      style={{
-        ...cellHeaderStyle,
-        cursor: "pointer",
-        userSelect: "none",
-        whiteSpace: "nowrap",
-      }}
-      onClick={() => onSort(column)}
-    >
-      <span style={{ marginRight: 4 }}>{label}</span>
-      <span style={{ fontSize: "0.75rem", opacity: active ? 0.8 : 0.3 }}>
-        {indicator}
-      </span>
-    </th>
-  );
-}
-
-const rowStyle: React.CSSProperties = {
-  cursor: "pointer",
-};
-
-const cellStyle: React.CSSProperties = {
-  border: "1px solid #ddd",
-  padding: "6px 8px",
-  textAlign: "left",
-};
-
-const cellHeaderStyle: React.CSSProperties = {
-  ...cellStyle,
-  fontWeight: 600,
-  backgroundColor: "#f5f5f5",
-};
-
-function formatNumber(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  return value.toFixed(3);
-}

@@ -5,6 +5,7 @@ import queue
 import subprocess
 import threading
 import uuid
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import re
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -29,6 +30,13 @@ WORKFLOW_SCRIPT: Path = (SCRIPT_DIR / "../../nextflow/complete_workflow.nf").res
 WORKFLOW_CONFIG: Path = (SCRIPT_DIR / "../../nextflow/nextflow.config").resolve()
 
 RUN_DB_PATH: Path = SCRIPT_DIR / "run_db.json"
+TMP_UPLOADS_PATH: Path = SCRIPT_DIR / "uploaded_files"
+TMP_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
+TMP_MODEL_PATH: Path = TMP_UPLOADS_PATH / "uploaded_models"
+TMP_MODEL_PATH.mkdir(parents=True, exist_ok=True)
+TMP_RULES_PATH: Path = TMP_UPLOADS_PATH / "uploaded_rules"
+TMP_RULES_PATH.mkdir(parents=True, exist_ok=True)
+
 DEFAULT_RUN_ROOT: Path = SCRIPT_DIR / "run_files"
 
 # ---------------------------------------------------------------------------
@@ -463,11 +471,13 @@ from fastapi.middleware.cors import CORSMiddleware
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174/",
+    "http://127.0.0.1:5174/",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # or ["*"] for everything in dev
+    allow_origins=["*"],          # or ["*"] for everything in dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -966,6 +976,50 @@ def get_job_result_pathway(job_id: str, result_id: str):
         )
 
     return JSONResponse(content=entry)
+
+
+@app.post("/upload_model")
+async def upload_model(file: UploadFile = File(...)):
+    """Accept an SBML model file and store it on the server.
+
+    Returns a JSON object with the path that can be used as model_file.
+    """
+    # optional: validate extension
+    if not file.filename.lower().endswith((".xml", ".sbml")):
+        raise HTTPException(status_code=400, detail="File must be SBML or XML")
+
+    unique_name = f"{uuid.uuid4()}_{file.filename}"
+    dest_path = TMP_MODEL_PATH / unique_name
+
+    with dest_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {
+        "model_file": str(dest_path),  # use this in the /jobs payload
+        "original_filename": file.filename,
+    }
+
+
+@app.post("/upload_rules")
+async def upload_rules(file: UploadFile = File(...)):
+    """Accept an SBML model file and store it on the server.
+
+    Returns a JSON object with the path that can be used as model_file.
+    """
+    # optional: validate extension
+    if not file.filename.lower().endswith((".csv", ".tsv")):
+        raise HTTPException(status_code=400, detail="File must be CSV or TSV")
+
+    unique_name = f"{uuid.uuid4()}_{file.filename}"
+    dest_path = TMP_RULES_PATH / unique_name
+
+    with dest_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {
+        "rules_file": str(dest_path),  # use this in the /jobs payload
+        "original_filename": file.filename,
+    }
 
 if __name__ == "__main__":
     import uvicorn

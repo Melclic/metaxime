@@ -1,9 +1,22 @@
 // App.tsx
-import React from "react";
+
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
+
+
+
 import { JobsTiles } from "./JobsTiles";
 import { JobResultsTable } from "./JobResultsTable";
 import { PathwayViewer } from "./PathwayViewer";
+import { RunJob } from "./RunJob";
+
+import CssBaseline from '@mui/material/CssBaseline';
+//import Divider from '@mui/material/Divider';
+
+import AppTheme from './shared-theme/AppTheme';
+import AppAppBar from './components/AppAppBar';
+import { Toolbar } from "@mui/material";
+import Box from '@mui/material/Box';
+
 
 
 function JobResultsRouteWrapper() {
@@ -26,16 +39,35 @@ function PathwayViewerRouteWrapper() {
 
 export function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<JobsTiles />} />
-        <Route path="/jobs/:jobId/results" element={<JobResultsRouteWrapper />} />
-        <Route
-          path="/jobs/:jobId/results/:resultId/pathway"
-          element={<PathwayViewerRouteWrapper />}
-        />
-      </Routes>
-    </BrowserRouter>
+    <AppTheme>
+      <CssBaseline enableColorScheme />
+
+      <Box sx={{ pt: 3 }}>
+        <Toolbar /> {/* pushes content below AppBar */}
+
+        <Box
+          sx={{
+            px: 4,            // left + right padding
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+
+        <BrowserRouter>
+          <AppAppBar />
+          <Routes>
+            <Route path="/" element={<JobsTiles />} />
+            <Route path="/jobs/:jobId/results" element={<JobResultsRouteWrapper />} />
+            <Route path="/jobs/:jobId/results/:resultId" element={<PathwayViewerRouteWrapper />}
+            />
+            <Route path="/run" element={<RunJob />} />
+          </Routes>
+        </BrowserRouter>
+      
+      </Box>
+      </Box>
+
+      </AppTheme>
   );
 }
 

@@ -37,6 +37,7 @@ docker build -t melclic/metaxime:latest -f Dockerfile .
 ```
 npm install -D @types/module-name
 npm install dagre-d3-es
+npm install @mui/material @mui/icons-material @emotion/styled @emotion/react
 ```
 
 ## Command Line Arguments

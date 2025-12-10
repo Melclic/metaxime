@@ -5,6 +5,9 @@ import * as d3 from "d3";
 import * as dagreD3 from "dagre-d3-es";
 import { SmilesSVG } from "./SmilesSVG";
 
+const chemWidth = 140;
+const chemHeight = 100;
+
 type MetaboliteNode = {
   id: string;
   type: "metabolite";
@@ -51,17 +54,11 @@ export type PathwayGraph = {
 
 export type PathwayNetworkProps = {
   graph: PathwayGraph;
-  width?: number | string;
-  height?: number | string;
 };
 
-export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
-  graph,
-  width = "100%",
-  height = 500,
-}) => {
+export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({ graph }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [showCofactors, setShowCofactors] = useState<boolean>(true);
+  const [showCofactors, setShowCofactors] = useState<boolean>(false);
 
   // Filter graph based on cofactor visibility
   const filteredGraph = useMemo<PathwayGraph>(() => {
@@ -110,9 +107,6 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
         marginy: 10,
       })
       .setDefaultEdgeLabel(() => ({}));
-
-    const chemWidth = 140;
-    const chemHeight = 100;
 
     // Nodes
     filteredGraph.nodes.forEach(node => {
@@ -195,7 +189,7 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
 
       // y position slightly above the top border so it does not sit on the line
       const topY = n.y - n.height / 3;
-      const labelY = topY - 10; // move more up to avoid overlapping the border
+      const labelY = topY - 10;
 
       inner
         .append("text")
@@ -215,21 +209,17 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
       const parent = svgRef.current.parentElement;
       if (!parent) return;
 
-      const fullWidth = parent.getBoundingClientRect().width;
-      const fullHeight =
-        typeof height === "number"
-          ? height
-          : parent.getBoundingClientRect().height || 400;
+      const rect = parent.getBoundingClientRect();
 
       const midX = bounds.x + bounds.width / 2;
       const midY = bounds.y + bounds.height / 2;
 
       const initialScale =
-        0.95 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
+        0.95 / Math.max(bounds.width / rect.width, bounds.height / rect.height);
 
       const translate: [number, number] = [
-        fullWidth / 2 - midX * initialScale,
-        fullHeight / 2 - midY * initialScale,
+        rect.width / 2 - midX * initialScale,
+        rect.height / 2 - midY * initialScale,
       ];
 
       // Use the initial scale as the minimum zoom so you cannot zoom out further
@@ -256,7 +246,7 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
         <SmilesSVG smiles={smiles} width={chemWidth} height={chemHeight} />,
       );
     });
-  }, [filteredGraph, height, width]);
+  }, [filteredGraph]);
 
   const handleDownloadSvg = () => {
     if (!svgRef.current) return;
@@ -282,7 +272,7 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
   };
 
   return (
-    <div style={{ width: "100%" }}>
+    <div>
       <div
         style={{
           marginBottom: 8,
@@ -334,11 +324,27 @@ export const PathwayNetwork: React.FC<PathwayNetworkProps> = ({
         </button>
       </div>
 
-      <svg
-        ref={svgRef}
-        style={{ width, height }}
-        preserveAspectRatio="xMidYMid meet"
-      />
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: 12,
+          border: "1px solid #e0e0e0",
+          padding: "12px 14px",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
+          backgroundColor: "#ffffff",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          ref={svgRef}
+          style={{
+            width: "100%",
+            height: 500,
+            display: "block",
+          }}
+        />
+      </div>
     </div>
   );
 };
