@@ -18,7 +18,7 @@ This is part of one of the projects that may be found [here](https://github.com/
 
 This project contains a frontend app written in React that enables the less technical users to use it. Please refer to this [README](webapp/README.md)
 
-<img src="images/see_job.gif" width="75%"/>
+<img src="images/see_job.gif"/>
 
 ### Docker
 
