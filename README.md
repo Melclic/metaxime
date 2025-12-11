@@ -14,6 +14,12 @@ This is part of one of the projects that may be found [here](https://github.com/
 
 ## Usage
 
+### Frontend
+
+This project contains a frontend app written in React that enables the less technical users to use it. Please refer to this [README](webapp/README.md)
+
+<img src="images/see_job.gif"/>
+
 ### Docker
 
 If using Docker, the image `melclic/metaxime:latest` can de used to run the pipeline.

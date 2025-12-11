@@ -713,8 +713,8 @@ def delete_job(job_id: str) -> JobSummary:
             created_at=job.created_at,
             started_at=job.started_at,
             finished_at=job.finished_at,
-            target_inchi=j.payload['target_inchi'],
-            target_smiles=j.payload['target_smiles'],
+            target_inchi=job.payload['target_inchi'],
+            target_smiles=job.payload['target_smiles'],
         )
         del job_store[job_id]
 
