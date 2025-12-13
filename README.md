@@ -1,6 +1,6 @@
 # MetaXime
 
-This projects makes it more accessible to study the output of RetroPath2.0 by converting the results to metabolic models for downstream analysis. 
+This projects makes it more accessible to study the output of RetroPath2.0 by converting the results to metabolic models for downstream analysis. The project contains a frontend writtent in React that enables users to run the project with more ease. 
 
 ## Dependencies
 
